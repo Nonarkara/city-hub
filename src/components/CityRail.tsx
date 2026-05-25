@@ -95,10 +95,10 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
   const isBkk = activeCity.id === 'bangkok'
   return (
     <aside className="rail">
-      <span className="rail-section-label">Cities</span>
       <CityList activeCity={activeCity} onSelect={onSelect} />
 
-      <span className="rail-section-label">Metrics</span>
+      <div className="rail-rule" aria-hidden />
+
       {isBkk ? (
         <VitalsBar />
       ) : (
@@ -111,7 +111,7 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
 
       {isBkk && onDistrictSelect && (
         <>
-          <span className="rail-section-label">Hotspots</span>
+          <div className="rail-rule" aria-hidden />
           <DistrictLeaderboard onSelect={onDistrictSelect} selected={selectedDistrict ?? null} />
         </>
       )}
@@ -121,8 +121,9 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
         <span className="vpm-badge-id">{vpmId}</span>
       </div>
       <div className="rail-credit">
-        <span>DR NON ARKARAPRASERTKUL</span>
-        <span>@DEPA THAILAND</span>
+        <span lang="th" className="rail-credit-aphorism">ทุกอย่างเกิดขึ้นเพราะมีเหตุ</span>
+        <span className="rail-credit-name">Non Arkaraprasertkul</span>
+        <span className="rail-credit-org">DEPA Thailand</span>
       </div>
     </aside>
   )

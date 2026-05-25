@@ -256,6 +256,7 @@
   overflow-y: auto;
 }
 
+/* Retained for any place that still calls it, but no longer used in rail */
 .rail-section-label {
   font-family: var(--font-mono);
   font-size: var(--text-micro);
@@ -263,6 +264,14 @@
   color: var(--dim);
   padding: var(--space-md) var(--space-md) var(--space-sm);
   text-transform: uppercase;
+}
+
+/* Hairline rule that replaces section headers. Quietly separates. */
+.rail-rule {
+  height: 1px;
+  background: var(--line);
+  margin: var(--space-md) var(--space-md) var(--space-sm);
+  opacity: 0.5;
 }
 
 /* ── City list ───────────────────────────────────────────────────────────── */
@@ -393,15 +402,34 @@
   gap: 2px;
   padding: var(--space-sm) var(--space-md) var(--space-md);
   border-top: var(--border);
-  opacity: 0.4;
 }
 
-.rail-credit span {
+.rail-credit-aphorism {
+  font-family: 'IBM Plex Sans Thai', 'Noto Sans Thai', var(--font-body);
+  font-size: 12px;
+  color: var(--fg);
+  opacity: 0.6;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.rail-credit-name {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--amber);
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+}
+
+.rail-credit-org {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
   letter-spacing: 0.14em;
   color: var(--fg-dim);
   text-transform: uppercase;
+  opacity: 0.55;
 }
 
 /* ── Bottom strip (mobile only) ──────────────────────────────────────────── */
@@ -1158,52 +1186,60 @@
   overflow: hidden;
 }
 
+/* Gentle, slow fade-in for major section blocks. Wong Kar-wai register —
+   sections appear like they were already there, not like they popped. */
+@keyframes section-breathe-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.brief-section,
+.rank-section,
+.tmd-section,
+.timefm-section,
+.alert-card,
+.brief-action,
+.brief-gap {
+  animation: section-breathe-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Stagger the alert cards so they cascade quietly */
+.alert-card:nth-child(1) { animation-delay: 0.05s; }
+.alert-card:nth-child(2) { animation-delay: 0.15s; }
+.alert-card:nth-child(3) { animation-delay: 0.25s; }
+.alert-card:nth-child(4) { animation-delay: 0.35s; }
+.alert-card:nth-child(5) { animation-delay: 0.45s; }
+.brief-action:nth-child(2) { animation-delay: 0.12s; }
+.brief-action:nth-child(3) { animation-delay: 0.20s; }
+.brief-action:nth-child(4) { animation-delay: 0.28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .brief-section, .rank-section, .tmd-section, .timefm-section,
+  .alert-card, .brief-action, .brief-gap, .district-panel {
+    animation: none !important;
+  }
+}
+
+/* Hairline status thread — a single line of color at the panel's top edge.
+   The color IS the verdict. No pill text. */
+.alert-panel-thread {
+  height: 2px;
+  width: 100%;
+  flex-shrink: 0;
+  transition: background-color 1.4s ease;
+}
+
 .alert-panel-header {
-  padding: var(--space-md);
+  padding: 14px var(--space-md) 10px;
   border-bottom: var(--border);
   flex-shrink: 0;
 }
 
-.alert-status-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.alert-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.alert-panel-title {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  letter-spacing: 0.14em;
-  color: var(--dim);
-  text-transform: uppercase;
-}
-
-.alert-panel-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.alert-status-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-body);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
 .alert-panel-time {
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: 10px;
+  letter-spacing: 0.18em;
   color: var(--dim);
-  letter-spacing: 0.08em;
 }
 
 .alert-scroll {
@@ -1297,13 +1333,48 @@
 .alert-panel-footer {
   padding: var(--space-md);
   border-top: var(--border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer-aphorism {
+  font-family: 'IBM Plex Sans Thai', 'Noto Sans Thai', var(--font-body);
+  font-size: 13px;
+  color: var(--fg);
+  opacity: 0.75;
+  line-height: 1.45;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.footer-aphorism-en {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--dim);
+  letter-spacing: 0;
+}
+
+.footer-sources {
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--dim);
-  line-height: 1.7;
-  text-transform: uppercase;
-  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.footer-signature {
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--amber);
+  opacity: 0.7;
+  letter-spacing: 0.02em;
 }
 
 /* ── Morning Brief ───────────────────────────────────────────────────────── */
@@ -1313,34 +1384,56 @@
   background: rgba(245, 245, 240, 0.02);
 }
 
-.brief-header {
+/* Mundane opening — the time and place, plainly */
+.brief-open {
+  margin-bottom: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brief-open-date {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--fg);
+  letter-spacing: 0.02em;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.brief-open-time {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: var(--space-md);
-}
-
-.brief-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.brief-title {
+  gap: 6px;
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   color: var(--dim);
-  text-transform: uppercase;
-  flex: 1;
 }
 
-.brief-status {
-  font-family: var(--font-mono);
-  font-size: var(--text-body);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+.brief-open-time > span:first-child {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Em-dash separator between brief phases */
+.brief-sep {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--dim);
+  opacity: 0.5;
+  margin: var(--space-md) 0;
+  letter-spacing: 0.3em;
+}
+
+.brief-aside {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dim);
+  font-style: italic;
+  margin-bottom: 6px;
+  opacity: 0.85;
 }
 
 .brief-body {
@@ -1361,28 +1454,32 @@
 .brief-gaps {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: var(--space-md);
+  gap: 4px;
 }
 
+/* Raw line, not a card. Hairline left mark per severity. */
 .brief-gap {
-  padding: 8px 10px;
+  padding: 4px 10px;
   border-left: 2px solid var(--amber);
-  background: rgba(245, 158, 11, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: baseline;
 }
 
-.brief-gap--high { border-left-color: #e53935; background: rgba(229, 57, 53, 0.06); }
-.brief-gap--medium { border-left-color: #fdd835; background: rgba(253, 216, 53, 0.06); }
-.brief-gap--low { border-left-color: #8bc34a; background: rgba(139, 195, 74, 0.06); }
+.brief-gap-detail {
+  grid-column: 2;
+}
 
-.brief-gap-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.16em;
+.brief-gap--high   { border-left-color: #e53935; }
+.brief-gap--medium { border-left-color: #fdd835; }
+.brief-gap--low    { border-left-color: #8bc34a; }
+
+.brief-gap-bullet {
+  font-family: var(--font-body);
+  font-size: 12px;
   color: var(--dim);
+  line-height: 1;
 }
 
 .brief-gap-headline {
@@ -1400,24 +1497,15 @@
 .brief-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.brief-actions-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.16em;
-  color: var(--dim);
-  margin-bottom: 4px;
-}
-
+/* Raw stacked action, no card chrome. Number, label, optional copy. */
 .brief-action {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 8px;
-  background: rgba(245, 245, 240, 0.04);
-  border: 1px solid rgba(245, 245, 240, 0.06);
+  gap: 10px;
+  padding: 4px 0;
 }
 
 .brief-action-num {
@@ -1721,7 +1809,7 @@
   flex-direction: column;
   z-index: var(--z-overlay);
   transform: translateX(100%);
-  animation: slideInRight 0.18s ease forwards;
+  animation: slideInRight 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes slideInRight { to { transform: translateX(0); } }

@@ -68,50 +68,71 @@ function BriefSection({ brief, onAction }: { brief: MorningBrief; onAction: (dra
 
   const paragraphs = aiParagraphs ?? brief.paragraphs
 
+  // Mundane opening — the time and place, plainly stated. No "MORNING BRIEF" chip.
+  const now = new Date()
+  const dateLine = now.toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+  const timeLine = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+
   return (
     <div className="brief-section">
-      <div className="brief-header">
-        <span className="brief-status-dot" style={{ background: brief.statusColor }} />
-        <span className="brief-title">MORNING BRIEF</span>
-        {aiSource === 'gemini-2.5' && (
-          <span className="brief-ai-tag" title="Brief narrated by Gemini 2.5">AI</span>
-        )}
-        <span className="brief-status" style={{ color: brief.statusColor }}>{brief.status}</span>
+      <div className="brief-open">
+        <div className="brief-open-date">{dateLine.toLowerCase()}</div>
+        <div className="brief-open-time">
+          <span style={{ color: brief.statusColor }}>●</span>
+          <span>{timeLine} · ICT</span>
+          {aiSource === 'gemini-2.5' && (
+            <span className="brief-ai-tag" title="Narrated by Gemini 2.5">ai</span>
+          )}
+        </div>
       </div>
+
       <div className="brief-body">
         {paragraphs.map((p, i) => (
           <p key={i} className="brief-paragraph">{p}</p>
         ))}
       </div>
+
       {brief.gaps.length > 0 && (
-        <div className="brief-gaps">
-          {brief.gaps.map((g, i) => (
-            <div key={i} className={`brief-gap brief-gap--${g.severity}`}>
-              <span className="brief-gap-label">GAP</span>
-              <span className="brief-gap-headline">{g.headline}</span>
-              <span className="brief-gap-detail">{g.detail}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {brief.actions.length > 0 && (
-        <div className="brief-actions">
-          <div className="brief-actions-label">RECOMMENDED ACTIONS</div>
-          {brief.actions.slice(0, 3).map((a, i) => (
-            <div key={i} className="brief-action">
-              <span className="brief-action-num">{i + 1}</span>
-              <div className="brief-action-body">
-                <span className="brief-action-label">{a.label}</span>
-                <span className="brief-action-detail">{a.detail}</span>
+        <>
+          <div className="brief-sep">—</div>
+          <div className="brief-gaps">
+            <div className="brief-aside">the data has gaps</div>
+            {brief.gaps.map((g, i) => (
+              <div key={i} className={`brief-gap brief-gap--${g.severity}`}>
+                <span className="brief-gap-bullet">·</span>
+                <span className="brief-gap-headline">{g.headline}</span>
+                <span className="brief-gap-detail">{g.detail}</span>
               </div>
-              {a.draft && (
-                <button className="brief-action-btn" onClick={() => onAction(a.draft!)}>
-                  COPY
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {brief.actions.length > 0 && (
+        <>
+          <div className="brief-sep">—</div>
+          <div className="brief-actions">
+            <div className="brief-aside">hands that can move</div>
+            {brief.actions.slice(0, 3).map((a, i) => (
+              <div key={i} className="brief-action">
+                <span className="brief-action-num">{i + 1}</span>
+                <div className="brief-action-body">
+                  <span className="brief-action-label">{a.label}</span>
+                  <span className="brief-action-detail">{a.detail}</span>
+                </div>
+                {a.draft && (
+                  <button className="brief-action-btn" onClick={() => onAction(a.draft!)}>
+                    copy
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -582,24 +603,21 @@ export function AlertPanel() {
     : '—:—'
 
   const overallLevel = alerts[0]?.level ?? 'good'
-  const statusLabel = overallLevel === 'good' ? 'CITY NORMAL' : overallLevel === 'moderate' ? 'ADVISORY ACTIVE' : overallLevel === 'high' ? 'ELEVATED RISK' : 'CRITICAL'
 
   return (
     <>
       {draft && <DraftModal draft={draft} onClose={() => setDraft(null)} />}
 
       <aside className="alert-panel">
+        {/* Raw status: a single colored line at the top edge. No pill text,
+            no "SITUATION · LIVE" — the color is the verdict. */}
+        <div
+          className="alert-panel-thread"
+          style={{ background: RISK_COLOR[overallLevel] }}
+          aria-label={`Status: ${overallLevel}`}
+        />
         <div className="alert-panel-header">
-          <div className="alert-status-row">
-            <span className="alert-status-dot" style={{ background: RISK_COLOR[overallLevel] }} />
-            <span className="alert-panel-title">SITUATION · LIVE</span>
-          </div>
-          <div className="alert-panel-meta">
-            <span className="alert-status-label" style={{ color: RISK_COLOR[overallLevel] }}>
-              {statusLabel}
-            </span>
-            <span className="alert-panel-time">{timeStr}</span>
-          </div>
+          <span className="alert-panel-time">{timeStr} · ICT</span>
         </div>
 
         <div className="alert-scroll">
@@ -626,18 +644,24 @@ export function AlertPanel() {
 
         <div className="alert-brief-row">
           <button className="alert-brief-btn" onClick={() => setDraft(formatBriefAsText(brief))}>
-            EXPORT BRIEF →
+            copy the brief →
           </button>
         </div>
 
         <div className="alert-panel-footer">
-          LIVE: GISTDA · TMD · OPEN-METEO · TRAFFY · GDELT · NASA · BMA
-          <br />
-          PREDICTIVE: GEMINI 2.5 FLASH · HOLT-WINTERS FALLBACK
-          <br />
-          <span style={{ opacity: 0.4, fontSize: '8px', letterSpacing: '0.12em' }}>
-            DR NON ARKARAPRASERTKUL · @DEPA THAILAND
-          </span>
+          <div className="footer-aphorism">
+            <span lang="th">ทุกอย่างเกิดขึ้นเพราะมีเหตุ</span>
+            <span className="footer-aphorism-en">— the data has gaps. the city still moves.</span>
+          </div>
+          <div className="footer-sources">
+            live · gistda · tmd · open-meteo · traffy · gdelt · nasa · bma
+          </div>
+          <div className="footer-sources">
+            predictive · gemini 2.5 · holt-winters
+          </div>
+          <div className="footer-signature">
+            Non Arkaraprasertkul · DEPA Thailand
+          </div>
         </div>
       </aside>
     </>
