@@ -43,7 +43,120 @@
 .map-container {
   position: absolute;
   inset: 0;
+  cursor: crosshair;
 }
+
+.map-container canvas { cursor: crosshair; }
+
+/* ── HUD: tactical overlay (corner brackets, reticle, ribbon, scanlines) ──── */
+.hud-bracket {
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  color: var(--amber);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 8;
+}
+.hud-bracket-tl { top: 70px; left: 8px;  }
+.hud-bracket-tr { top: 70px; right: 8px; }
+.hud-bracket-bl { bottom: 8px; left: 8px;  }
+.hud-bracket-br { bottom: 8px; right: 8px; }
+
+.hud-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  color: var(--amber);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.hud-ribbon {
+  position: fixed;
+  top: 44px;
+  left: 0;
+  right: 0;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 14px;
+  background: rgba(4, 6, 11, 0.92);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.18);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+  pointer-events: none;
+  z-index: 7;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.hud-pulse {
+  width: 6px;
+  height: 6px;
+  background: var(--amber);
+  flex-shrink: 0;
+  margin-right: 8px;
+  animation: hud-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hud-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+.hud-cell { display: inline-block; }
+.hud-cell-strong { color: var(--amber); font-weight: 500; }
+.hud-cell-coord { color: rgba(245, 245, 240, 0.7); }
+.hud-cell-uptime { color: rgba(245, 158, 11, 0.7); }
+
+.hud-sep {
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: rgba(245, 158, 11, 0.25);
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+
+/* CRT scanlines — wabi-sabi material wear, not glow */
+.hud-scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.018) 2px,
+    rgba(255, 255, 255, 0.018) 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Mobile: shrink ribbon, hide reticle (too busy) */
+@media (max-width: 720px) {
+  .hud-ribbon {
+    font-size: 9px;
+    padding: 0 8px;
+    letter-spacing: 0.1em;
+  }
+  .hud-sep { margin: 0 8px; }
+  .hud-reticle { display: none; }
+  .hud-cell-uptime { display: none; }
+  .hud-cell-coord { display: none; }
+}
+
+/* Panels clearing topbar (44px) + telemetry ribbon (22px) = top: 66px.
+   Edited at each panel's source rule below. */
 
 /* ── Top bar ─────────────────────────────────────────────────────────────── */
 .topbar {
@@ -128,7 +241,7 @@
 /* ── Left rail (desktop ≥ 768px) ─────────────────────────────────────────── */
 .rail {
   position: absolute;
-  top: 44px;
+  top: 66px;
   left: 0;
   bottom: 0;
   width: 220px;
@@ -491,7 +604,7 @@
 /* ── Layer Rail (right edge, desktop) ────────────────────────────────────── */
 .layer-rail {
   position: absolute;
-  top: 44px;
+  top: 66px;
   right: 0;
   bottom: 0;
   width: 240px;
@@ -1007,7 +1120,7 @@
 /* ── Alert panel (governor right, replaces LayerRail in SIT ROOM mode) ──── */
 .alert-panel {
   position: absolute;
-  top: 44px;
+  top: 66px;
   right: 0;
   bottom: 0;
   width: 320px;
@@ -1572,7 +1685,7 @@
 /* ── District Panel ─────────────────────────────────────────────────────── */
 .district-panel {
   position: absolute;
-  top: 44px;
+  top: 66px;
   right: 0;
   bottom: 0;
   width: 280px;

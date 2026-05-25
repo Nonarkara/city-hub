@@ -8,6 +8,7 @@ import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
 import { AlertPanel, DraftModal } from './components/AlertPanel'
 import { DistrictPanel } from './components/DistrictPanel'
+import { HUD } from './components/HUD'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
 
@@ -48,6 +49,12 @@ export default function App() {
   return (
     <>
       <MapView city={activeCity} vpmId={vpmId} apiKey={API_KEY} onMapReady={setMap} />
+
+      <HUD
+        map={map}
+        activeLayerCount={bangkokMode ? activeLayers.size : 0}
+        sourceCount={bangkokMode ? 7 : 1}
+      />
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 

@@ -20,14 +20,21 @@ const UNL_STYLE: StyleSpecification = {
     {
       id: 'background',
       type: 'background',
-      paint: { 'background-color': '#0d1117' },
+      paint: { 'background-color': '#04060b' },
     },
     {
       id: 'water',
       type: 'fill',
       source: 'omv',
       'source-layer': 'water',
-      paint: { 'fill-color': '#151d2e' },
+      paint: { 'fill-color': '#071a2c' },
+    },
+    {
+      id: 'water_outline',
+      type: 'line',
+      source: 'omv',
+      'source-layer': 'water',
+      paint: { 'line-color': '#1a4a6e', 'line-width': 0.6, 'line-opacity': 0.6 },
     },
     {
       id: 'landuse_park',
@@ -35,7 +42,14 @@ const UNL_STYLE: StyleSpecification = {
       source: 'omv',
       'source-layer': 'landuse',
       filter: ['==', 'kind', 'park'],
-      paint: { 'fill-color': '#111a16', 'fill-opacity': 0.8 },
+      paint: { 'fill-color': '#0a1410', 'fill-opacity': 0.85 },
+    },
+    {
+      id: 'admin_boundaries',
+      type: 'line',
+      source: 'omv',
+      'source-layer': 'boundaries',
+      paint: { 'line-color': '#244a6a', 'line-width': 0.5, 'line-opacity': 0.5, 'line-dasharray': [2, 2] },
     },
     {
       id: 'roads_minor',
@@ -43,7 +57,18 @@ const UNL_STYLE: StyleSpecification = {
       source: 'omv',
       'source-layer': 'roads',
       filter: ['in', 'kind', 'minor_road', 'path', 'pedestrian'],
-      paint: { 'line-color': '#1e2838', 'line-width': 1 },
+      paint: { 'line-color': '#0f1626', 'line-width': 0.7 },
+    },
+    {
+      id: 'roads_major_casing',
+      type: 'line',
+      source: 'omv',
+      'source-layer': 'roads',
+      filter: ['in', 'kind', 'highway', 'major_road', 'secondary_road'],
+      paint: {
+        'line-color': '#1a1206',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.6, 14, 6],
+      },
     },
     {
       id: 'roads_major',
@@ -52,8 +77,8 @@ const UNL_STYLE: StyleSpecification = {
       'source-layer': 'roads',
       filter: ['in', 'kind', 'highway', 'major_road', 'secondary_road'],
       paint: {
-        'line-color': '#253048',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 14, 4],
+        'line-color': '#3d2a0f',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.8, 14, 3.2],
       },
     },
     {
@@ -62,7 +87,15 @@ const UNL_STYLE: StyleSpecification = {
       source: 'omv',
       'source-layer': 'buildings',
       minzoom: 13,
-      paint: { 'fill-color': '#161d2b', 'fill-opacity': 0.9 },
+      paint: { 'fill-color': '#0a1020', 'fill-opacity': 0.92 },
+    },
+    {
+      id: 'buildings_outline',
+      type: 'line',
+      source: 'omv',
+      'source-layer': 'buildings',
+      minzoom: 14,
+      paint: { 'line-color': '#1a2540', 'line-width': 0.4, 'line-opacity': 0.7 },
     },
     {
       id: 'roads_labels',
@@ -74,10 +107,12 @@ const UNL_STYLE: StyleSpecification = {
       layout: {
         'symbol-placement': 'line',
         'text-field': '{name}',
-        'text-size': 11,
+        'text-size': 10,
+        'text-letter-spacing': 0.12,
+        'text-transform': 'uppercase',
         'text-font': ['Fira GO Regular'],
       },
-      paint: { 'text-color': '#566177', 'text-halo-color': '#0d1117', 'text-halo-width': 1 },
+      paint: { 'text-color': '#7a5a2a', 'text-halo-color': '#04060b', 'text-halo-width': 1.5 },
     },
     {
       id: 'places',
@@ -88,10 +123,12 @@ const UNL_STYLE: StyleSpecification = {
       filter: ['in', 'kind', 'city', 'town', 'suburb', 'neighbourhood'],
       layout: {
         'text-field': '{name}',
-        'text-size': ['interpolate', ['linear'], ['zoom'], 10, 11, 14, 14],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 14, 13],
+        'text-letter-spacing': 0.16,
+        'text-transform': 'uppercase',
         'text-font': ['Fira GO Regular'],
       },
-      paint: { 'text-color': '#8899bb', 'text-halo-color': '#0d1117', 'text-halo-width': 1.5 },
+      paint: { 'text-color': '#c87a14', 'text-halo-color': '#04060b', 'text-halo-width': 2 },
     },
   ],
 }
