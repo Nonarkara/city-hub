@@ -100,7 +100,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'longdo-basemap', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -124,6 +124,8 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'alphaearth-embeddings': 'src-alphaearth',
   'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
+  'traffy-heatmap':   'src-traffy-heatmap',
+  'buildings-3d':     'omv',  // re-uses UNL's vector tile source
 }
 
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
@@ -148,6 +150,8 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'alphaearth-embeddings': ['ly-alphaearth'],
   'longdo-basemap':   ['ly-longdo'],
   'traffy-issues':    ['ly-traffy-issues'],
+  'traffy-heatmap':   ['ly-traffy-heatmap'],
+  'buildings-3d':     ['ly-buildings-3d'],
 }
 
 function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
@@ -156,6 +160,15 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
   for (const lid of layerIds) {
     if (map.getLayer(lid)) {
       map.setLayoutProperty(lid, 'visibility', visible ? 'visible' : 'none')
+    }
+  }
+  // Side effect: 3D buildings toggle also drives the camera pitch + bearing
+  // for the cinematic perspective effect.
+  if (toggleId === 'buildings-3d') {
+    if (visible) {
+      map.easeTo({ pitch: 50, bearing: 25, duration: 800 })
+    } else {
+      map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
     }
   }
 }
@@ -184,6 +197,8 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'alphaearth-embeddings': return addAlphaEarth(map)
     case 'longdo-basemap':   return addLongdoBasemap(map)
     case 'traffy-issues':    return addTraffyIssues(map)
+    case 'traffy-heatmap':   return addTraffyHeatmap(map)
+    case 'buildings-3d':     return addBuildings3D(map)
   }
 }
 
@@ -723,6 +738,90 @@ async function addTraffyIssues(map: MapLibre) {
       'circle-stroke-color': '#0a0a0a',
       'circle-stroke-width': 1,
       'circle-opacity': 0.88,
+    },
+  })
+}
+
+async function addBuildings3D(map: MapLibre) {
+  // Re-uses UNL's omv vector source — no new fetch. Extrudes the buildings
+  // source-layer using whichever height field UNL exposes; defensive
+  // coalescing handles missing/null fields gracefully.
+  if (!map.getSource('omv')) return  // belt + suspenders
+  map.addLayer({
+    id: 'ly-buildings-3d',
+    type: 'fill-extrusion',
+    source: 'omv',
+    'source-layer': 'buildings',
+    minzoom: 14,
+    paint: {
+      // Try height → render_height → levels*3 → 6m fallback
+      'fill-extrusion-height': [
+        'coalesce',
+        ['get', 'height'],
+        ['get', 'render_height'],
+        ['*', ['coalesce', ['get', 'levels'], 2], 3],
+        6,
+      ],
+      'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+      // Color graded by height — short = dark blue-grey, tall = amber-warm
+      'fill-extrusion-color': [
+        'interpolate', ['linear'],
+        ['coalesce', ['get', 'height'], ['*', ['coalesce', ['get', 'levels'], 2], 3], 6],
+        0,   '#0d1424',
+        20,  '#1f2a40',
+        50,  '#3d3018',
+        120, '#5a4220',
+        250, '#8a5a14',  // top of class — Mahanakhon, IconSiam levels
+      ],
+      'fill-extrusion-opacity': 0.92,
+    },
+    layout: { 'visibility': 'none' },
+  })
+}
+
+async function addTraffyHeatmap(map: MapLibre) {
+  // Continuous density field over Traffy citizen reports — companion to
+  // PM2.5 heatmap. Magenta/red palette to read distinctly from the
+  // air-quality green→red ramp. Active tickets weight stronger than
+  // resolved ones (state==='เสร็จสิ้น' is "completed" in Thai).
+  const data = await fetchTraffyGeoJSON(500)
+  map.addSource('src-traffy-heatmap', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-traffy-heatmap',
+    type: 'heatmap',
+    source: 'src-traffy-heatmap',
+    paint: {
+      'heatmap-weight': [
+        'case',
+        ['==', ['get', 'state'], 'เสร็จสิ้น'], 0.3,  // resolved — light weight
+        1.0,                                          // active — full weight
+      ],
+      'heatmap-intensity': [
+        'interpolate', ['linear'], ['zoom'],
+        9, 0.7,
+        12, 1.2,
+        15, 3.0,
+      ],
+      // Magenta→amber→cyan ramp — distinct from PM2.5's green→red
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.2,  'rgba(88,166,255,0.4)',     // cyan low
+        0.45, 'rgba(168, 100, 220, 0.55)', // violet mid
+        0.7,  'rgba(245, 158, 11, 0.75)',  // amber high
+        0.95, 'rgba(229, 57, 53, 0.85)',   // red peak
+      ],
+      'heatmap-radius': [
+        'interpolate', ['linear'], ['zoom'],
+        9, 14,
+        12, 36,
+        15, 70,
+      ],
+      'heatmap-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        9, 0.7,
+        15, 0.5,
+      ],
     },
   })
 }

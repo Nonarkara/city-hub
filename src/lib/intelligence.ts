@@ -278,6 +278,9 @@ export interface Anomaly {
   severity: 'low' | 'medium' | 'high'
   metric: string
   message: string
+  /** Optional geographic anchor for map pins. Defaults to BKK center if absent. */
+  lat?: number
+  lng?: number
 }
 
 export function detectAnomalies(

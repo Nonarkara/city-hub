@@ -36,15 +36,50 @@ function levelLabel(level: RiskLevel): string {
 }
 
 function BriefSection({ brief, onAction }: { brief: MorningBrief; onAction: (draft: string) => void }) {
+  const [aiParagraphs, setAiParagraphs] = useState<string[] | null>(null)
+  const [aiSource, setAiSource] = useState<'gemini-2.5' | 'template'>('template')
+
+  // Try Gemini narration once when the brief data settles. Falls back to
+  // template silently when key absent.
+  useEffect(() => {
+    let cancelled = false
+    const ctx = {
+      status: brief.status,
+      facts: brief.paragraphs.join(' '),
+      anomalies: brief.gaps.map((g) => g.headline),
+      actions: brief.actions.slice(0, 3).map((a) => a.label),
+    }
+    narrate(
+      'Write a 2-paragraph governor situational brief for Bangkok using these live facts. ' +
+      'Lead with the most pressing concern. Cite specific numbers. End with the highest-priority action.',
+      ctx,
+      { style: 'paragraph', maxWords: 120 },
+    ).then((r) => {
+      if (cancelled) return
+      if (r.model === 'gemini-2.5' && r.narration && r.narration.length > 40) {
+        // Split into paragraphs on double-newline (or single, fallback)
+        const paras = r.narration.split(/\n\n+/).filter((p) => p.trim().length > 0)
+        setAiParagraphs(paras.length > 0 ? paras : [r.narration])
+        setAiSource('gemini-2.5')
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [brief.status, brief.paragraphs.length])  // re-narrate when situation shifts
+
+  const paragraphs = aiParagraphs ?? brief.paragraphs
+
   return (
     <div className="brief-section">
       <div className="brief-header">
         <span className="brief-status-dot" style={{ background: brief.statusColor }} />
         <span className="brief-title">MORNING BRIEF</span>
+        {aiSource === 'gemini-2.5' && (
+          <span className="brief-ai-tag" title="Brief narrated by Gemini 2.5">AI</span>
+        )}
         <span className="brief-status" style={{ color: brief.statusColor }}>{brief.status}</span>
       </div>
       <div className="brief-body">
-        {brief.paragraphs.map((p, i) => (
+        {paragraphs.map((p, i) => (
           <p key={i} className="brief-paragraph">{p}</p>
         ))}
       </div>

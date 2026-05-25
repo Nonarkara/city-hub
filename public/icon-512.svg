@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#04060b"/>
+  <g stroke="#f59e0b" stroke-width="5" fill="none">
+    <path d="M42 106 L42 42 L106 42"/>
+    <path d="M406 42 L470 42 L470 106"/>
+    <path d="M42 406 L42 470 L106 470"/>
+    <path d="M406 470 L470 470 L470 406"/>
+  </g>
+  <g stroke="#f59e0b" stroke-width="4" fill="none">
+    <line x1="256" y1="160" x2="256" y2="210"/>
+    <line x1="256" y1="302" x2="256" y2="352"/>
+    <line x1="160" y1="256" x2="210" y2="256"/>
+    <line x1="302" y1="256" x2="352" y2="256"/>
+    <circle cx="256" cy="256" r="38"/>
+  </g>
+  <text x="256" y="282" font-family="ui-monospace, monospace" font-size="30" font-weight="600" letter-spacing="6" fill="#f59e0b" text-anchor="middle">DN</text>
+  <text x="256" y="450" font-family="ui-monospace, monospace" font-size="18" font-weight="500" letter-spacing="6" fill="#f59e0b" text-anchor="middle">CITY HUB</text>
+</svg>

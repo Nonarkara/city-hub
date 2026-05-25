@@ -12,6 +12,9 @@ import { HUD } from './components/HUD'
 import { CommandPalette } from './components/CommandPalette'
 import { FreshnessPanel } from './components/FreshnessPanel'
 import { TimeScrubber } from './components/TimeScrubber'
+import { AnomalyPins } from './components/AnomalyPins'
+import { useAnomalies } from './hooks/useAnomalies'
+import { ASEANStrip } from './components/ASEANStrip'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
 
@@ -41,6 +44,8 @@ export default function App() {
   const bangkokMode = activeCity.id === 'bangkok'
 
   useBangkokLayers(map, activeLayers, bangkokMode, bangkokMode ? setSelectedDistrict : undefined)
+
+  const anomalies = useAnomalies(bangkokMode)
 
   const toggleLayer = useCallback((id: string) => {
     setActiveLayers((prev) => {
@@ -78,6 +83,8 @@ export default function App() {
 
       {bangkokMode && <FreshnessPanel />}
       <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict} />
+      {bangkokMode && governorMode && <AnomalyPins map={map} anomalies={anomalies} />}
+      {bangkokMode && <ASEANStrip />}
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 

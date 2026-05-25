@@ -11,3 +11,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </ErrorBoundary>,
 )
+
+// Register service worker for PWA — only in production to avoid dev caching pain
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .catch((err) => console.warn('[sw] registration failed', err))
+  })
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#04060b"/>
+  <!-- Tactical corner brackets -->
+  <g stroke="#f59e0b" stroke-width="2" fill="none">
+    <path d="M16 40 L16 16 L40 16"/>
+    <path d="M152 16 L176 16 L176 40"/>
+    <path d="M16 152 L16 176 L40 176"/>
+    <path d="M152 176 L176 176 L176 152"/>
+  </g>
+  <!-- Center crosshair -->
+  <g stroke="#f59e0b" stroke-width="1.5" fill="none">
+    <line x1="96" y1="60" x2="96" y2="80"/>
+    <line x1="96" y1="112" x2="96" y2="132"/>
+    <line x1="60" y1="96" x2="80" y2="96"/>
+    <line x1="112" y1="96" x2="132" y2="96"/>
+    <circle cx="96" cy="96" r="14"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="96" y="106" font-family="ui-monospace, monospace" font-size="11" font-weight="600" letter-spacing="2" fill="#f59e0b" text-anchor="middle">DN</text>
+</svg>

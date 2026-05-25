@@ -2111,6 +2111,118 @@
   margin-top: 4px;
 }
 
+/* ── Anomaly map pins ────────────────────────────────────────────────────── */
+.anomaly-pins-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;  /* above map, below panels */
+}
+
+.anomaly-pin-wrap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.anomaly-pin {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.anomaly-pin-dot {
+  position: absolute;
+  inset: 5px;
+  background: currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #04060b;
+}
+
+.anomaly-pin-ring {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  animation: anomaly-ring-pulse 1.8s ease-out infinite;
+}
+
+@keyframes anomaly-ring-pulse {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0;   }
+}
+
+.anomaly-pin--high   .anomaly-pin-ring { animation-duration: 1.2s; }
+.anomaly-pin--medium .anomaly-pin-ring { animation-duration: 1.8s; }
+.anomaly-pin--low    .anomaly-pin-ring { animation-duration: 2.4s; }
+
+.anomaly-pin-callout {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  background: rgba(4, 6, 11, 0.95);
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  pointer-events: auto;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg);
+}
+
+.anomaly-pin-callout-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.anomaly-pin-callout-metric {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+
+.anomaly-pin-callout-close {
+  background: transparent;
+  border: 0;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.anomaly-pin-callout-close:hover { color: var(--fg); }
+
+.anomaly-pin-callout-body { color: var(--fg-dim); }
+
+/* ── Brief AI tag ────────────────────────────────────────────────────────── */
+.brief-ai-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  padding: 1px 5px;
+  margin-left: 6px;
+  margin-right: 6px;
+  animation: brief-ai-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes brief-ai-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
 /* ── TimeFM forecast block ───────────────────────────────────────────────── */
 .timefm-section {
   border-top: var(--border);
@@ -2407,6 +2519,96 @@
   .topbar-cmdk-key { display: none; }
   .cmdk-sub { display: none; }
   .cmdk-row { grid-template-columns: 36px 1fr; }
+}
+
+/* ── ASEAN comparison strip ──────────────────────────────────────────────── */
+.asean-strip {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 240px));
+  z-index: 7;
+  background: rgba(4, 6, 11, 0.92);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: stretch;
+  font-family: var(--font-mono);
+}
+
+.asean-strip-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.asean-strip-cells {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.asean-cell {
+  flex: 1;
+  padding: 6px 10px;
+  border-left: 3px solid var(--line);
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.asean-cell.is-bangkok {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.asean-cell-flag { font-size: 14px; }
+
+.asean-cell-name {
+  color: var(--fg);
+}
+
+.asean-cell-aqi {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.asean-cell-tag {
+  font-size: 7px;
+  letter-spacing: 0.2em;
+  color: var(--fg-dim);
+  border: 1px solid var(--line);
+  padding: 1px 4px;
+}
+
+@media (max-width: 720px) {
+  .asean-strip {
+    bottom: 56px;  /* clears mobile bottom-strip */
+    width: calc(100% - 16px);
+    flex-direction: column;
+  }
+  .asean-strip-label {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 4px 8px;
+  }
+  .asean-strip-cells { flex-direction: column; }
+  .asean-cell {
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+    border-top: 2px solid var(--line);
+    padding: 4px 8px;
+  }
+  .asean-cell:last-child { border-bottom: 0; }
 }
 
 /* ── Freshness Panel ─────────────────────────────────────────────────────── */
