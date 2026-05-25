@@ -15,6 +15,7 @@ import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, b
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
+import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles } from '../../data/nasa-gibs'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
@@ -96,7 +97,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -109,6 +110,10 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'districts':        'src-districts',
   'rail':             'src-rail',
   'gibs-aod':         'src-gibs-aod',
+  'sat-true-color':   'src-sat-true-color',
+  'sat-night-lights': 'src-sat-night-lights',
+  'sat-surface-temp': 'src-sat-surface-temp',
+  'sat-ndvi':         'src-sat-ndvi',
   'traffy-issues':    'src-traffy',
 }
 
@@ -123,6 +128,10 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'districts':        ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
   'rail':             ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
   'gibs-aod':         ['ly-gibs-aod'],
+  'sat-true-color':   ['ly-sat-true-color'],
+  'sat-night-lights': ['ly-sat-night-lights'],
+  'sat-surface-temp': ['ly-sat-surface-temp'],
+  'sat-ndvi':         ['ly-sat-ndvi'],
   'traffy-issues':    ['ly-traffy-issues'],
 }
 
@@ -149,8 +158,81 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'districts':        return addDistricts(map)
     case 'rail':             return addRail(map)
     case 'gibs-aod':         return addGibsAod(map)
+    case 'sat-true-color':   return addSatTrueColor(map)
+    case 'sat-night-lights': return addSatNightLights(map)
+    case 'sat-surface-temp': return addSatSurfaceTemp(map)
+    case 'sat-ndvi':         return addSatNdvi(map)
     case 'traffy-issues':    return addTraffyIssues(map)
   }
+}
+
+/** Helper for any NASA GIBS raster product. Inserts BELOW data layers when
+ *  possible — satellite is ground truth, not annotation. */
+function addRasterLayer(
+  map: MapLibre,
+  opts: { sourceId: string; layerId: string; tiles: string; maxzoom: number; opacity: number },
+) {
+  map.addSource(opts.sourceId, {
+    type: 'raster',
+    tiles: [opts.tiles],
+    tileSize: 256,
+    maxzoom: opts.maxzoom,
+  })
+  // Insert below the first data layer (districts/rail/etc.) so ground sits
+  // beneath annotations. If none of those exist yet, append normally.
+  const groundAnchor = ['ly-districts-fill', 'ly-rail-line', 'ly-pm25', 'ly-aqi'].find(
+    (id) => map.getLayer(id),
+  )
+  map.addLayer(
+    {
+      id: opts.layerId,
+      type: 'raster',
+      source: opts.sourceId,
+      paint: { 'raster-opacity': opts.opacity },
+      layout: { 'visibility': 'none' },
+    },
+    groundAnchor,
+  )
+}
+
+async function addSatTrueColor(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-true-color',
+    layerId:  'ly-sat-true-color',
+    tiles:    gibsTrueColorTiles(),
+    maxzoom:  9,
+    opacity:  0.85,
+  })
+}
+
+async function addSatNightLights(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-night-lights',
+    layerId:  'ly-sat-night-lights',
+    tiles:    gibsNightLightsTiles(),
+    maxzoom:  8,
+    opacity:  0.95,
+  })
+}
+
+async function addSatSurfaceTemp(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-surface-temp',
+    layerId:  'ly-sat-surface-temp',
+    tiles:    gibsLstTiles(),
+    maxzoom:  7,
+    opacity:  0.7,
+  })
+}
+
+async function addSatNdvi(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-ndvi',
+    layerId:  'ly-sat-ndvi',
+    tiles:    gibsNdviTiles(),
+    maxzoom:  9,
+    opacity:  0.75,
+  })
 }
 
 async function addPm25Stations(map: MapLibre) {

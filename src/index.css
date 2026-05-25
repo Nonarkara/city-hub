@@ -2087,6 +2087,61 @@
   margin-top: 4px;
 }
 
+/* ── TimeFM forecast block ───────────────────────────────────────────────── */
+.timefm-section {
+  border-top: var(--border);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.timefm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.timefm-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+}
+
+.timefm-model {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--amber);
+  opacity: 0.85;
+  padding: 1px 6px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.timefm-chart {
+  display: block;
+  width: 100%;
+  height: 70px;
+}
+
+.timefm-axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--fg-dim);
+  margin-top: 4px;
+  letter-spacing: 0.1em;
+}
+
+.timefm-footer {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-align: right;
+  font-weight: 500;
+}
+
 /* ── Responsive breakpoints ──────────────────────────────────────────────── */
 /* Mobile first: hide rail, show bottom strip, hide desktop-only elements */
 .rail { display: none; }

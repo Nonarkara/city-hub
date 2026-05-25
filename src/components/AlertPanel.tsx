@@ -22,6 +22,7 @@ import {
   type Anomaly,
 } from '../lib/intelligence'
 import { computeAlerts, RISK_COLOR, type CityAlert, type RiskLevel } from '../lib/risk'
+import { forecastSeries, type ForecastResult } from '../lib/forecast'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -222,6 +223,99 @@ function RankSection({ rank }: { rank: Pm25ProvinceRank | null }) {
   )
 }
 
+/**
+ * TimeFM forecast block — renders history + 24h forecast with confidence band.
+ * Calls /forecast/timefm via Worker; falls back to Holt-Winters with honest
+ * model labelling. The architecture is identical regardless of which model
+ * answered.
+ */
+function TimeFMSection({ history }: { history: number[] }) {
+  const [result, setResult] = useState<ForecastResult | null>(null)
+
+  useEffect(() => {
+    if (history.length < 12) return
+    let cancelled = false
+    forecastSeries(history, 24, 24)
+      .then((r) => { if (!cancelled) setResult(r) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [history])
+
+  if (history.length < 12 || !result) return null
+
+  const W = 280, H = 70
+  const all = [...history, ...result.forecast, ...(result.upper ?? []), ...(result.lower ?? [])]
+  const minV = Math.min(...all)
+  const maxV = Math.max(...all)
+  const range = Math.max(1, maxV - minV)
+  const padTop = 4, padBot = 4
+  const usableH = H - padTop - padBot
+  const totalN = history.length + result.forecast.length
+  const x = (i: number) => (i / Math.max(1, totalN - 1)) * W
+  const y = (v: number) => padTop + (1 - (v - minV) / range) * usableH
+
+  const histPts = history.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const fcPts = result.forecast.map((v, i) =>
+    `${x(history.length + i).toFixed(1)},${y(v).toFixed(1)}`,
+  ).join(' ')
+
+  // Confidence band as a polygon (upper forward, lower backward)
+  let bandPath = ''
+  if (result.upper && result.lower) {
+    const upperPts = result.upper.map((v, i) =>
+      `${x(history.length + i).toFixed(1)},${y(v).toFixed(1)}`,
+    )
+    const lowerPts = result.lower.map((v, i) =>
+      `${x(history.length + i).toFixed(1)},${y(v).toFixed(1)}`,
+    ).reverse()
+    bandPath = [...upperPts, ...lowerPts].join(' ')
+  }
+
+  const splitX = x(history.length - 0.5)
+  const peakIdx = result.forecast.indexOf(Math.max(...result.forecast))
+  const peakV = result.forecast[peakIdx]
+  const peakLevel: RiskLevel =
+    peakV >= 91 ? 'critical' : peakV >= 51 ? 'high' : peakV >= 26 ? 'moderate' : 'good'
+  const modelTag = result.model === 'timefm-2.0' ? 'TIMEFM 2.0' : 'HOLT-WINTERS'
+
+  return (
+    <div className="timefm-section">
+      <div className="timefm-header">
+        <span className="timefm-label">PM2.5 · NEXT 24H</span>
+        <span className="timefm-model">{modelTag}</span>
+      </div>
+      <svg className="timefm-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        {bandPath && (
+          <polygon points={bandPath} fill="rgba(245,158,11,0.10)" stroke="none" />
+        )}
+        {/* Vertical NOW separator */}
+        <line x1={splitX} y1="0" x2={splitX} y2={H} stroke="#444" strokeWidth="1" strokeDasharray="2,3" />
+        {/* History (solid) */}
+        <polyline points={histPts} fill="none" stroke="rgba(245,245,240,0.55)" strokeWidth="1.2" />
+        {/* Forecast (amber dashed) */}
+        <polyline points={fcPts} fill="none" stroke="#f59e0b" strokeWidth="1.4" strokeDasharray="3,2" />
+        {/* Peak marker */}
+        <circle
+          cx={x(history.length + peakIdx).toFixed(1)}
+          cy={y(peakV).toFixed(1)}
+          r="2.5"
+          fill={RISK_COLOR[peakLevel]}
+        />
+      </svg>
+      <div className="timefm-axis">
+        <span>−24H</span>
+        <span>NOW</span>
+        <span>+24H</span>
+      </div>
+      <div className="timefm-footer">
+        <span style={{ color: RISK_COLOR[peakLevel] }}>
+          PEAK FORECAST {peakV.toFixed(0)} μg/m³ · +{peakIdx + 1}H
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function ForecastStrip({ forecast }: { forecast: AQIForecast }) {
   const W = 240, H = 48
   const maxScale = Math.max(200, forecast.peakAqi)
@@ -386,6 +480,7 @@ export function AlertPanel() {
         <div className="alert-scroll">
           <BriefSection brief={brief} onAction={handleBriefAction} />
           <RankSection rank={pm25Rank} />
+          {pm25 && <TimeFMSection history={pm25.history24h.map(([v]) => v)} />}
           <AnomalyBar anomalies={anomalies} />
 
           <div className="alert-list">
@@ -410,9 +505,9 @@ export function AlertPanel() {
         </div>
 
         <div className="alert-panel-footer">
-          LIVE: GISTDA · OPEN-METEO · TRAFFY FONDUE · GDELT
+          LIVE: GISTDA · OPEN-METEO · TRAFFY FONDUE · GDELT · NASA GIBS
           <br />
-          PREDICTIVE: 6H LINEAR TREND + WEATHER CORRELATION
+          PREDICTIVE: TIMEFM 2.0 (HF) · HOLT-WINTERS FALLBACK
           <br />
           <span style={{ opacity: 0.4, fontSize: '8px', letterSpacing: '0.12em' }}>
             DR NON ARKARAPRASERTKUL · @DEPA THAILAND
