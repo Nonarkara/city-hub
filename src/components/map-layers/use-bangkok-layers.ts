@@ -17,6 +17,7 @@ import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
 import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles } from '../../data/nasa-gibs'
 import { bangkokWAQIStations } from '../../data/waqi'
+import { longdoBasemapTiles, longdoKeyAvailable } from '../../data/longdo'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
@@ -98,7 +99,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'longdo-basemap', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -117,6 +118,7 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'sat-night-lights': 'src-sat-night-lights',
   'sat-surface-temp': 'src-sat-surface-temp',
   'sat-ndvi':         'src-sat-ndvi',
+  'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
 }
 
@@ -137,6 +139,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sat-night-lights': ['ly-sat-night-lights'],
   'sat-surface-temp': ['ly-sat-surface-temp'],
   'sat-ndvi':         ['ly-sat-ndvi'],
+  'longdo-basemap':   ['ly-longdo'],
   'traffy-issues':    ['ly-traffy-issues'],
 }
 
@@ -169,6 +172,7 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'sat-night-lights': return addSatNightLights(map)
     case 'sat-surface-temp': return addSatSurfaceTemp(map)
     case 'sat-ndvi':         return addSatNdvi(map)
+    case 'longdo-basemap':   return addLongdoBasemap(map)
     case 'traffy-issues':    return addTraffyIssues(map)
   }
 }
@@ -239,6 +243,18 @@ async function addSatNdvi(map: MapLibre) {
     tiles:    gibsNdviTiles(),
     maxzoom:  9,
     opacity:  0.75,
+  })
+}
+
+async function addLongdoBasemap(map: MapLibre) {
+  // Skip silently if no key — toggle is harmless rather than throwing
+  if (!longdoKeyAvailable()) return
+  addRasterLayer(map, {
+    sourceId: 'src-longdo',
+    layerId:  'ly-longdo',
+    tiles:    longdoBasemapTiles(),
+    maxzoom:  18,
+    opacity:  1.0,   // full coverage — meant to replace UNL basemap visually
   })
 }
 
