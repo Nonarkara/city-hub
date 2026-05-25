@@ -15,9 +15,10 @@ import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, b
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
-import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles } from '../../data/nasa-gibs'
+import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles, esriWorldImageryTiles, sentinel2CloudlessTiles } from '../../data/nasa-gibs'
 import { bangkokWAQIStations } from '../../data/waqi'
 import { longdoBasemapTiles, longdoKeyAvailable } from '../../data/longdo'
+import { fetchEETiles } from '../../data/alphaearth'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
@@ -99,7 +100,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'longdo-basemap', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'longdo-basemap', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -118,6 +119,9 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'sat-night-lights': 'src-sat-night-lights',
   'sat-surface-temp': 'src-sat-surface-temp',
   'sat-ndvi':         'src-sat-ndvi',
+  'sat-esri':         'src-sat-esri',
+  'sat-sentinel2':    'src-sat-sentinel2',
+  'alphaearth-embeddings': 'src-alphaearth',
   'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
 }
@@ -139,6 +143,9 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sat-night-lights': ['ly-sat-night-lights'],
   'sat-surface-temp': ['ly-sat-surface-temp'],
   'sat-ndvi':         ['ly-sat-ndvi'],
+  'sat-esri':         ['ly-sat-esri'],
+  'sat-sentinel2':    ['ly-sat-sentinel2'],
+  'alphaearth-embeddings': ['ly-alphaearth'],
   'longdo-basemap':   ['ly-longdo'],
   'traffy-issues':    ['ly-traffy-issues'],
 }
@@ -172,6 +179,9 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'sat-night-lights': return addSatNightLights(map)
     case 'sat-surface-temp': return addSatSurfaceTemp(map)
     case 'sat-ndvi':         return addSatNdvi(map)
+    case 'sat-esri':         return addSatEsri(map)
+    case 'sat-sentinel2':    return addSatSentinel2(map)
+    case 'alphaearth-embeddings': return addAlphaEarth(map)
     case 'longdo-basemap':   return addLongdoBasemap(map)
     case 'traffy-issues':    return addTraffyIssues(map)
   }
@@ -243,6 +253,41 @@ async function addSatNdvi(map: MapLibre) {
     tiles:    gibsNdviTiles(),
     maxzoom:  9,
     opacity:  0.75,
+  })
+}
+
+async function addSatEsri(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-esri',
+    layerId:  'ly-sat-esri',
+    tiles:    esriWorldImageryTiles(),
+    maxzoom:  19,
+    opacity:  1.0,
+  })
+}
+
+async function addSatSentinel2(map: MapLibre) {
+  addRasterLayer(map, {
+    sourceId: 'src-sat-sentinel2',
+    layerId:  'ly-sat-sentinel2',
+    tiles:    sentinel2CloudlessTiles(),
+    maxzoom:  16,
+    opacity:  1.0,
+  })
+}
+
+async function addAlphaEarth(map: MapLibre) {
+  // Worker mints OAuth from GCP_SERVICE_ACCOUNT_JSON, calls EE getMapId,
+  // returns a {z}/{x}/{y} tile URL with embedded EE token. Returns null
+  // (silently) when the secret isn't set — toggle stays harmless.
+  const ee = await fetchEETiles('alphaearth')
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-alphaearth',
+    layerId:  'ly-alphaearth',
+    tiles:    ee.tiles,
+    maxzoom:  14,
+    opacity:  0.9,
   })
 }
 

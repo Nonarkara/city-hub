@@ -64,3 +64,20 @@ export function gibsNdviTiles(): string {
   const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
   return buildTileUrl('MODIS_Terra_NDVI_8Day', date, 9, 'png')
 }
+
+/**
+ * Esri World Imagery — up to 30cm/pixel high-res aerial.
+ * Zero auth, public service. ArcGIS XYZ scheme (note: y/x order swapped vs
+ * Mercator standard, but MapLibre's {y} placeholder handles it correctly).
+ */
+export function esriWorldImageryTiles(): string {
+  return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+}
+
+/**
+ * Sentinel-2 cloudless 2023 mosaic — 10m ESA imagery, cloud-free.
+ * Served by EOX (eox.at) via WMTS. Beautiful continuous true-color base.
+ */
+export function sentinel2CloudlessTiles(): string {
+  return 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/g/{z}/{y}/{x}.jpg'
+}

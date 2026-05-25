@@ -14,6 +14,14 @@
 export interface Env {
   HF_API_TOKEN?: string
   GEMINI_API_KEY?: string
+  // TimeFM endpoint override — point at HF Space / Modal / Vertex when deployed.
+  // Default uses HF serverless (which doesn't host TimeFM 2.0 — see worker README).
+  TIMEFM_ENDPOINT_URL?: string
+  // Earth Engine service-account JSON (full file contents as a single string).
+  // Required to render AlphaEarth + any other EE-backed layer.
+  // Setup: GCP project → enable Earth Engine API → create service account →
+  // assign "Earth Engine Resource Admin" → download JSON key → paste here.
+  GCP_SERVICE_ACCOUNT_JSON?: string
 }
 
 const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
@@ -53,6 +61,11 @@ export default {
     // Gemini narrate — POST /narrate
     if (url.pathname === '/narrate' && request.method === 'POST') {
       return handleNarrate(request, env)
+    }
+
+    // Earth Engine getMapId — POST /ee/mapid
+    if (url.pathname === '/ee/mapid' && request.method === 'POST') {
+      return handleEEMapId(request, env)
     }
 
     if (request.method !== 'GET') {
@@ -155,9 +168,10 @@ async function handleForecast(request: Request, env: Env): Promise<Response> {
     if (g) return json(g)
   }
 
-  // 2. TimeFM via HuggingFace — placeholder path for when TimeFM is hosted
+  // 2. TimeFM — HF serverless by default, override with TIMEFM_ENDPOINT_URL
+  //    when you've deployed TimeFM yourself (HF Space, Modal, Vertex, etc.)
   if (env.HF_API_TOKEN) {
-    const t = await tryTimeFM(series, horizon, env.HF_API_TOKEN)
+    const t = await tryTimeFM(series, horizon, env.HF_API_TOKEN, env.TIMEFM_ENDPOINT_URL)
     if (t) return json(t)
   }
 
@@ -248,22 +262,33 @@ async function tryTimeFM(
   series: number[],
   horizon: number,
   hfToken: string,
+  endpointOverride?: string,
 ): Promise<ForecastResponse | null> {
+  // Endpoint resolution priority:
+  //   1. TIMEFM_ENDPOINT_URL secret (point at your own deployment — HF Space,
+  //      Modal, Vertex AI, anything that accepts {history, horizon} POST)
+  //   2. HF serverless inference for google/timesfm-2.0-500m-pytorch — NOTE:
+  //      not on HF's serverless allow-list as of 2026-05, will 404
+  // For production use we recommend deploying TimeFM yourself; the most
+  // common paths are:
+  //   • HF Space (free CPU): fork google/timesfm-2.0 demo, deploy as Gradio
+  //   • Modal: 40-line modal_app.py, free $30/mo GPU credits
+  //   • Vertex AI: paid, integrates with Google Cloud
+  // See worker/README.md for full deployment instructions.
+  const endpoint = endpointOverride ??
+    'https://api-inference.huggingface.co/models/google/timesfm-2.0-500m-pytorch'
   try {
-    const res = await fetch(
-      'https://api-inference.huggingface.co/models/google/timesfm-2.0-500m-pytorch',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: { history: series, horizon },
-          options: { wait_for_model: true },
-        }),
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
       },
-    )
+      body: JSON.stringify({
+        inputs: { history: series, horizon },
+        options: { wait_for_model: true },
+      }),
+    })
     if (!res.ok) return null
     const data = await res.json() as { forecast?: number[]; predictions?: number[] }
     const forecast = data.forecast ?? data.predictions
@@ -409,4 +434,185 @@ async function tryGeminiNarrate(
   } catch {
     return null
   }
+}
+
+// ── Earth Engine getMapId ─────────────────────────────────────────────────
+//
+// Renders a Google Earth Engine expression to a tile URL template that
+// MapLibre can consume directly. Auth path:
+//   1. Read GCP_SERVICE_ACCOUNT_JSON (the full service-account JSON blob)
+//   2. Sign a JWT with the private key (RS256), assertion grant
+//   3. Exchange JWT for an OAuth2 access token at oauth2.googleapis.com/token
+//   4. POST the expression to earthengine.googleapis.com/v1/.../maps
+//   5. Return the tileFetcher URL template (with token embedded)
+//
+// Tokens are cached at module scope for ~50min (Google issues 1h tokens).
+//
+// Pre-built expressions for common products live in EE_PRESETS.
+
+interface EEMapRequest {
+  preset?: 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi'
+  // Or arbitrary EE expression as JSON (server-side EE objects are huge —
+  // for now only preset is supported)
+}
+
+const EE_PRESETS: Record<string, { expression: object; visualization: object }> = {
+  // Google AlphaEarth Foundations — 64-dim annual satellite embeddings.
+  // Visualize first 3 PCA bands as RGB.
+  alphaearth: {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.first',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL' } },
+                            },
+                          },
+                          start: { constantValue: '2024-01-01' },
+                          end: { constantValue: '2024-12-31' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['A00', 'A01', 'A02'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: -0.3, max: 0.3, gamma: 1.4 },
+  },
+}
+
+let cachedEEToken: { token: string; expires: number } | null = null
+
+async function handleEEMapId(request: Request, env: Env): Promise<Response> {
+  if (!env.GCP_SERVICE_ACCOUNT_JSON) {
+    return json({
+      error: 'Earth Engine not configured',
+      hint: 'Set GCP_SERVICE_ACCOUNT_JSON Worker secret. See worker/README.md.',
+    }, 503)
+  }
+
+  let body: EEMapRequest
+  try { body = await request.json() as EEMapRequest } catch { return json({ error: 'Invalid JSON' }, 400) }
+
+  const presetKey = body.preset ?? 'alphaearth'
+  const preset = EE_PRESETS[presetKey]
+  if (!preset) return json({ error: `Unknown preset: ${presetKey}` }, 400)
+
+  let sa: { client_email: string; private_key: string; project_id: string }
+  try {
+    sa = JSON.parse(env.GCP_SERVICE_ACCOUNT_JSON)
+  } catch {
+    return json({ error: 'GCP_SERVICE_ACCOUNT_JSON is not valid JSON' }, 500)
+  }
+
+  // 1. Get or refresh OAuth token
+  let accessToken: string
+  if (cachedEEToken && cachedEEToken.expires > Date.now() + 60_000) {
+    accessToken = cachedEEToken.token
+  } else {
+    accessToken = await mintGoogleOAuthToken(sa)
+    cachedEEToken = { token: accessToken, expires: Date.now() + 50 * 60_000 }
+  }
+
+  // 2. Call EE getMapId
+  const eeUrl =
+    `https://earthengine.googleapis.com/v1/projects/${sa.project_id}/maps?fields=name`
+  const eeBody = { expression: preset.expression, visualizationOptions: preset.visualization }
+  const eeRes = await fetch(eeUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(eeBody),
+  })
+  if (!eeRes.ok) {
+    const err = await eeRes.text()
+    return json({ error: 'EE getMapId failed', detail: err.slice(0, 400) }, 502)
+  }
+  const eeData = await eeRes.json() as { name: string }
+  // tileFetcher URL template — embed {z}/{x}/{y} for MapLibre
+  const tileUrl =
+    `https://earthengine.googleapis.com/v1/${eeData.name}/tiles/{z}/{x}/{y}`
+  return json({
+    preset: presetKey,
+    tiles: tileUrl,
+    attribution: 'Google Earth Engine · AlphaEarth Foundations',
+  })
+}
+
+/**
+ * Mint a Google OAuth2 access token from a service-account JSON.
+ * Uses RS256-signed JWT assertion grant — runs entirely in the Worker
+ * via Web Crypto API (no Google client lib).
+ */
+async function mintGoogleOAuthToken(sa: { client_email: string; private_key: string }): Promise<string> {
+  const header = { alg: 'RS256', typ: 'JWT' }
+  const now = Math.floor(Date.now() / 1000)
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/earthengine.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }
+  const enc = (obj: object) =>
+    btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  const headerB64 = enc(header)
+  const payloadB64 = enc(payload)
+  const toSign = `${headerB64}.${payloadB64}`
+
+  // Convert PEM private key → CryptoKey
+  const pemBody = sa.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s+/g, '')
+  const der = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0))
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    der.buffer as ArrayBuffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const sigBuf = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(toSign),
+  )
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  const jwt = `${toSign}.${sigB64}`
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }).toString(),
+  })
+  if (!tokenRes.ok) {
+    throw new Error(`OAuth token mint failed: ${tokenRes.status}`)
+  }
+  const tokenData = await tokenRes.json() as { access_token: string }
+  return tokenData.access_token
 }

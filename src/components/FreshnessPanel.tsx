@@ -41,6 +41,7 @@ const FEEDS: FeedDescriptor[] = [
   { key: 'data-bma/recent',               label: 'BMA DATASETS',    source: 'BMA'         },
   { key: 'tmd/bangkok-forecast-7d',       label: 'TMD FORECAST',    source: 'TMD'         },
   { key: 'waqi/bangkok-bbox',             label: 'WAQI STATIONS',   source: 'WAQI'        },
+  { key: 'ee/mapid-alphaearth',           label: 'ALPHAEARTH',      source: 'Google EE'   },
   { key: 'bma/khet',                      label: 'DISTRICTS GEO',   source: 'BMA'         },
 ]
 
