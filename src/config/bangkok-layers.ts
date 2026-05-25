@@ -2,7 +2,7 @@
  * Bangkok layer catalog — the single source of truth for the toggle rail.
  * Each layer is loaded lazily on first activation and toggled via visibility.
  */
-export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo'
+export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo' | 'WAQI' | 'TMD' | 'Longdo'
 
 export interface LayerSpec {
   id: string
@@ -18,6 +18,7 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'pm25-stations',   label: 'PM2.5 STATIONS',  description: 'PCD air-quality monitoring stations. GISTDA hourly endpoint is intermittently empty — KPI panel uses a separate live by-location feed that always works.', source: 'GISTDA', defaultOn: true,  status: 'live',    category: 'air' },
   { id: 'pm25-heatmap',    label: 'PM2.5 HEATMAP',   description: 'Continuous air-quality surface interpolated from PCD monitoring stations. Shows the PM2.5 gradient across Bangkok as a smooth field — where pollution accumulates, where it disperses.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'air' },
   { id: 'aqi-live',        label: 'AQI · OPEN-METEO', description: 'Real-time US AQI from Open-Meteo air-quality API: PM2.5, PM10, NO₂, O₃, SO₂, CO', source: 'Open-Meteo', defaultOn: false, status: 'live', category: 'air' },
+  { id: 'waqi-stations',   label: 'AQI · WAQI',      description: 'World Air Quality Index global sensor network — different stations from GISTDA. Free token from aqicn.org/data-platform/token; set VITE_WAQI_TOKEN. Without token the layer renders empty.', source: 'WAQI', defaultOn: false, status: 'live', category: 'air' },
   { id: 'gibs-aod',        label: 'AEROSOL (GIBS)',  description: 'NASA MODIS aerosol optical depth, max zoom 6 — best viewed zoomed-out over Thailand', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'fires-gistda',    label: 'FIRES · GISTDA',  description: 'VIIRS hotspots from GISTDA. Service last refreshed Apr 2023 — historical 2023 fire-season snapshot, not live.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'fire' },
   { id: 'fires-firms',     label: 'FIRES · FIRMS',   description: 'NASA FIRMS live hotspots via Cloudflare Worker proxy.', source: 'NASA', defaultOn: false, status: 'live', category: 'fire' },
@@ -31,11 +32,12 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'sat-surface-temp',label: 'SURFACE TEMP',    description: 'MODIS Land Surface Temperature monthly at 1km — direct satellite measurement of urban heat island. AlphaEarth-class thermal embedding proxy. NASA GIBS.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'sat-ndvi',        label: 'NDVI VEGETATION', description: 'MODIS NDVI 8-day at 250m — vegetation health embeddings. AlphaEarth-class spectral proxy. NASA GIBS.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'alphaearth-embeddings', label: 'ALPHAEARTH', description: 'Google AlphaEarth Foundations — 64-dim satellite embeddings via Earth Engine. Pending: requires GEE service-account credentials. Currently approximated by NDVI + LST layers above.', source: 'NASA', defaultOn: false, status: 'pending', category: 'satellite' },
+  { id: 'longdo-traffic',  label: 'LONGDO TRAFFIC',  description: 'Real-time Bangkok road congestion + incidents from Longdo Map (longdo.com). Pending: requires free API key registration at api.longdo.com — set VITE_LONGDO_KEY to activate. No keyless endpoint exists.', source: 'Longdo', defaultOn: false, status: 'pending', category: 'transit' },
   { id: 'jaxa-himawari',   label: 'HIMAWARI-9',      description: 'JAXA geostationary weather imagery — needs free Earth API registration', source: 'JAXA', defaultOn: false, status: 'pending', category: 'satellite' },
-  { id: 'bma-open',        label: 'BMA OPEN DATA',   description: 'Drainage, CCTV, citizen reports — pending DEPA contact for API access', source: 'BMA', defaultOn: false, status: 'pending', category: 'admin' },
+  { id: 'bma-open',        label: 'BMA OPEN DATA',   description: '1,431 BMA datasets via data.bangkok.go.th — drainage, traffic, public works, parks, citizen services, budget. Browse in the Data Feed panel (Analyst mode).', source: 'BMA', defaultOn: false, status: 'live', category: 'admin' },
 ]
 
-export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo']
+export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo']
 
 /** PM2.5 → color (Thai PCD bands) */
 export const PM25_COLORS: Record<string, string> = {

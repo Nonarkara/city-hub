@@ -13,6 +13,7 @@ import { bangkokPm25Live, centralFloods, bangkokPm25Rank, type Pm25Live, type Pm
 import { bangkokWeather, type BangkokWeather } from '../data/openmeteo'
 import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
 import { bangkokAQIForecast, type AQIForecast } from '../data/openmeteo-forecast'
+import { bangkokTMDForecast, type TMDForecast } from '../data/tmd'
 import { fetchTraffyFloods, fetchTraffyGeoJSON, type TraffyTicket, type TraffyStats } from '../data/traffy'
 import { fetchBangkokNews, type GdeltNewsResult } from '../data/gdelt'
 import {
@@ -360,6 +361,48 @@ function TimeFMSection({ history }: { history: number[] }) {
   )
 }
 
+/**
+ * TMD 7-day forecast — Thai Meteorological Department, official Thai gov.
+ * Distinct from Open-Meteo (global model) — shows the local-authoritative
+ * forecast that citizens trust. Compact row of 5 day-cards.
+ */
+function TMDSection({ tmd }: { tmd: TMDForecast | null }) {
+  if (!tmd || tmd.days.length === 0) return null
+  const days = tmd.days.slice(0, 5)
+  return (
+    <div className="tmd-section">
+      <div className="tmd-header">
+        <span className="tmd-label">TMD · OFFICIAL FORECAST</span>
+        <span className="tmd-source">กรมอุตุนิยมวิทยา</span>
+      </div>
+      <div className="tmd-days">
+        {days.map((d, i) => {
+          const [, mm, yyyy] = d.date.split('/')
+          const dateObj = new Date(`${yyyy}-${mm}-${d.date.split('/')[0]}`)
+          const dayLabel = i === 0
+            ? 'TODAY'
+            : dateObj.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase()
+          const rainColor = d.rainCoverPct >= 60 ? '#58a6ff'
+                          : d.rainCoverPct >= 30 ? '#fdd835'
+                          : 'rgba(245,245,240,0.4)'
+          return (
+            <div key={d.date} className="tmd-day" title={d.descriptionEnglish}>
+              <div className="tmd-day-name">{dayLabel}</div>
+              <div className="tmd-day-temp">
+                <span className="tmd-day-max">{Math.round(d.tempMaxC)}°</span>
+                <span className="tmd-day-min">{Math.round(d.tempMinC)}°</span>
+              </div>
+              <div className="tmd-day-rain" style={{ color: rainColor }}>
+                {d.rainCoverPct}%
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ForecastStrip({ forecast }: { forecast: AQIForecast }) {
   const W = 240, H = 48
   const maxScale = Math.max(200, forecast.peakAqi)
@@ -423,6 +466,7 @@ export function AlertPanel() {
   const [aqi, setAqi] = useState<BangkokAQI | null>(null)
   const [forecast, setForecast] = useState<AQIForecast | null>(null)
   const [pm25Rank, setPm25Rank] = useState<Pm25ProvinceRank | null>(null)
+  const [tmd, setTmd] = useState<TMDForecast | null>(null)
   const [traffyFloods, setTraffyFloods] = useState<TraffyTicket[]>([])
   const [traffyGeo, setTraffyGeo] = useState<GeoJSON.FeatureCollection | null>(null)
   const [news, setNews] = useState<GdeltNewsResult | null>(null)
@@ -432,7 +476,7 @@ export function AlertPanel() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const [p, w, f, a, fc, rank, tf, tg, n] = await Promise.all([
+      const [p, w, f, a, fc, rank, tf, tg, n, tm] = await Promise.all([
         bangkokPm25Live().catch((): null => null),
         bangkokWeather().catch((): null => null),
         centralFloods().catch((): null => null),
@@ -442,6 +486,7 @@ export function AlertPanel() {
         fetchTraffyFloods(50).catch((): TraffyTicket[] => []),
         fetchTraffyGeoJSON(300).catch((): GeoJSON.FeatureCollection | null => null),
         fetchBangkokNews(6).catch((): GdeltNewsResult | null => null),
+        bangkokTMDForecast().catch((): null => null),
       ])
       if (cancelled) return
       if (p) setPm25(p)
@@ -450,6 +495,7 @@ export function AlertPanel() {
       if (a) setAqi(a)
       if (fc) setForecast(fc)
       if (rank) setPm25Rank(rank)
+      if (tm) setTmd(tm)
       setTraffyFloods(tf as TraffyTicket[])
       setTraffyGeo(tg as GeoJSON.FeatureCollection | null)
       setNews(n as GdeltNewsResult | null)
@@ -524,6 +570,7 @@ export function AlertPanel() {
         <div className="alert-scroll">
           <BriefSection brief={brief} onAction={handleBriefAction} />
           <RankSection rank={pm25Rank} />
+          <TMDSection tmd={tmd} />
           {pm25 && <TimeFMSection history={pm25.history24h.map(([v]) => v)} />}
           <AnomalyBar anomalies={anomalies} />
 
@@ -549,7 +596,7 @@ export function AlertPanel() {
         </div>
 
         <div className="alert-panel-footer">
-          LIVE: GISTDA · OPEN-METEO · TRAFFY FONDUE · GDELT · NASA GIBS
+          LIVE: GISTDA · TMD · OPEN-METEO · TRAFFY · GDELT · NASA · BMA
           <br />
           PREDICTIVE: GEMINI 2.5 FLASH · HOLT-WINTERS FALLBACK
           <br />

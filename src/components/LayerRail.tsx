@@ -12,11 +12,14 @@ interface LayerRailProps {
 const SOURCE_CACHE_PROBE: Record<SourceKey, string | null> = {
   GISTDA: 'gistda/pm25-bkk-live',
   NASA: 'nasa/firms-th-24h',
-  BMA: 'bma/rail',
+  BMA: 'data-bma/recent',
   'data.go.th': 'datago/bkk',
-  JAXA: null, // pending
+  JAXA: null, // pending — needs Earth API registration
   Traffy: 'traffy/stats',
   'Open-Meteo': 'openmeteo/bkk-aqi',
+  WAQI: 'waqi/bangkok-bbox',
+  TMD: 'tmd/bangkok-forecast-7d',
+  Longdo: null, // pending — needs api.longdo.com key
 }
 
 export function LayerRail({ activeIds, onToggle }: LayerRailProps) {

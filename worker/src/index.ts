@@ -17,10 +17,13 @@ export interface Env {
 }
 
 const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
-  'data-go-th': { origin: 'https://data.go.th/api/3/action', cacheSeconds: 300 },
-  'firms':      { origin: 'https://firms.modaps.eosdis.nasa.gov/api', cacheSeconds: 600 },
-  'traffy':     { origin: 'https://publicapi.traffy.in.th', cacheSeconds: 120 },
-  'gdelt':      { origin: 'https://api.gdeltproject.org/api/v2', cacheSeconds: 300 },
+  'data-go-th':    { origin: 'https://data.go.th/api/3/action',     cacheSeconds: 300 },
+  'data-bma':      { origin: 'https://data.bangkok.go.th/api/3/action', cacheSeconds: 300 },
+  'tmd':           { origin: 'https://data.tmd.go.th/api',          cacheSeconds: 600 },
+  'waqi':          { origin: 'https://api.waqi.info',               cacheSeconds: 300 },
+  'firms':         { origin: 'https://firms.modaps.eosdis.nasa.gov/api', cacheSeconds: 600 },
+  'traffy':        { origin: 'https://publicapi.traffy.in.th',      cacheSeconds: 120 },
+  'gdelt':         { origin: 'https://api.gdeltproject.org/api/v2', cacheSeconds: 300 },
 }
 
 const CORS_HEADERS: Record<string, string> = {

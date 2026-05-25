@@ -809,6 +809,30 @@
   color: var(--dim);
 }
 
+.feed-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+
+.feed-tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.feed-tab:hover { color: var(--fg); }
+.feed-tab.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+
 .feed-list {
   overflow-y: auto;
   flex: 1;
@@ -2151,6 +2175,72 @@
   line-height: 1.45;
   color: rgba(245, 245, 240, 0.7);
   font-style: italic;
+}
+
+/* ── TMD 7-day forecast block ────────────────────────────────────────────── */
+.tmd-section {
+  border-top: var(--border);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.tmd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.tmd-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+}
+
+.tmd-source {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--fg-dim);
+  opacity: 0.6;
+}
+
+.tmd-days {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.tmd-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.tmd-day-name {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+  margin-bottom: 4px;
+}
+
+.tmd-day-temp {
+  display: flex;
+  gap: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tmd-day-max { color: var(--fg); font-weight: 500; }
+.tmd-day-min { color: var(--fg-dim); }
+
+.tmd-day-rain {
+  margin-top: 4px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Command Palette (Cmd+K) ─────────────────────────────────────────────── */

@@ -16,6 +16,7 @@ import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskL
 import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
 import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles } from '../../data/nasa-gibs'
+import { bangkokWAQIStations } from '../../data/waqi'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
@@ -97,13 +98,14 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'pm25-stations':    'src-pm25',
   'pm25-heatmap':     'src-pm25-heatmap',
   'aqi-live':         'src-aqi',
+  'waqi-stations':    'src-waqi',
   'fires-gistda':     'src-fires-gistda',
   'fires-firms':      'src-fires-firms',
   'floods-historical':'src-floods-historical',
@@ -123,6 +125,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'pm25-stations':    ['ly-pm25'],
   'pm25-heatmap':     ['ly-pm25-heatmap'],
   'aqi-live':         ['ly-aqi'],
+  'waqi-stations':    ['ly-waqi-fill', 'ly-waqi-label'],
   'fires-gistda':     ['ly-fires-gistda'],
   'fires-firms':      ['ly-fires-firms'],
   'floods-historical':['ly-floods-historical'],
@@ -154,6 +157,7 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'pm25-stations':    return addPm25Stations(map)
     case 'pm25-heatmap':     return addPm25Heatmap(map)
     case 'aqi-live':         return addAQILive(map)
+    case 'waqi-stations':    return addWAQIStations(map)
     case 'fires-gistda':     return addGistdaFires(map)
     case 'fires-firms':      return addFirmsFires(map)
     case 'floods-historical':return addHistoricalFloods(map)
@@ -313,6 +317,54 @@ async function addPm25Heatmap(map: MapLibre) {
         8, 0.7,
         14, 0.55,
       ],
+    },
+  })
+}
+
+async function addWAQIStations(map: MapLibre) {
+  // Different sensor network from GISTDA — distinguished by hexagon-shaped
+  // markers (square rotated) and AQI bands (US scale), not Thai PM2.5 bands.
+  // Returns empty FC silently if VITE_WAQI_TOKEN not set; layer stays mounted.
+  const data = await bangkokWAQIStations()
+  map.addSource('src-waqi', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-waqi-fill',
+    type: 'circle',
+    source: 'src-waqi',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 5, 14, 12],
+      'circle-color': [
+        'match', ['get', 'level'],
+        'good',                AQI_COLORS.good,
+        'moderate',            AQI_COLORS.moderate,
+        'unhealthy-sensitive', AQI_COLORS['unhealthy-sensitive'],
+        'unhealthy',           AQI_COLORS.unhealthy,
+        'very-unhealthy',      AQI_COLORS['very-unhealthy'],
+        'hazardous',           AQI_COLORS.hazardous,
+        AQI_COLORS['—'],
+      ],
+      'circle-stroke-color': '#58a6ff',  // cyan ring to distinguish from GISTDA orange
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.85,
+    },
+    layout: { 'visibility': 'none' },
+  })
+  map.addLayer({
+    id: 'ly-waqi-label',
+    type: 'symbol',
+    source: 'src-waqi',
+    minzoom: 11,
+    layout: {
+      'text-field': ['to-string', ['get', 'aqi']],
+      'text-size': 10,
+      'text-font': ['Fira GO Regular'],
+      'text-offset': [0, -1.3],
+      'visibility': 'none',
+    },
+    paint: {
+      'text-color': '#58a6ff',
+      'text-halo-color': '#04060b',
+      'text-halo-width': 1.5,
     },
   })
 }

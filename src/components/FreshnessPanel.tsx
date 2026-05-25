@@ -37,7 +37,10 @@ const FEEDS: FeedDescriptor[] = [
   { key: 'traffy/floods',                 label: 'FLOOD REPORTS',   source: 'Traffy'      },
   { key: 'nasa/firms-th-24h',             label: 'FIRES · FIRMS',   source: 'NASA'        },
   { key: 'gdelt/bkk-news',                label: 'NEWS PULSE',      source: 'GDELT'       },
-  { key: 'datago/bkk',                    label: 'OPEN DATASETS',   source: 'data.go.th'  },
+  { key: 'datago/bkk',                    label: 'NATIONAL DATA',   source: 'data.go.th'  },
+  { key: 'data-bma/recent',               label: 'BMA DATASETS',    source: 'BMA'         },
+  { key: 'tmd/bangkok-forecast-7d',       label: 'TMD FORECAST',    source: 'TMD'         },
+  { key: 'waqi/bangkok-bbox',             label: 'WAQI STATIONS',   source: 'WAQI'        },
   { key: 'bma/khet',                      label: 'DISTRICTS GEO',   source: 'BMA'         },
 ]
 
