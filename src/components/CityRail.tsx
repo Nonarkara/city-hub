@@ -121,8 +121,8 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
         <span className="vpm-badge-id">{vpmId}</span>
       </div>
       <div className="rail-credit">
-        <span>DR NON ARIYASAJJAKORN</span>
-        <span>DEPA RESEARCH</span>
+        <span>DR NON ARKARAPRASERTKUL</span>
+        <span>@DEPA THAILAND</span>
       </div>
     </aside>
   )

@@ -72,6 +72,17 @@
   white-space: nowrap;
 }
 
+.topbar-version {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+  opacity: 0.55;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .topbar-divider {
   width: 1px;
   height: 20px;

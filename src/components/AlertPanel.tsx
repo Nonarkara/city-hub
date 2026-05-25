@@ -415,7 +415,7 @@ export function AlertPanel() {
           PREDICTIVE: 6H LINEAR TREND + WEATHER CORRELATION
           <br />
           <span style={{ opacity: 0.4, fontSize: '8px', letterSpacing: '0.12em' }}>
-            DR NON ARIYASAJJAKORN · DEPA
+            DR NON ARKARAPRASERTKUL · @DEPA THAILAND
           </span>
         </div>
       </aside>

@@ -52,7 +52,7 @@ export default function App() {
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
       <header className="topbar">
-        <span className="topbar-wordmark">CITY·HUB</span>
+        <span className="topbar-wordmark">DR NON'S CITY HUB<span className="topbar-version">v5</span></span>
         <div className="topbar-divider" />
         <div className="md-hidden">
           <TopbarCityButton
