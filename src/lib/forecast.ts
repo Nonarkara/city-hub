@@ -8,13 +8,14 @@
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string
 
-export type ForecastModel = 'timefm-2.0' | 'holt-winters'
+export type ForecastModel = 'gemini-2.5' | 'timefm-2.0' | 'holt-winters'
 
 export interface ForecastResult {
   forecast: number[]            // Predicted values for the next `horizon` steps
   lower?: number[]              // Optional 80% lower confidence band
   upper?: number[]              // Optional 80% upper confidence band
   model: ForecastModel
+  reasoning?: string            // Optional natural-language reasoning (Gemini only)
   durationMs: number
 }
 
@@ -43,11 +44,16 @@ export async function forecastSeries(
 
   // Try the Worker first
   try {
-    const url = `${PROXY}/forecast/timefm`
+    const url = `${PROXY}/forecast`
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ series: clean, horizon, seasonalPeriod }),
+      body: JSON.stringify({
+        series: clean,
+        horizon,
+        seasonalPeriod,
+        domain: 'hourly PM2.5 concentration in Bangkok (μg/m³)',
+      }),
     })
     if (res.ok) {
       const data = await res.json() as {
@@ -55,6 +61,7 @@ export async function forecastSeries(
         lower?: number[]
         upper?: number[]
         model: ForecastModel
+        reasoning?: string
       }
       return { ...data, durationMs: performance.now() - t0 }
     }

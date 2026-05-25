@@ -13,6 +13,7 @@
 
 export interface Env {
   HF_API_TOKEN?: string
+  GEMINI_API_KEY?: string
 }
 
 const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
@@ -38,9 +39,12 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS })
     }
 
-    // TimeFM forecast — POST /forecast/timefm
-    if (url.pathname === '/forecast/timefm' && request.method === 'POST') {
-      return handleTimeFM(request, env)
+    // Forecast — POST /forecast (alias: /forecast/timefm for backward compat)
+    if (
+      (url.pathname === '/forecast' || url.pathname === '/forecast/timefm') &&
+      request.method === 'POST'
+    ) {
+      return handleForecast(request, env)
     }
 
     if (request.method !== 'GET') {
@@ -93,26 +97,34 @@ function json(obj: unknown, status = 200): Response {
   })
 }
 
-// ── TimeFM forecast ────────────────────────────────────────────────────────
+// ── Forecast ──────────────────────────────────────────────────────────────
 //
-// Proxies HuggingFace serverless inference for google/timesfm-2.0-500m-pytorch
-// when HF_API_TOKEN is configured. Otherwise (or on HF failure) returns a
-// Holt-Winters forecast computed in-Worker — same shape, honestly labelled.
+// Tries forecasting backends in order of preference:
+//   1. Gemini 2.5 Flash (when GEMINI_API_KEY set) — free tier, structured JSON
+//   2. TimeFM 2.0 via HF Inference (when HF_API_TOKEN set) — not currently on
+//      HF's serverless list, but kept here for the upgrade path when TimeFM
+//      is deployed to a HF Endpoint, Modal, or Replicate
+//   3. Holt-Winters triple exponential smoothing — in-Worker fallback
+//
+// Response always tags `model` honestly so the UI never lies about which one
+// produced the numbers.
 
 interface ForecastRequest {
   series: number[]
   horizon: number
   seasonalPeriod?: number
+  domain?: string  // optional natural-language context for Gemini (e.g. "hourly PM2.5 Bangkok")
 }
 
 interface ForecastResponse {
   forecast: number[]
   lower?: number[]
   upper?: number[]
-  model: 'timefm-2.0' | 'holt-winters'
+  model: 'gemini-2.5' | 'timefm-2.0' | 'holt-winters'
+  reasoning?: string
 }
 
-async function handleTimeFM(request: Request, env: Env): Promise<Response> {
+async function handleForecast(request: Request, env: Env): Promise<Response> {
   let body: ForecastRequest
   try {
     body = await request.json() as ForecastRequest
@@ -123,44 +135,25 @@ async function handleTimeFM(request: Request, env: Env): Promise<Response> {
   const series = (body.series ?? []).filter((v) => Number.isFinite(v))
   const horizon = Math.max(1, Math.min(168, body.horizon ?? 24))
   const period = body.seasonalPeriod ?? 24
+  const domain = body.domain ?? 'hourly PM2.5 concentration in Bangkok (μg/m³)'
 
   if (series.length < 4) {
     return json({ error: 'series too short (min 4)' }, 400)
   }
 
-  // Try HF if we have a token
-  if (env.HF_API_TOKEN) {
-    try {
-      const hfRes = await fetch(
-        'https://api-inference.huggingface.co/models/google/timesfm-2.0-500m-pytorch',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.HF_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            inputs: { history: series, horizon },
-            options: { wait_for_model: true },
-          }),
-        },
-      )
-      if (hfRes.ok) {
-        const data = await hfRes.json() as { forecast?: number[]; predictions?: number[] }
-        const forecast = data.forecast ?? data.predictions
-        if (Array.isArray(forecast) && forecast.length > 0) {
-          const response: ForecastResponse = { forecast: forecast.slice(0, horizon), model: 'timefm-2.0' }
-          return json(response)
-        }
-      }
-      // Fall through to Holt-Winters on any HF failure
-    } catch {
-      // Fall through
-    }
+  // 1. Gemini 2.5 Flash — preferred, free
+  if (env.GEMINI_API_KEY) {
+    const g = await tryGemini(series, horizon, domain, env.GEMINI_API_KEY)
+    if (g) return json(g)
   }
 
-  // Holt-Winters fallback — same algorithm as the client-side last-resort,
-  // but server-computed so the Worker contract is consistent.
+  // 2. TimeFM via HuggingFace — placeholder path for when TimeFM is hosted
+  if (env.HF_API_TOKEN) {
+    const t = await tryTimeFM(series, horizon, env.HF_API_TOKEN)
+    if (t) return json(t)
+  }
+
+  // 3. Holt-Winters fallback
   const hw = holtWintersWorker(series, horizon, Math.min(period, Math.floor(series.length / 2)))
   const response: ForecastResponse = {
     forecast: hw.forecast,
@@ -169,6 +162,108 @@ async function handleTimeFM(request: Request, env: Env): Promise<Response> {
     model: 'holt-winters',
   }
   return json(response)
+}
+
+async function tryGemini(
+  series: number[],
+  horizon: number,
+  domain: string,
+  apiKey: string,
+): Promise<ForecastResponse | null> {
+  const prompt =
+    `You are a quantitative time-series forecaster. ` +
+    `Given the following history of ${domain}, predict the next ${horizon} hourly values. ` +
+    `Consider: diurnal cycle (traffic peaks 7–9am, cooking-emission peaks 6–9pm in Bangkok), ` +
+    `recent trend direction, and recent volatility. ` +
+    `Return strictly: forecast (point predictions), lower (10th percentile), upper (90th percentile) — ` +
+    `each an array of length ${horizon}. Also a brief reasoning string (≤ 30 words).\n\n` +
+    `History (oldest → newest, ${series.length} hourly values):\n[${series.map((v) => v.toFixed(2)).join(', ')}]`
+
+  const responseSchema = {
+    type: 'OBJECT',
+    properties: {
+      forecast:  { type: 'ARRAY', items: { type: 'NUMBER' } },
+      lower:     { type: 'ARRAY', items: { type: 'NUMBER' } },
+      upper:     { type: 'ARRAY', items: { type: 'NUMBER' } },
+      reasoning: { type: 'STRING' },
+    },
+    required: ['forecast', 'lower', 'upper'],
+  }
+
+  try {
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          responseSchema,
+          maxOutputTokens: 2048,
+        },
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) return null
+    const parsed = JSON.parse(text) as {
+      forecast: number[]
+      lower: number[]
+      upper: number[]
+      reasoning?: string
+    }
+    // Validate shape — wrong-length or non-numeric arrays = reject
+    if (
+      !Array.isArray(parsed.forecast) ||
+      parsed.forecast.length === 0 ||
+      !parsed.forecast.every((v) => Number.isFinite(v))
+    ) return null
+    return {
+      forecast: parsed.forecast.slice(0, horizon),
+      lower:    Array.isArray(parsed.lower)  ? parsed.lower.slice(0, horizon)  : undefined,
+      upper:    Array.isArray(parsed.upper)  ? parsed.upper.slice(0, horizon)  : undefined,
+      reasoning: parsed.reasoning,
+      model: 'gemini-2.5',
+    }
+  } catch {
+    return null
+  }
+}
+
+async function tryTimeFM(
+  series: number[],
+  horizon: number,
+  hfToken: string,
+): Promise<ForecastResponse | null> {
+  try {
+    const res = await fetch(
+      'https://api-inference.huggingface.co/models/google/timesfm-2.0-500m-pytorch',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: { history: series, horizon },
+          options: { wait_for_model: true },
+        }),
+      },
+    )
+    if (!res.ok) return null
+    const data = await res.json() as { forecast?: number[]; predictions?: number[] }
+    const forecast = data.forecast ?? data.predictions
+    if (!Array.isArray(forecast) || forecast.length === 0) return null
+    return { forecast: forecast.slice(0, horizon), model: 'timefm-2.0' }
+  } catch {
+    return null
+  }
 }
 
 function holtWintersWorker(

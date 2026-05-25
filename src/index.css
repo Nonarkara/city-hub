@@ -2142,6 +2142,17 @@
   font-weight: 500;
 }
 
+.timefm-reasoning {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-left: 2px solid rgba(245, 158, 11, 0.4);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(245, 245, 240, 0.7);
+  font-style: italic;
+}
+
 /* ── Responsive breakpoints ──────────────────────────────────────────────── */
 /* Mobile first: hide rail, show bottom strip, hide desktop-only elements */
 .rail { display: none; }

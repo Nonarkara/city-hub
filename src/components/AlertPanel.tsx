@@ -276,7 +276,10 @@ function TimeFMSection({ history }: { history: number[] }) {
   const peakV = result.forecast[peakIdx]
   const peakLevel: RiskLevel =
     peakV >= 91 ? 'critical' : peakV >= 51 ? 'high' : peakV >= 26 ? 'moderate' : 'good'
-  const modelTag = result.model === 'timefm-2.0' ? 'TIMEFM 2.0' : 'HOLT-WINTERS'
+  const modelTag =
+    result.model === 'gemini-2.5'  ? 'GEMINI 2.5' :
+    result.model === 'timefm-2.0' ? 'TIMEFM 2.0' :
+                                     'HOLT-WINTERS'
 
   return (
     <div className="timefm-section">
@@ -312,6 +315,9 @@ function TimeFMSection({ history }: { history: number[] }) {
           PEAK FORECAST {peakV.toFixed(0)} μg/m³ · +{peakIdx + 1}H
         </span>
       </div>
+      {result.reasoning && (
+        <div className="timefm-reasoning">{result.reasoning}</div>
+      )}
     </div>
   )
 }
@@ -507,7 +513,7 @@ export function AlertPanel() {
         <div className="alert-panel-footer">
           LIVE: GISTDA · OPEN-METEO · TRAFFY FONDUE · GDELT · NASA GIBS
           <br />
-          PREDICTIVE: TIMEFM 2.0 (HF) · HOLT-WINTERS FALLBACK
+          PREDICTIVE: GEMINI 2.5 FLASH · HOLT-WINTERS FALLBACK
           <br />
           <span style={{ opacity: 0.4, fontSize: '8px', letterSpacing: '0.12em' }}>
             DR NON ARKARAPRASERTKUL · @DEPA THAILAND
