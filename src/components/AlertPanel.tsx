@@ -9,7 +9,7 @@
  *   5. Narrative Layer — GDELT news + Reality Check
  */
 import { useCallback, useEffect, useState } from 'react'
-import { bangkokPm25Live, centralFloods, type Pm25Live } from '../data/gistda'
+import { bangkokPm25Live, centralFloods, bangkokPm25Rank, type Pm25Live, type Pm25ProvinceRank } from '../data/gistda'
 import { bangkokWeather, type BangkokWeather } from '../data/openmeteo'
 import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
 import { bangkokAQIForecast, type AQIForecast } from '../data/openmeteo-forecast'
@@ -206,6 +206,22 @@ function RealityCheck({ alerts, news }: { alerts: CityAlert[]; news: GdeltNewsRe
   )
 }
 
+function RankSection({ rank }: { rank: Pm25ProvinceRank | null }) {
+  if (!rank || rank.rank > 20) return null
+  const color = rank.rank <= 5 ? '#e53935' : rank.rank <= 10 ? '#fb8c00' : '#fdd835'
+  const label = rank.rank <= 5 ? 'AMONG WORST NATIONALLY' : rank.rank <= 10 ? 'TOP 10 NATIONALLY' : 'ABOVE NATIONAL AVERAGE'
+  return (
+    <div className="rank-section">
+      <div className="rank-header">PM2.5 PROVINCIAL RANK</div>
+      <div className="rank-row">
+        <span className="rank-num" style={{ color }}>#{rank.rank}</span>
+        <span className="rank-of">/ {rank.total} PROVINCES</span>
+      </div>
+      <div className="rank-label" style={{ color }}>{label}</div>
+    </div>
+  )
+}
+
 function ForecastStrip({ forecast }: { forecast: AQIForecast }) {
   const W = 240, H = 48
   const maxScale = Math.max(200, forecast.peakAqi)
@@ -268,6 +284,7 @@ export function AlertPanel() {
   const [floodCount, setFloodCount] = useState(0)
   const [aqi, setAqi] = useState<BangkokAQI | null>(null)
   const [forecast, setForecast] = useState<AQIForecast | null>(null)
+  const [pm25Rank, setPm25Rank] = useState<Pm25ProvinceRank | null>(null)
   const [traffyFloods, setTraffyFloods] = useState<TraffyTicket[]>([])
   const [traffyGeo, setTraffyGeo] = useState<GeoJSON.FeatureCollection | null>(null)
   const [news, setNews] = useState<GdeltNewsResult | null>(null)
@@ -277,12 +294,13 @@ export function AlertPanel() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const [p, w, f, a, fc, tf, tg, n] = await Promise.all([
+      const [p, w, f, a, fc, rank, tf, tg, n] = await Promise.all([
         bangkokPm25Live().catch((): null => null),
         bangkokWeather().catch((): null => null),
         centralFloods().catch((): null => null),
         bangkokAQI().catch((): null => null),
         bangkokAQIForecast().catch((): null => null),
+        bangkokPm25Rank().catch((): null => null),
         fetchTraffyFloods(50).catch((): TraffyTicket[] => []),
         fetchTraffyGeoJSON(300).catch((): GeoJSON.FeatureCollection | null => null),
         fetchBangkokNews(6).catch((): GdeltNewsResult | null => null),
@@ -293,6 +311,7 @@ export function AlertPanel() {
       if (f) setFloodCount(Array.isArray(f.features) ? f.features.length : 0)
       if (a) setAqi(a)
       if (fc) setForecast(fc)
+      if (rank) setPm25Rank(rank)
       setTraffyFloods(tf as TraffyTicket[])
       setTraffyGeo(tg as GeoJSON.FeatureCollection | null)
       setNews(n as GdeltNewsResult | null)
@@ -366,6 +385,7 @@ export function AlertPanel() {
 
         <div className="alert-scroll">
           <BriefSection brief={brief} onAction={handleBriefAction} />
+          <RankSection rank={pm25Rank} />
           <AnomalyBar anomalies={anomalies} />
 
           <div className="alert-list">
@@ -393,6 +413,10 @@ export function AlertPanel() {
           LIVE: GISTDA · OPEN-METEO · TRAFFY FONDUE · GDELT
           <br />
           PREDICTIVE: 6H LINEAR TREND + WEATHER CORRELATION
+          <br />
+          <span style={{ opacity: 0.4, fontSize: '8px', letterSpacing: '0.12em' }}>
+            DR NON ARIYASAJJAKORN · DEPA
+          </span>
         </div>
       </aside>
     </>

@@ -11,7 +11,7 @@
 import { useEffect, useRef } from 'react'
 import type { Map as MapLibre, Popup as MapLibrePopup } from 'maplibre-gl'
 import { Popup } from 'maplibre-gl'
-import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods } from '../../data/gistda'
+import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, bangkokHistoricalFloods } from '../../data/gistda'
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
@@ -96,32 +96,34 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods', 'districts', 'rail', 'gibs-aod', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
-  'pm25-stations': 'src-pm25',
-  'aqi-live': 'src-aqi',
-  'fires-gistda': 'src-fires-gistda',
-  'fires-firms': 'src-fires-firms',
-  'floods': 'src-floods',
-  'districts': 'src-districts',
-  'rail': 'src-rail',
-  'gibs-aod': 'src-gibs-aod',
-  'traffy-issues': 'src-traffy',
+  'pm25-stations':    'src-pm25',
+  'aqi-live':         'src-aqi',
+  'fires-gistda':     'src-fires-gistda',
+  'fires-firms':      'src-fires-firms',
+  'floods-historical':'src-floods-historical',
+  'floods':           'src-floods',
+  'districts':        'src-districts',
+  'rail':             'src-rail',
+  'gibs-aod':         'src-gibs-aod',
+  'traffy-issues':    'src-traffy',
 }
 
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
 const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
-  'pm25-stations': ['ly-pm25'],
-  'aqi-live': ['ly-aqi'],
-  'fires-gistda':  ['ly-fires-gistda'],
-  'fires-firms':   ['ly-fires-firms'],
-  'floods':        ['ly-floods'],
-  'districts':     ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
-  'rail':          ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
-  'gibs-aod':      ['ly-gibs-aod'],
-  'traffy-issues': ['ly-traffy-issues'],
+  'pm25-stations':    ['ly-pm25'],
+  'aqi-live':         ['ly-aqi'],
+  'fires-gistda':     ['ly-fires-gistda'],
+  'fires-firms':      ['ly-fires-firms'],
+  'floods-historical':['ly-floods-historical'],
+  'floods':           ['ly-floods'],
+  'districts':        ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
+  'rail':             ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
+  'gibs-aod':         ['ly-gibs-aod'],
+  'traffy-issues':    ['ly-traffy-issues'],
 }
 
 function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
@@ -138,15 +140,16 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
 
 async function loadLayer(id: string, map: MapLibre) {
   switch (id) {
-    case 'pm25-stations':   return addPm25Stations(map)
-    case 'aqi-live':        return addAQILive(map)
-    case 'fires-gistda':    return addGistdaFires(map)
-    case 'fires-firms':     return addFirmsFires(map)
-    case 'floods':          return addFloods(map)
-    case 'districts':       return addDistricts(map)
-    case 'rail':            return addRail(map)
-    case 'gibs-aod':        return addGibsAod(map)
-    case 'traffy-issues':   return addTraffyIssues(map)
+    case 'pm25-stations':    return addPm25Stations(map)
+    case 'aqi-live':         return addAQILive(map)
+    case 'fires-gistda':     return addGistdaFires(map)
+    case 'fires-firms':      return addFirmsFires(map)
+    case 'floods-historical':return addHistoricalFloods(map)
+    case 'floods':           return addFloods(map)
+    case 'districts':        return addDistricts(map)
+    case 'rail':             return addRail(map)
+    case 'gibs-aod':         return addGibsAod(map)
+    case 'traffy-issues':    return addTraffyIssues(map)
   }
 }
 
@@ -260,6 +263,21 @@ async function addFirmsFires(map: MapLibre) {
       'circle-stroke-color': '#fff',
       'circle-stroke-width': 0.5,
       'circle-opacity': 0.9,
+    },
+    layout: { 'visibility': 'none' },
+  })
+}
+
+async function addHistoricalFloods(map: MapLibre) {
+  const data = await bangkokHistoricalFloods()
+  map.addSource('src-floods-historical', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-floods-historical',
+    type: 'fill',
+    source: 'src-floods-historical',
+    paint: {
+      'fill-color': 'rgba(25, 50, 180, 0.14)',
+      'fill-outline-color': 'rgba(80, 110, 230, 0.4)',
     },
     layout: { 'visibility': 'none' },
   })

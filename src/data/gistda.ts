@@ -104,3 +104,34 @@ export async function provincePolygons() {
     return geojson as GeoJSON.FeatureCollection
   }, TTL_STATIC)
 }
+
+/** Historical recurring flood zones 2005–2016 — shows which areas flood every year. */
+export async function bangkokHistoricalFloods(): Promise<GeoJSON.FeatureCollection> {
+  return cachedFetch('gistda/floods-historical', async () => {
+    const geojson = await G.fetchRecurringFloodZones()
+    return geojson as GeoJSON.FeatureCollection
+  }, TTL_STATIC)
+}
+
+export interface Pm25ProvinceRank {
+  rank: number      // 1 = worst (highest PM2.5)
+  total: number     // total provinces returned
+  pm25: number
+}
+
+/**
+ * Bangkok's PM2.5 rank among all 77 provinces.
+ * Data is returned descending by PM2.5 so rank = index + 1.
+ */
+export async function bangkokPm25Rank(): Promise<Pm25ProvinceRank | null> {
+  return cachedFetch('gistda/pm25-province-rank-bkk', async () => {
+    const provinces = await G.fetchPm25AllProvinces() as Array<{ pv_tn: string; pm25: number }>
+    if (!Array.isArray(provinces) || provinces.length === 0) return null
+    // Data comes sorted descending by PM2.5 — rank = position in that list
+    const idx = provinces.findIndex(
+      (p) => p.pv_tn === 'กรุงเทพมหานคร' || p.pv_tn?.includes('กรุงเทพ')
+    )
+    if (idx === -1) return null
+    return { rank: idx + 1, total: provinces.length, pm25: provinces[idx].pm25 }
+  }, TTL_LIVE)
+}

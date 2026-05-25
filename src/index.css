@@ -263,6 +263,23 @@
   line-height: 1.4;
 }
 
+.rail-credit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  border-top: var(--border);
+  opacity: 0.4;
+}
+
+.rail-credit span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
 /* ── Bottom strip (mobile only) ──────────────────────────────────────────── */
 .bottom-strip {
   position: absolute;
@@ -957,7 +974,9 @@
   letter-spacing: 0.06em;
   color: var(--dim);
   text-align: right;
-  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
 }
 
 .vital-right {
@@ -1835,6 +1854,48 @@
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   color: var(--fg-dim);
+}
+
+/* ── PM2.5 Provincial Rank ───────────────────────────────────────────────── */
+.rank-section {
+  border: var(--border);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rank-header {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+}
+
+.rank-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rank-num {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.rank-of {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--fg-dim);
+}
+
+.rank-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.12em;
+  font-weight: 600;
 }
 
 /* ── Alert Brief Export ──────────────────────────────────────────────────── */

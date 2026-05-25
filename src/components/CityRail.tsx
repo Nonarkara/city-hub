@@ -120,6 +120,10 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
         <span className="vpm-badge-label">VPM</span>
         <span className="vpm-badge-id">{vpmId}</span>
       </div>
+      <div className="rail-credit">
+        <span>DR NON ARIYASAJJAKORN</span>
+        <span>DEPA RESEARCH</span>
+      </div>
     </aside>
   )
 }

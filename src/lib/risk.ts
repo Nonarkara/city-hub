@@ -75,7 +75,7 @@ export function computeVitals(
   traffy: TraffyStats | null,
 ): VitalStatus[] {
   const trafficSub = traffy
-    ? `${traffy.active.toLocaleString()} OPEN · ${Object.entries(traffy.byType).slice(0, 2).map(([k, v]) => `${k} ${v}`).join(' · ')}`
+    ? Object.entries(traffy.byType).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k).join(' · ') || 'NO DATA'
     : 'NO DATA'
 
   return [
