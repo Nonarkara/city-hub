@@ -528,6 +528,8 @@ export function AlertPanel() {
   const [news, setNews] = useState<GdeltNewsResult | null>(null)
   const [draft, setDraft] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  // Mobile drawer — desktop ignores this; ::media queries hide the peek + backdrop
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -604,20 +606,56 @@ export function AlertPanel() {
 
   const overallLevel = alerts[0]?.level ?? 'good'
 
+  const alertCount = alerts.length + (forecastAlert ? 1 : 0)
+  const overallColor = RISK_COLOR[overallLevel]
+
   return (
     <>
       {draft && <DraftModal draft={draft} onClose={() => setDraft(null)} />}
 
-      <aside className="alert-panel">
+      {/* Mobile peek handle — only visible on phones via CSS. Shows current
+          status colour + tap-to-open affordance. Desktop hides it. */}
+      <button
+        className="alert-peek"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open city brief"
+        aria-expanded={mobileOpen}
+      >
+        <span className="alert-peek-dot" style={{ background: overallColor }} aria-hidden />
+        <span className="alert-peek-title">CITY BRIEF · {timeStr}</span>
+        <span className="alert-peek-count" style={{ color: overallColor }}>
+          {alertCount > 0 ? `${alertCount} ALERT${alertCount === 1 ? '' : 'S'}` : 'CALM'}
+        </span>
+        <span className="alert-peek-chev" aria-hidden>▴</span>
+      </button>
+
+      {/* Mobile drawer backdrop — only renders when open; CSS scopes to phones */}
+      {mobileOpen && (
+        <div
+          className="alert-drawer-backdrop"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      <aside className={`alert-panel ${mobileOpen ? 'alert-panel--mobile-open' : ''}`}>
         {/* Raw status: a single colored line at the top edge. No pill text,
             no "SITUATION · LIVE" — the color is the verdict. */}
         <div
           className="alert-panel-thread"
-          style={{ background: RISK_COLOR[overallLevel] }}
+          style={{ background: overallColor }}
           aria-label={`Status: ${overallLevel}`}
         />
         <div className="alert-panel-header">
           <span className="alert-panel-time">{timeStr} · ICT</span>
+          {/* Mobile-only close button inside the drawer header */}
+          <button
+            className="alert-drawer-close"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close brief"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="alert-scroll">

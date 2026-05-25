@@ -2983,7 +2983,10 @@
 .layer-rail { display: none; }
 .layer-fab { display: flex; }
 .feed-panel { display: none; }
-.alert-panel { display: none; } /* governor panel — desktop only */
+
+/* Mobile peek shows by default; mobile drawer alert-panel hidden until open */
+.alert-peek { display: flex; }
+.alert-drawer-close { display: flex; }
 
 /* Layer rail as bottom sheet on mobile */
 .layer-rail--open {
@@ -3021,4 +3024,194 @@
   .feed-panel { display: flex; }
   .alert-panel { display: flex; }
   .district-panel { display: flex; }
+
+  /* Hide mobile-only affordances on desktop */
+  .alert-peek { display: none; }
+  .alert-drawer-backdrop { display: none; }
+  .alert-drawer-close { display: none; }
+}
+
+/* ── §11.8 Mobile pass — make every panel reachable on a phone ───────────── */
+@media (max-width: 767px) {
+  /* — Topbar: fit at 360px without overflow — */
+  .topbar {
+    gap: var(--space-sm);
+    padding: 0 var(--space-sm);
+  }
+  .topbar-wordmark {
+    font-size: 11px;
+    letter-spacing: 0.10em;
+  }
+  .topbar-divider { display: none; }
+  .topbar-vpm-label { display: none; }
+  /* Cmd+K is keyboard-only — useless on touch, free the pixels */
+  .topbar-cmdk { display: none; }
+  /* SIT ROOM / ANALYST mode toggle: shorter on phones */
+  .topbar-mode-btn { letter-spacing: 0.10em; }
+
+  /* — HUD: keep brackets out of the way of bottom-row UI — */
+  .hud-bracket-bl { display: none; }
+  .hud-bracket-br { display: none; }
+
+  /* — TimeScrubber: compress, drop the tick row on phones — */
+  .time-scrubber { padding: 3px 6px; }
+  .ts-ticks { display: none; }
+
+  /* — Alert panel becomes a bottom drawer, hidden by default — */
+  .alert-panel {
+    display: flex;
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 82dvh;
+    max-height: 82dvh;
+    border-left: none;
+    border-top: var(--border);
+    z-index: var(--z-drawer);
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    visibility: hidden;
+  }
+  .alert-panel--mobile-open {
+    transform: translateY(0);
+    visibility: visible;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .alert-panel { transition: none; }
+  }
+
+  /* Header layout on mobile: time on the left, ✕ close on the right */
+  .alert-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .alert-drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--fg-dim);
+    font-size: 18px;
+    cursor: pointer;
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-right: -8px;
+  }
+  .alert-drawer-close:hover { color: var(--fg); }
+
+  /* Backdrop behind the open drawer */
+  .alert-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: calc(var(--z-drawer) - 1);
+  }
+
+  /* — Peek handle (always visible on mobile, above bottom-strip) — */
+  .alert-peek {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(56px + var(--sab));
+    z-index: 8; /* above HUD brackets, below drawer */
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0 var(--space-md);
+    min-height: var(--tap-min);
+    background: rgba(4, 6, 11, 0.94);
+    border: none;
+    border-top: var(--border);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-align: left;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .alert-peek:hover { color: var(--amber); }
+  .alert-peek-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: hud-pulse 1.8s ease-in-out infinite;
+  }
+  .alert-peek-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .alert-peek-count {
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+  .alert-peek-chev {
+    color: var(--amber);
+    opacity: 0.85;
+    font-size: 11px;
+  }
+
+  /* — ASEAN strip: single-row horizontal scroller on phones — */
+  .asean-strip {
+    bottom: calc(56px + 44px + var(--sab)); /* clear bottom-strip + peek */
+    width: calc(100% - 16px);
+    flex-direction: row;
+  }
+  .asean-strip-label {
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    padding: 6px 8px;
+  }
+  .asean-strip-cells {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .asean-strip-cells::-webkit-scrollbar { display: none; }
+  .asean-cell {
+    border-left: 3px solid var(--line);
+    border-bottom: 0;
+    border-top: 0;
+    padding: 4px 8px;
+    flex: 0 0 auto;
+  }
+
+  /* — Freshness panel: lifted above bottom-strip + peek so they don't collide — */
+  .freshness-panel {
+    bottom: calc(56px + 44px + 44px + var(--sab) + 8px);
+    max-width: calc(100% - 16px);
+  }
+  .freshness-list { max-height: 200px; }
+
+  /* — Layer FAB clears the HUD ribbon properly — */
+  .layer-fab {
+    top: 74px;
+  }
+
+  /* — Bottom-strip respects safe area + leaves vertical room for peek above — */
+  .bottom-strip {
+    /* already padding-bottom: var(--sab); keep as-is. */
+  }
+}
+
+/* Very small phones (Android 360 / iPhone SE 375) — extra compression */
+@media (max-width: 380px) {
+  .topbar-wordmark {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .alert-peek { font-size: 9px; padding: 0 var(--space-sm); }
+  .alert-peek-count { font-size: 9px; }
 }
