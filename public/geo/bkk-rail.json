@@ -1,0 +1,63 @@
+{
+  "type": "FeatureCollection",
+  "name": "Bangkok Rail (curated key stations + simplified lines)",
+  "description": "Hand-curated snapshot of major BTS/MRT/ARL stations and interchanges. Coordinates approximate. Suitable for visual overview, not navigation. Source: Wikipedia + OpenStreetMap cross-reference, 2024 network.",
+  "features": [
+    { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+        [100.5536, 13.8025], [100.5414, 13.7649], [100.5346, 13.7464], [100.5419, 13.7368],
+        [100.5577, 13.7305], [100.5697, 13.7300], [100.5775, 13.7311], [100.5867, 13.7187],
+        [100.6010, 13.7064], [100.6177, 13.6925], [100.6377, 13.6680], [100.6515, 13.6611]
+      ] }, "properties": { "line": "BTS Sukhumvit", "code": "BTS-SUK", "color": "#4caf50" }
+    },
+    { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+        [100.5290, 13.7464], [100.5346, 13.7464], [100.5374, 13.7325], [100.5345, 13.7285],
+        [100.5300, 13.7223], [100.5181, 13.7193], [100.5161, 13.7159], [100.5147, 13.7041],
+        [100.4949, 13.7053], [100.4868, 13.7158], [100.4791, 13.7170], [100.4684, 13.7184]
+      ] }, "properties": { "line": "BTS Silom", "code": "BTS-SIL", "color": "#1b5e20" }
+    },
+    { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+        [100.5295, 13.8060], [100.5380, 13.8027], [100.5534, 13.8027], [100.5614, 13.7918],
+        [100.5670, 13.7762], [100.5728, 13.7600], [100.5775, 13.7488], [100.5797, 13.7370],
+        [100.5602, 13.7325], [100.5577, 13.7245], [100.5510, 13.7172], [100.5447, 13.7155],
+        [100.5413, 13.7282], [100.5210, 13.7390], [100.5118, 13.7385], [100.4977, 13.7416],
+        [100.4925, 13.7440], [100.4870, 13.7570], [100.4870, 13.7715]
+      ] }, "properties": { "line": "MRT Blue", "code": "MRT-BL", "color": "#2962ff" }
+    },
+    { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+        [100.4068, 13.9100], [100.4286, 13.8950], [100.4439, 13.8800], [100.4625, 13.8628],
+        [100.4859, 13.8455], [100.5125, 13.8265], [100.5295, 13.8060]
+      ] }, "properties": { "line": "MRT Purple", "code": "MRT-PP", "color": "#7b1fa2" }
+    },
+    { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+        [100.7501, 13.6810], [100.7300, 13.7180], [100.6802, 13.7479], [100.6377, 13.7572],
+        [100.6098, 13.7547], [100.5602, 13.7515], [100.5414, 13.7649]
+      ] }, "properties": { "line": "Airport Rail Link", "code": "ARL", "color": "#d32f2f" }
+    },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5536, 13.8025] }, "properties": { "name": "Mo Chit", "nameThai": "หมอชิต", "line": "BTS Sukhumvit", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5419, 13.7649] }, "properties": { "name": "Victory Monument", "nameThai": "อนุสาวรีย์ชัยฯ", "line": "BTS Sukhumvit", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5414, 13.7563] }, "properties": { "name": "Phaya Thai", "nameThai": "พญาไท", "line": "BTS Sukhumvit", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5346, 13.7464] }, "properties": { "name": "Siam", "nameThai": "สยาม", "line": "BTS Interchange", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5577, 13.7305] }, "properties": { "name": "Asok", "nameThai": "อโศก", "line": "BTS Sukhumvit", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5697, 13.7300] }, "properties": { "name": "Phrom Phong", "nameThai": "พร้อมพงษ์", "line": "BTS Sukhumvit", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.6010, 13.7064] }, "properties": { "name": "On Nut", "nameThai": "อ่อนนุช", "line": "BTS Sukhumvit", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.6377, 13.6680] }, "properties": { "name": "Bearing", "nameThai": "แบริ่ง", "line": "BTS Sukhumvit", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5290, 13.7464] }, "properties": { "name": "National Stadium", "nameThai": "สนามกีฬาแห่งชาติ", "line": "BTS Silom", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5345, 13.7285] }, "properties": { "name": "Sala Daeng", "nameThai": "ศาลาแดง", "line": "BTS Silom", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5161, 13.7159] }, "properties": { "name": "Saphan Taksin", "nameThai": "สะพานตากสิน", "line": "BTS Silom", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.4684, 13.7184] }, "properties": { "name": "Bang Wa", "nameThai": "บางหว้า", "line": "BTS Silom", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5295, 13.8060] }, "properties": { "name": "Tao Poon", "nameThai": "เตาปูน", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5380, 13.8027] }, "properties": { "name": "Bang Sue", "nameThai": "บางซื่อ", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5534, 13.8027] }, "properties": { "name": "Chatuchak Park", "nameThai": "สวนจตุจักร", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5728, 13.7600] }, "properties": { "name": "Phetchaburi", "nameThai": "เพชรบุรี", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5602, 13.7325] }, "properties": { "name": "Sukhumvit", "nameThai": "สุขุมวิท", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5413, 13.7282] }, "properties": { "name": "Si Lom", "nameThai": "สีลม", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5118, 13.7385] }, "properties": { "name": "Hua Lamphong", "nameThai": "หัวลำโพง", "line": "MRT Blue", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.4977, 13.7416] }, "properties": { "name": "Sanam Chai", "nameThai": "สนามไชย", "line": "MRT Blue", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.4870, 13.7570] }, "properties": { "name": "Tha Phra", "nameThai": "ท่าพระ", "line": "MRT Blue", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.4068, 13.9100] }, "properties": { "name": "Khlong Bang Phai", "nameThai": "คลองบางไผ่", "line": "MRT Purple", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.4625, 13.8628] }, "properties": { "name": "Bang Phlu", "nameThai": "บางพลู", "line": "MRT Purple", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.7501, 13.6810] }, "properties": { "name": "Suvarnabhumi", "nameThai": "สุวรรณภูมิ", "line": "Airport Rail Link", "interchange": true } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.6377, 13.7572] }, "properties": { "name": "Hua Mak", "nameThai": "หัวหมาก", "line": "Airport Rail Link", "interchange": false } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [100.5602, 13.7515] }, "properties": { "name": "Makkasan", "nameThai": "มักกะสัน", "line": "Airport Rail Link", "interchange": true } }
+  ]
+}
