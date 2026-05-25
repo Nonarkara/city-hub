@@ -5,6 +5,40 @@ import { VitalsBar } from './VitalsBar'
 import { bangkokPm25Live, type Pm25Live } from '../data/gistda'
 import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
 import { PM25_COLORS, AQI_COLORS } from '../config/bangkok-layers'
+import { useDistrictData, type DistrictSummary } from '../hooks/useDistrictData'
+import { RISK_COLOR } from '../lib/risk'
+
+// CamelCase name_en → spaced (e.g. "BangKapi" → "Bang Kapi")
+function formatDistrictName(name: string): string {
+  return name.replace(/([A-Z])/g, ' $1').trim()
+}
+
+function DistrictLeaderboard({
+  onSelect,
+  selected,
+}: {
+  onSelect: (d: DistrictSummary) => void
+  selected: DistrictSummary | null
+}) {
+  const { districts, loading } = useDistrictData()
+  if (loading) return <div className="leaderboard-loading">LOADING…</div>
+  return (
+    <div className="leaderboard">
+      {districts.slice(0, 10).map((d, i) => (
+        <button
+          key={d.name_th}
+          className={`leaderboard-row ${selected?.name_th === d.name_th ? 'active' : ''}`}
+          onClick={() => onSelect(d)}
+        >
+          <span className="leaderboard-rank">{i + 1}</span>
+          <span className="leaderboard-name">{formatDistrictName(d.name_en)}</span>
+          <span className="leaderboard-dot" style={{ color: RISK_COLOR[d.risk_level] }}>●</span>
+          <span className="leaderboard-count">{d.complaint_count}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 const FLAG: Record<string, string> = {
   TH: 'TH',
@@ -17,6 +51,8 @@ interface CityRailProps {
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
   vpmId: string
+  onDistrictSelect?: (d: DistrictSummary) => void
+  selectedDistrict?: DistrictSummary | null
 }
 
 function CityList({
@@ -55,14 +91,15 @@ function CityList({
 }
 
 // Desktop left rail
-export function CityRail({ activeCity, onSelect, vpmId }: CityRailProps) {
+export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, selectedDistrict }: CityRailProps) {
+  const isBkk = activeCity.id === 'bangkok'
   return (
     <aside className="rail">
       <span className="rail-section-label">Cities</span>
       <CityList activeCity={activeCity} onSelect={onSelect} />
 
       <span className="rail-section-label">Metrics</span>
-      {activeCity.id === 'bangkok' ? (
+      {isBkk ? (
         <VitalsBar />
       ) : (
         <div className="kpi-grid">
@@ -70,6 +107,13 @@ export function CityRail({ activeCity, onSelect, vpmId }: CityRailProps) {
             <KpiCard key={kpi.label} kpi={kpi} />
           ))}
         </div>
+      )}
+
+      {isBkk && onDistrictSelect && (
+        <>
+          <span className="rail-section-label">Hotspots</span>
+          <DistrictLeaderboard onSelect={onDistrictSelect} selected={selectedDistrict ?? null} />
+        </>
       )}
 
       <div className="vpm-badge">

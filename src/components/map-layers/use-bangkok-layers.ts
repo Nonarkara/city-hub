@@ -12,7 +12,8 @@ import { useEffect, useRef } from 'react'
 import type { Map as MapLibre, Popup as MapLibrePopup } from 'maplibre-gl'
 import { Popup } from 'maplibre-gl'
 import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods } from '../../data/gistda'
-import { pm25ToRisk, RISK_FILL, RISK_BORDER } from '../../lib/risk'
+import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
+import { type DistrictSummary } from '../../hooks/useDistrictData'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
@@ -29,8 +30,12 @@ export function useBangkokLayers(
   map: MapLibre | null,
   activeIds: Set<string>,
   bangkokMode: boolean,
+  onDistrictClick?: (d: DistrictSummary) => void,
 ) {
   const stateRef = useRef<LayerLoadState>({ loaded: new Set(), loading: new Set() })
+  // Keep callback ref current so the once-wired listener always calls the latest handler
+  const onDistrictClickRef = useRef<((d: DistrictSummary) => void) | undefined>(onDistrictClick)
+  onDistrictClickRef.current = onDistrictClick
 
   // Cleanup when Bangkok mode deactivates
   useEffect(() => {
@@ -73,6 +78,9 @@ export function useBangkokLayers(
             }
             if (id === 'traffy-issues' && !state.popup) {
               state.popup = wireTraffyPopup(map)
+            }
+            if (id === 'districts' && !state.popup) {
+              state.popup = wireDistrictPopup(map, onDistrictClickRef)
             }
           }).catch((err) => {
             state.loading.delete(id)
@@ -497,6 +505,47 @@ function wireTraffyPopup(map: MapLibre): MapLibrePopup {
   })
   map.on('mouseenter', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = 'pointer' })
   map.on('mouseleave', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = '' })
+  return popup
+}
+
+function wireDistrictPopup(
+  map: MapLibre,
+  onClickRef: { current: ((d: DistrictSummary) => void) | undefined },
+): MapLibrePopup {
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'unl-popup' })
+  map.on('click', 'ly-districts-fill', (e) => {
+    const f = e.features?.[0]
+    if (!f) return
+    const props = f.properties ?? {}
+    const nameTh = String(props.name_th ?? '—')
+    const nameEn = String(props.name_en ?? '—')
+    const riskLevel = String(props.risk_level ?? 'good') as RiskLevel
+    const count = Number(props.complaint_count ?? 0)
+    const html = `
+      <div class="popup-district">
+        <div class="popup-district-name">${escape(nameEn)}</div>
+        <div class="popup-district-local">${escape(nameTh)}</div>
+        <div class="popup-row">
+          <span class="popup-label">RISK LEVEL</span>
+          <span class="popup-val" style="color: ${RISK_COLOR[riskLevel] ?? '#888'}">${riskLevel.toUpperCase()}</span>
+        </div>
+        <div class="popup-row">
+          <span class="popup-label">CIVIC ISSUES</span>
+          <span class="popup-val">${count.toLocaleString()}</span>
+        </div>
+      </div>`
+    popup.setLngLat(e.lngLat).setHTML(html).addTo(map)
+    // Fire React callback so App.tsx can open the full DistrictPanel
+    onClickRef.current?.({
+      name_th: nameTh,
+      name_en: nameEn,
+      risk_level: riskLevel,
+      complaint_count: count,
+      civic_risk: civicToRisk(count),
+    })
+  })
+  map.on('mouseenter', 'ly-districts-fill', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-districts-fill', () => { map.getCanvas().style.cursor = '' })
   return popup
 }
 

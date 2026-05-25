@@ -59,11 +59,15 @@ npm run build        # → dist/
 ```
 
 ## Next Steps (production scale)
+- [x] Build Cloudflare Worker proxy for CORS-blocked APIs
+- [x] Integrate Traffy Fondue civic complaint data
+- [x] Integrate Open-Meteo Air Quality (US AQI)
+- [x] Add God Mode narrative layer (GDELT news + sentiment + reality check)
+- [x] Add Supabase scaffolding for longitudinal data caching
 - [ ] Add VPM data layers: upload city GeoJSON to VPM via UNL Studio, render as `addSource` / `addLayer`
-- [ ] Connect real KPI data from Supabase (per city table)
-- [ ] Add satellite tile toggle (UNL `v1/sat/1/{z}/{x}/{y}` endpoint)
 - [ ] Upgrade to Next.js 16 for SSR + API routes when Supabase data sources are added
 - [ ] Add UNL geocoding search bar for address lookup within VPM
+- [ ] Add predictive risk scoring (time-series trend analysis on cached data)
 
 ---
 
@@ -109,3 +113,95 @@ npm run dev
 
 See `tasks/todo.md` and `tasks/lessons.md` for the full Wave 1 trace.
 
+---
+
+## Bangkok Super Dashboard (Wave 2 — built 2026-05-25)
+
+### What shipped
+- **Cloudflare Worker proxy** (`worker/`) deployed to `unl-city-proxy.drnon.workers.dev`
+  - Unblocks `data.go.th`, NASA FIRMS, Traffy Fondue, GDELT from browser CORS
+  - Route-based: `/data-go-th/*`, `/firms/*`, `/traffy/*`, `/gdelt/*`
+- **Traffy Fondue integration** (`src/data/traffy.ts`)
+  - Real-time citizen complaint GeoJSON layer (`traffy-issues`) with 500-point cap
+  - Color-coded by problem type: floods (blue), roads (orange), buildings (red), electricity (yellow), garbage (brown)
+  - Click popup with AI summary, status, address
+  - Stats fetcher for vitals bar: active issues count + top categories
+  - Flood-specific alert generator cross-references with GISTDA flood polygons
+- **Open-Meteo Air Quality** (`src/data/openmeteo-aq.ts`)
+  - US AQI + PM2.5/PM10/NO₂/O₃/SO₂/CO readings
+  - New map layer `aqi-live`: large translucent halo colored by AQI level
+  - Vitals bar now shows US AQI as primary air metric, PM2.5 as fallback
+  - Mobile strip shows AQI when available
+- **data.go.th via proxy** (`src/data/datago.ts`)
+  - DataFeedPanel now populates real Bangkok datasets from CKAN
+- **God Mode narrative layer** (`src/data/gdelt.ts` + `AlertPanel`)
+  - GDELT Doc API fetches latest Bangkok news (6 headlines)
+  - Sentiment tone bar (-10 to +10 scale, color-coded)
+  - **Reality Check**: compares sensor severity vs news tone → CONFIRMED / UNDERSTATED / OVERSTATED / CALM
+- **Supabase scaffolding** (`src/lib/supabase.ts`, `src/data/supabase-cache.ts`, `supabase/schema.sql`)
+  - Optional backend for longitudinal data storage
+  - `data_cache` table with upsert + history query
+  - `pageviews` table for analytics
+- **City expansion**: added Chiang Mai + Singapore to registry
+- **Error Boundary** (`src/components/ErrorBoundary.tsx`) wraps entire app
+- **Dead code removal**: `BangkokKpiPanel.tsx`, `Sparkline.tsx` deleted
+
+### File structure (updated)
+```
+src/
+  config/bangkok-layers.ts     ← added Traffy, Open-Meteo sources + AQI colors
+  config/cities.ts             ← +Chiang Mai, +Singapore
+  data/
+    gistda.ts                  ← unchanged
+    nasa.ts                    ← unchanged
+    bma.ts                     ← unchanged
+    datago.ts                  ← uses VITE_PROXY_URL
+    openmeteo.ts               ← unchanged
+    openmeteo-aq.ts            ← NEW: US AQI fetcher
+    traffy.ts                  ← NEW: Traffy Fondue fetcher
+    gdelt.ts                   ← NEW: GDELT news fetcher
+    supabase-cache.ts          ← NEW: Supabase cache helpers
+  lib/
+    cached-fetch.ts            ← unchanged
+    risk.ts                    ← +aqiToRisk, +civicToRisk, +Reality Check logic
+    supabase.ts                ← NEW: Supabase client
+  components/
+    AlertPanel.tsx             ← +GDELT news, +Reality Check, +Traffy floods
+    VitalsBar.tsx              ← +AQI, +Traffy stats
+    CityRail.tsx               ← mobile strip shows AQI
+    DataFeedPanel.tsx          ← removed CORS blocked message
+    LayerRail.tsx              ← +Traffy, +Open-Meteo source probes
+    map-layers/use-bangkok-layers.ts  ← +aqi-live, +traffy-issues layers
+    ErrorBoundary.tsx          ← NEW
+worker/
+  src/index.ts                 ← proxy worker
+  wrangler.toml
+  package.json
+supabase/
+  schema.sql                   ← CREATE TABLE statements
+```
+
+### Deployment (updated)
+- **Worker:** `npx wrangler deploy` from `worker/` directory
+- **Site:** `npm run build && npx wrangler pages deploy dist --project-name unl-city-hub`
+- **Env vars (Cloudflare Pages):** `VITE_UNL_API_KEY`, `VITE_UNL_VPM_ID`, `VITE_PROXY_URL`
+- **Optional Supabase:** add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+---
+
+## Deployment (2026-05-25)
+
+- **GitHub:** https://github.com/Nonarkara/unl-city-hub (private)
+- **Cloudflare Pages:** https://unl-city-hub.pages.dev
+- **Custom domain:** https://unl.nonarkara.org (DNS via Cloudflare, SSL via Google CA)
+- **Wrangler project:** `unl-city-hub`
+- **Env vars set in CF Pages secrets:** `VITE_UNL_API_KEY`, `VITE_UNL_VPM_ID`
+
+### Re-deploy after changes
+```bash
+cd /Users/nonarkara/Projects/UNL
+npm run build
+npx wrangler pages deploy dist --project-name unl-city-hub
+```
+
+Note: Vite bakes `VITE_*` vars at build time — for CI-based deploys, set them in Cloudflare Pages → Settings → Environment Variables (Build only, not Secrets) so they're available during `npm run build`. Current approach is local build + wrangler deploy, which picks up `.env.local`.
