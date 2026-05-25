@@ -21,3 +21,10 @@ export async function loadBangkokDistricts(): Promise<GeoJSON.FeatureCollection>
     return res.json()
   }, TTL_STATIC)
 }
+
+export async function loadBangkokKhet(): Promise<GeoJSON.FeatureCollection> {
+  return cachedFetch('bma/khet', async () => {
+    const res = await fetch('/geo/bangkok-khet.geojson')
+    return res.json()
+  }, TTL_STATIC)
+}

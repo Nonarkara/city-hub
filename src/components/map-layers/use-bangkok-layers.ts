@@ -11,10 +11,13 @@
 import { useEffect, useRef } from 'react'
 import type { Map as MapLibre, Popup as MapLibrePopup } from 'maplibre-gl'
 import { Popup } from 'maplibre-gl'
-import { bangkokAQIStations, thailandFires24h, centralFloods } from '../../data/gistda'
+import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods } from '../../data/gistda'
+import { pm25ToRisk, RISK_FILL, RISK_BORDER } from '../../lib/risk'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
-import { loadBangkokRail, loadBangkokDistricts } from '../../data/bma'
-import { PM25_COLORS } from '../../config/bangkok-layers'
+import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
+import { fetchTraffyGeoJSON } from '../../data/traffy'
+import { bangkokAQI } from '../../data/openmeteo-aq'
+import { PM25_COLORS, AQI_COLORS } from '../../config/bangkok-layers'
 
 interface LayerLoadState {
   loaded: Set<string>
@@ -68,6 +71,9 @@ export function useBangkokLayers(
             if (id === 'pm25-stations' && !state.popup) {
               state.popup = wirePm25Popup(map)
             }
+            if (id === 'traffy-issues' && !state.popup) {
+              state.popup = wireTraffyPopup(map)
+            }
           }).catch((err) => {
             state.loading.delete(id)
             console.warn(`[bangkok-layers] failed to load ${id}:`, err)
@@ -82,28 +88,32 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'fires-gistda', 'fires-firms', 'floods', 'districts', 'rail', 'gibs-aod']
+const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods', 'districts', 'rail', 'gibs-aod', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'pm25-stations': 'src-pm25',
+  'aqi-live': 'src-aqi',
   'fires-gistda': 'src-fires-gistda',
   'fires-firms': 'src-fires-firms',
   'floods': 'src-floods',
   'districts': 'src-districts',
   'rail': 'src-rail',
   'gibs-aod': 'src-gibs-aod',
+  'traffy-issues': 'src-traffy',
 }
 
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
 const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'pm25-stations': ['ly-pm25'],
+  'aqi-live': ['ly-aqi'],
   'fires-gistda':  ['ly-fires-gistda'],
   'fires-firms':   ['ly-fires-firms'],
   'floods':        ['ly-floods'],
   'districts':     ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
   'rail':          ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
   'gibs-aod':      ['ly-gibs-aod'],
+  'traffy-issues': ['ly-traffy-issues'],
 }
 
 function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
@@ -121,12 +131,14 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
 async function loadLayer(id: string, map: MapLibre) {
   switch (id) {
     case 'pm25-stations':   return addPm25Stations(map)
+    case 'aqi-live':        return addAQILive(map)
     case 'fires-gistda':    return addGistdaFires(map)
     case 'fires-firms':     return addFirmsFires(map)
     case 'floods':          return addFloods(map)
     case 'districts':       return addDistricts(map)
     case 'rail':            return addRail(map)
     case 'gibs-aod':        return addGibsAod(map)
+    case 'traffy-issues':   return addTraffyIssues(map)
   }
 }
 
@@ -154,6 +166,59 @@ async function addPm25Stations(map: MapLibre) {
     },
   })
   map.getCanvas().style.cursor = ''
+}
+
+async function addAQILive(map: MapLibre) {
+  const aqi = await bangkokAQI()
+  // Render a single centered dot with AQI color
+  const fc: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [100.5018, 13.7563] },
+      properties: {
+        usAqi: aqi.usAqi,
+        level: aqi.level,
+        pm25: aqi.pm25,
+        pm10: aqi.pm10,
+        no2: aqi.no2,
+        o3: aqi.o3,
+        so2: aqi.so2,
+        co: aqi.co,
+      },
+    }],
+  }
+  map.addSource('src-aqi', { type: 'geojson', data: fc })
+  map.addLayer({
+    id: 'ly-aqi',
+    type: 'circle',
+    source: 'src-aqi',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 20, 14, 60],
+      'circle-color': [
+        'match', ['get', 'level'],
+        'good', AQI_COLORS.good,
+        'moderate', AQI_COLORS.moderate,
+        'unhealthy-sensitive', AQI_COLORS['unhealthy-sensitive'],
+        'unhealthy', AQI_COLORS.unhealthy,
+        'very-unhealthy', AQI_COLORS['very-unhealthy'],
+        'hazardous', AQI_COLORS.hazardous,
+        AQI_COLORS['—'],
+      ],
+      'circle-opacity': 0.25,
+      'circle-stroke-color': [
+        'match', ['get', 'level'],
+        'good', AQI_COLORS.good,
+        'moderate', AQI_COLORS.moderate,
+        'unhealthy-sensitive', AQI_COLORS['unhealthy-sensitive'],
+        'unhealthy', AQI_COLORS.unhealthy,
+        'very-unhealthy', AQI_COLORS['very-unhealthy'],
+        'hazardous', AQI_COLORS.hazardous,
+        AQI_COLORS['—'],
+      ],
+      'circle-stroke-width': 2,
+    },
+  })
 }
 
 async function addGistdaFires(map: MapLibre) {
@@ -209,19 +274,75 @@ async function addFloods(map: MapLibre) {
 }
 
 async function addDistricts(map: MapLibre) {
-  const data = await loadBangkokDistricts()
+  // Parallel fetch — all cached, no double-HTTP
+  const [khetResult, traffyResult, pm25Result] = await Promise.all([
+    loadBangkokKhet().catch((): null => null),
+    fetchTraffyGeoJSON(500).catch((): null => null),
+    bangkokPm25Live().catch((): null => null),
+  ])
+
+  // Count active Traffy tickets per district (Thai name key, strip เขต prefix)
+  const counts: Record<string, number> = {}
+  for (const f of (traffyResult?.features ?? [])) {
+    const d = ((f.properties?.district as string) ?? '').replace(/^เขต/, '').trim()
+    if (d) counts[d] = (counts[d] ?? 0) + 1
+  }
+
+  // City-wide air risk → numeric score
+  const airRisk = pm25Result ? pm25ToRisk(pm25Result.pm25) : 'good'
+  const airScore = ({ good: 0, moderate: 1, high: 2, critical: 3 } as Record<string, number>)[airRisk] ?? 0
+
+  // Inject per-khet risk_level derived from max(air, civic complaint density)
+  const LEVELS = ['good', 'moderate', 'high', 'critical'] as const
+  const features = (khetResult?.features ?? []).map((f) => {
+    const th = ((f.properties?.name_th as string) ?? '').trim()
+    const count = counts[th] ?? 0
+    const civicScore = count >= 200 ? 3 : count >= 50 ? 2 : count >= 5 ? 1 : 0
+    const score = Math.max(airScore, civicScore)
+    return {
+      ...f,
+      properties: {
+        ...f.properties,
+        risk_level: LEVELS[score],
+        complaint_count: count,
+      },
+    }
+  })
+
+  const data = { type: 'FeatureCollection' as const, features }
   map.addSource('src-districts', { type: 'geojson', data })
+
+  // Data-driven fill — each khet shows its own status colour
   map.addLayer({
     id: 'ly-districts-fill',
     type: 'fill',
     source: 'src-districts',
-    paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.04 },
+    paint: {
+      'fill-color': [
+        'match', ['get', 'risk_level'],
+        'moderate', RISK_FILL.moderate,
+        'high',     RISK_FILL.high,
+        'critical', RISK_FILL.critical,
+        RISK_FILL.good,
+      ],
+      'fill-opacity': 1,
+    },
   })
   map.addLayer({
     id: 'ly-districts-line',
     type: 'line',
     source: 'src-districts',
-    paint: { 'line-color': '#f59e0b', 'line-width': 1, 'line-opacity': 0.7 },
+    paint: {
+      'line-color': [
+        'match', ['get', 'risk_level'],
+        'moderate', RISK_BORDER.moderate,
+        'high',     RISK_BORDER.high,
+        'critical', RISK_BORDER.critical,
+        RISK_BORDER.good,
+      ],
+      'line-width': 1.2,
+      'line-opacity': 0.85,
+    },
   })
   map.addLayer({
     id: 'ly-districts-label',
@@ -229,7 +350,7 @@ async function addDistricts(map: MapLibre) {
     source: 'src-districts',
     minzoom: 11,
     layout: {
-      'text-field': ['get', 'nameEn'],
+      'text-field': ['get', 'name_en'],
       'text-size': 11,
       'text-font': ['Fira GO Regular'],
       'text-letter-spacing': 0.08,
@@ -312,6 +433,23 @@ async function addGibsAod(map: MapLibre) {
   })
 }
 
+async function addTraffyIssues(map: MapLibre) {
+  const data = await fetchTraffyGeoJSON(500)
+  map.addSource('src-traffy', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-traffy-issues',
+    type: 'circle',
+    source: 'src-traffy',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 7],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1,
+      'circle-opacity': 0.88,
+    },
+  })
+}
+
 // ── Popup wiring ──────────────────────────────────────────────────────────
 
 function wirePm25Popup(map: MapLibre): MapLibrePopup {
@@ -335,6 +473,33 @@ function wirePm25Popup(map: MapLibre): MapLibrePopup {
   return popup
 }
 
+function wireTraffyPopup(map: MapLibre): MapLibrePopup {
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'unl-popup' })
+  map.on('click', 'ly-traffy-issues', (e) => {
+    const f = e.features?.[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const props = f.properties ?? {}
+    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
+    const state = String(props.state ?? '—')
+    const type = String(props.type ?? '—')
+    const addr = String(props.address ?? '—')
+    const ts = String(props.timestamp ?? '').slice(0, 16).replace('T', ' ')
+    const summary = String(props.ai_summary ?? '')
+    const html = `
+      <div class="popup-traffy">
+        <div class="popup-traffy-type">${escape(type)}</div>
+        <div class="popup-traffy-state" data-state="${escape(state)}">${escape(state)}</div>
+        <div class="popup-traffy-addr">${escape(addr)}</div>
+        ${summary ? `<div class="popup-traffy-summary">${escape(summary)}</div>` : ''}
+        <div class="popup-row popup-meta"><span class="popup-label">REPORTED</span><span>${escape(ts)}</span></div>
+      </div>`
+    popup.setLngLat(coords).setHTML(html).addTo(map)
+  })
+  map.on('mouseenter', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = '' })
+  return popup
+}
+
 function escape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
+  return s.replace(/[&<"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
 }

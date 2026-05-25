@@ -6,6 +6,7 @@ import { MapView } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
 import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
+import { AlertPanel } from './components/AlertPanel'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 
 const API_KEY = import.meta.env.VITE_UNL_API_KEY as string
@@ -19,10 +20,11 @@ export default function App() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
   const [map, setMap] = useState<MapLibre | null>(null)
   const [activeLayers, setActiveLayers] = useState<Set<string>>(DEFAULT_ACTIVE_LAYERS)
+  // Governor mode = default briefing view. Analyst mode = full layer rail.
+  const [governorMode, setGovernorMode] = useState(true)
 
   const bangkokMode = activeCity.id === 'bangkok'
 
-  // Wire Bangkok layers into the map (no-op when bangkokMode is false)
   useBangkokLayers(map, activeLayers, bangkokMode)
 
   const toggleLayer = useCallback((id: string) => {
@@ -34,9 +36,6 @@ export default function App() {
     })
   }, [])
 
-  // When switching away from Bangkok, no need to clear toggles — useBangkokLayers
-  // removes layers when bangkokMode becomes false. When user returns, the same
-  // toggle set is applied again.
   const cityHandler = useMemo(() => (c: CityConfig) => setActiveCity(c), [])
 
   return (
@@ -54,7 +53,15 @@ export default function App() {
           />
         </div>
         <span className="desktop-city-label">{activeCity.name}</span>
-        {bangkokMode && <span className="topbar-mode">· SUPER MODE</span>}
+        {bangkokMode && (
+          <button
+            className="topbar-mode-btn"
+            onClick={() => setGovernorMode((v) => !v)}
+            title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
+          >
+            · {governorMode ? 'SIT ROOM' : 'ANALYST'}
+          </button>
+        )}
         <div className="topbar-spacer" />
         <span className="topbar-vpm-label">UNL VPM</span>
       </header>
@@ -70,10 +77,14 @@ export default function App() {
       />
 
       {bangkokMode && (
-        <>
-          <LayerRail activeIds={activeLayers} onToggle={toggleLayer} />
-          <DataFeedPanel />
-        </>
+        governorMode
+          ? <AlertPanel />
+          : (
+            <>
+              <LayerRail activeIds={activeLayers} onToggle={toggleLayer} />
+              <DataFeedPanel />
+            </>
+          )
       )}
     </>
   )

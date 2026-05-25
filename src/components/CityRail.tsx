@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { CITIES, type CityConfig } from '../config/cities'
 import { KpiCard } from './KpiCard'
-import { BangkokKpiPanel } from './BangkokKpiPanel'
+import { VitalsBar } from './VitalsBar'
 import { bangkokPm25Live, type Pm25Live } from '../data/gistda'
-import { PM25_COLORS } from '../config/bangkok-layers'
+import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
+import { PM25_COLORS, AQI_COLORS } from '../config/bangkok-layers'
 
 const FLAG: Record<string, string> = {
   TH: 'TH',
@@ -62,7 +63,7 @@ export function CityRail({ activeCity, onSelect, vpmId }: CityRailProps) {
 
       <span className="rail-section-label">Metrics</span>
       {activeCity.id === 'bangkok' ? (
-        <BangkokKpiPanel />
+        <VitalsBar />
       ) : (
         <div className="kpi-grid">
           {activeCity.kpis.map((kpi) => (
@@ -89,6 +90,7 @@ export function MobileStrip({
 }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [pm25, setPm25] = useState<Pm25Live | null>(null)
+  const [aqi, setAqi] = useState<BangkokAQI | null>(null)
   const isBkk = activeCity.id === 'bangkok'
 
   useEffect(() => {
@@ -96,11 +98,14 @@ export function MobileStrip({
     let cancelled = false
     const load = () => {
       bangkokPm25Live().then((d) => { if (!cancelled) setPm25(d) }).catch(() => {})
+      bangkokAQI().then((d) => { if (!cancelled) setAqi(d) }).catch(() => {})
     }
     load()
     const t = setInterval(load, 60_000)
     return () => { cancelled = true; clearInterval(t) }
   }, [isBkk])
+
+  const airColor = aqi ? AQI_COLORS[aqi.level] : (pm25 ? PM25_COLORS[pm25.level] : undefined)
 
   return (
     <>
@@ -127,22 +132,22 @@ export function MobileStrip({
         {isBkk ? (
           <>
             <div className="strip-kpi">
-              <span className="strip-label">PM2.5 · LIVE</span>
-              <span className="strip-value" style={{ color: pm25 ? PM25_COLORS[pm25.level] : undefined }}>
-                {pm25 ? pm25.pm25.toFixed(1) : '…'}
-                <span className="strip-unit">µg/m³</span>
+              <span className="strip-label">{aqi ? 'AQI · LIVE' : 'PM2.5 · LIVE'}</span>
+              <span className="strip-value" style={{ color: airColor }}>
+                {aqi ? aqi.usAqi : (pm25 ? pm25.pm25.toFixed(1) : '…')}
+                <span className="strip-unit">{aqi ? 'US AQI' : 'µg/m³'}</span>
               </span>
             </div>
             <div className="strip-kpi">
               <span className="strip-label">LEVEL</span>
-              <span className="strip-value" style={{ color: pm25 ? PM25_COLORS[pm25.level] : undefined }}>
-                {pm25 ? pm25.level.toUpperCase() : '—'}
+              <span className="strip-value" style={{ color: airColor }}>
+                {aqi ? aqi.level.toUpperCase() : (pm25 ? pm25.level.toUpperCase() : '—')}
               </span>
             </div>
             <div className="strip-kpi">
-              <span className="strip-label">24H MAX</span>
+              <span className="strip-label">{aqi ? 'PM2.5' : '24H MAX'}</span>
               <span className="strip-value">
-                {pm25 ? pm25.max24h.toFixed(0) : '—'}
+                {aqi ? aqi.pm25 : (pm25 ? pm25.max24h.toFixed(0) : '—')}
               </span>
             </div>
           </>

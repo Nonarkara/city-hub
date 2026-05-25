@@ -15,6 +15,8 @@ const SOURCE_CACHE_PROBE: Record<SourceKey, string | null> = {
   BMA: 'bma/rail',
   'data.go.th': 'datago/bkk',
   JAXA: null, // pending
+  Traffy: 'traffy/stats',
+  'Open-Meteo': 'openmeteo/bkk-aqi',
 }
 
 export function LayerRail({ activeIds, onToggle }: LayerRailProps) {

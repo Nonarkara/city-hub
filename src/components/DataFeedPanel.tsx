@@ -24,7 +24,7 @@ export function DataFeedPanel() {
           {loading && <div className="feed-empty">LOADING…</div>}
           {!loading && items.length === 0 && (
             <div className="feed-empty">
-              CORS BLOCKED · WAVE 2 WILL PROXY
+              NO DATASETS FOUND
               <br />
               <a
                 href="https://data.go.th/search?q=กรุงเทพ"

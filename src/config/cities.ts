@@ -31,6 +31,19 @@ export const CITIES: CityConfig[] = [
     ],
   },
   {
+    id: 'chiang-mai',
+    name: 'Chiang Mai',
+    nameLocal: 'เชียงใหม่',
+    country: 'TH',
+    center: [98.9853, 18.7883],
+    zoom: 12,
+    kpis: [
+      { label: 'POPULATION', value: '1.7', unit: 'M' },
+      { label: 'BURNING RISK', value: 'HIGH' },
+      { label: 'SMART SCORE', value: '64.5' },
+    ],
+  },
+  {
     id: 'phuket',
     name: 'Phuket',
     nameLocal: 'ภูเก็ต',
@@ -41,6 +54,18 @@ export const CITIES: CityConfig[] = [
       { label: 'POPULATION', value: '416K' },
       { label: 'TOURISM/YR', value: '9.9', unit: 'M' },
       { label: 'SMART SCORE', value: '68.4' },
+    ],
+  },
+  {
+    id: 'singapore',
+    name: 'Singapore',
+    country: 'SG',
+    center: [103.8198, 1.3521],
+    zoom: 12,
+    kpis: [
+      { label: 'POPULATION', value: '5.9', unit: 'M' },
+      { label: 'SMART SCORE', value: '91.4' },
+      { label: 'IOC STATUS', value: 'LIVE' },
     ],
   },
   {
