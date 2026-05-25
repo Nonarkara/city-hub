@@ -53,6 +53,14 @@ export function cacheTimestamp(key: string): number {
   return entry?.ts ?? 0
 }
 
+/** Get the age (ms) of a cached entry. Returns null if key has never been
+ *  fetched in this session. Used by FreshnessPanel to render staleness. */
+export function getFetchAge(key: string): number | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+  return Date.now() - entry.ts
+}
+
 export function invalidateCache(key: string) {
   cache.delete(key)
 }

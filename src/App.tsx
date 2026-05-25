@@ -9,6 +9,9 @@ import { DataFeedPanel } from './components/DataFeedPanel'
 import { AlertPanel, DraftModal } from './components/AlertPanel'
 import { DistrictPanel } from './components/DistrictPanel'
 import { HUD } from './components/HUD'
+import { CommandPalette } from './components/CommandPalette'
+import { FreshnessPanel } from './components/FreshnessPanel'
+import { TimeScrubber } from './components/TimeScrubber'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
 
@@ -27,6 +30,13 @@ export default function App() {
   const [governorMode, setGovernorMode] = useState(true)
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictSummary | null>(null)
   const [appDraft, setAppDraft] = useState<string | null>(null)
+  const [cmdkOpen, setCmdkOpen] = useState(false)
+
+  // Expose a window hook so CommandPalette's global keydown can open it.
+  // Lighter than passing a setter through React context.
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)
+  }
 
   const bangkokMode = activeCity.id === 'bangkok'
 
@@ -56,6 +66,19 @@ export default function App() {
         sourceCount={bangkokMode ? 7 : 1}
       />
 
+      <CommandPalette
+        open={cmdkOpen}
+        onClose={() => setCmdkOpen(false)}
+        activeLayers={activeLayers}
+        onToggleLayer={toggleLayer}
+        onSelectDistrict={(d) => setSelectedDistrict(d)}
+        governorMode={governorMode}
+        onSetGovernorMode={setGovernorMode}
+      />
+
+      {bangkokMode && <FreshnessPanel />}
+      <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict} />
+
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
       <header className="topbar">
@@ -79,6 +102,15 @@ export default function App() {
           </button>
         )}
         <div className="topbar-spacer" />
+        <button
+          className="topbar-cmdk"
+          onClick={() => setCmdkOpen(true)}
+          title="Search · Cmd+K"
+          aria-label="Open command palette"
+        >
+          <span className="topbar-cmdk-icon">⌕</span>
+          <span className="topbar-cmdk-key">⌘K</span>
+        </button>
         <span className="topbar-vpm-label">UNL VPM</span>
       </header>
 

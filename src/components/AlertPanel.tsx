@@ -23,6 +23,7 @@ import {
 } from '../lib/intelligence'
 import { computeAlerts, RISK_COLOR, type CityAlert, type RiskLevel } from '../lib/risk'
 import { forecastSeries, type ForecastResult } from '../lib/forecast'
+import { narrate, type NarrateResult } from '../lib/narrate'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -98,6 +99,27 @@ function AnomalyBar({ anomalies }: { anomalies: Anomaly[] }) {
 
 function AlertCard({ alert, onAction }: { alert: CityAlert; onAction: (a: CityAlert) => void }) {
   const hasAction = alert.action !== 'NO ACTION REQUIRED' && alert.action !== 'MONITOR'
+  const [explain, setExplain] = useState<NarrateResult | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const askWhy = useCallback(async () => {
+    if (explain || loading) return
+    setLoading(true)
+    const r = await narrate(
+      `Why is this alert active? What does it mean for Bangkok right now?`,
+      {
+        level: alert.level,
+        headline: alert.headline,
+        detail: alert.detail,
+        recommendedAction: alert.action,
+        time: new Date().toISOString(),
+      },
+      { style: 'brief', maxWords: 50 },
+    )
+    setExplain(r)
+    setLoading(false)
+  }, [alert, explain, loading])
+
   return (
     <div className="alert-card" data-level={alert.level}>
       <div className="alert-card-header">
@@ -107,9 +129,25 @@ function AlertCard({ alert, onAction }: { alert: CityAlert; onAction: (a: CityAl
         >
           {levelLabel(alert.level)}
         </span>
+        <button
+          className="alert-why-btn"
+          onClick={askWhy}
+          disabled={loading}
+          title="Ask Gemini why this is happening"
+        >
+          {loading ? '…' : explain ? '✓ AI' : 'WHY?'}
+        </button>
       </div>
       <div className="alert-headline">{alert.headline}</div>
       <p className="alert-detail">{alert.detail}</p>
+      {explain && (
+        <div className={`alert-explain ${explain.model === 'gemini-2.5' ? 'ai' : ''}`}>
+          <span className="alert-explain-tag">
+            {explain.model === 'gemini-2.5' ? 'GEMINI 2.5' : 'TEMPLATE'}
+          </span>
+          {explain.narration}
+        </div>
+      )}
       {hasAction ? (
         <button className="alert-action-btn" onClick={() => onAction(alert)}>
           {alert.action} →

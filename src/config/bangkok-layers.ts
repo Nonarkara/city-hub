@@ -16,6 +16,7 @@ export interface LayerSpec {
 
 export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'pm25-stations',   label: 'PM2.5 STATIONS',  description: 'PCD air-quality monitoring stations. GISTDA hourly endpoint is intermittently empty — KPI panel uses a separate live by-location feed that always works.', source: 'GISTDA', defaultOn: true,  status: 'live',    category: 'air' },
+  { id: 'pm25-heatmap',    label: 'PM2.5 HEATMAP',   description: 'Continuous air-quality surface interpolated from PCD monitoring stations. Shows the PM2.5 gradient across Bangkok as a smooth field — where pollution accumulates, where it disperses.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'air' },
   { id: 'aqi-live',        label: 'AQI · OPEN-METEO', description: 'Real-time US AQI from Open-Meteo air-quality API: PM2.5, PM10, NO₂, O₃, SO₂, CO', source: 'Open-Meteo', defaultOn: false, status: 'live', category: 'air' },
   { id: 'gibs-aod',        label: 'AEROSOL (GIBS)',  description: 'NASA MODIS aerosol optical depth, max zoom 6 — best viewed zoomed-out over Thailand', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'fires-gistda',    label: 'FIRES · GISTDA',  description: 'VIIRS hotspots from GISTDA. Service last refreshed Apr 2023 — historical 2023 fire-season snapshot, not live.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'fire' },

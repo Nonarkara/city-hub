@@ -97,11 +97,12 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'traffy-issues']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'pm25-stations':    'src-pm25',
+  'pm25-heatmap':     'src-pm25-heatmap',
   'aqi-live':         'src-aqi',
   'fires-gistda':     'src-fires-gistda',
   'fires-firms':      'src-fires-firms',
@@ -120,6 +121,7 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
 const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'pm25-stations':    ['ly-pm25'],
+  'pm25-heatmap':     ['ly-pm25-heatmap'],
   'aqi-live':         ['ly-aqi'],
   'fires-gistda':     ['ly-fires-gistda'],
   'fires-firms':      ['ly-fires-firms'],
@@ -150,6 +152,7 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
 async function loadLayer(id: string, map: MapLibre) {
   switch (id) {
     case 'pm25-stations':    return addPm25Stations(map)
+    case 'pm25-heatmap':     return addPm25Heatmap(map)
     case 'aqi-live':         return addAQILive(map)
     case 'fires-gistda':     return addGistdaFires(map)
     case 'fires-firms':      return addFirmsFires(map)
@@ -259,6 +262,59 @@ async function addPm25Stations(map: MapLibre) {
     },
   })
   map.getCanvas().style.cursor = ''
+}
+
+async function addPm25Heatmap(map: MapLibre) {
+  // Share the GISTDA stations data — interpolated continuous surface.
+  // MapLibre's heatmap kernel does Gaussian density weighting; we feed pm25
+  // values as the intensity so high-PM2.5 stations radiate stronger.
+  const data = await bangkokAQIStations()
+  map.addSource('src-pm25-heatmap', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-pm25-heatmap',
+    type: 'heatmap',
+    source: 'src-pm25-heatmap',
+    paint: {
+      // Weight per station — normalised so PM2.5=150 saturates the kernel
+      'heatmap-weight': [
+        'interpolate', ['linear'], ['get', 'pm25'],
+        0, 0,
+        25, 0.25,
+        50, 0.55,
+        90, 0.8,
+        150, 1,
+      ],
+      // Kernel intensity grows with zoom so it stays readable city-wide and district-wide
+      'heatmap-intensity': [
+        'interpolate', ['linear'], ['zoom'],
+        8, 0.6,
+        11, 1.0,
+        14, 2.5,
+      ],
+      // Color ramp aligned with Thai PCD bands — transparent → green → yellow → orange → red → maroon
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.15, 'rgba(139,195,74,0.45)',
+        0.35, 'rgba(253,216,53,0.55)',
+        0.55, 'rgba(251,140,0,0.65)',
+        0.75, 'rgba(229,57,53,0.75)',
+        0.95, 'rgba(126,0,35,0.85)',
+      ],
+      // Radius widens with zoom so the kernel covers the right ground area
+      'heatmap-radius': [
+        'interpolate', ['linear'], ['zoom'],
+        8, 18,
+        11, 42,
+        14, 80,
+      ],
+      'heatmap-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        8, 0.7,
+        14, 0.55,
+      ],
+    },
+  })
 }
 
 async function addAQILive(map: MapLibre) {

@@ -47,6 +47,11 @@ export default {
       return handleForecast(request, env)
     }
 
+    // Gemini narrate — POST /narrate
+    if (url.pathname === '/narrate' && request.method === 'POST') {
+      return handleNarrate(request, env)
+    }
+
     if (request.method !== 'GET') {
       return json({ error: 'Method not allowed' }, 405)
     }
@@ -310,4 +315,95 @@ function holtWintersWorker(
     upper.push(yhat + 1.28 * sigma)
   }
   return { forecast, lower, upper }
+}
+
+// ── Narrate ──────────────────────────────────────────────────────────────
+//
+// Gemini-narrated explanation of a situation snapshot. Accepts arbitrary
+// structured context (alert details, anomaly data, district profile, etc.)
+// and returns 1–3 short paragraphs grounded in the numbers.
+//
+// When GEMINI_API_KEY is absent, returns a templated fallback so the UI
+// always has something to show.
+
+interface NarrateRequest {
+  question: string   // What we want explained — "Why is PM2.5 elevated?"
+  context: unknown   // Structured facts: numbers, timestamps, recent values
+  style?: 'brief' | 'paragraph' | 'mayor'  // Default 'brief'
+  maxWords?: number  // Default 60
+}
+
+async function handleNarrate(request: Request, env: Env): Promise<Response> {
+  let body: NarrateRequest
+  try {
+    body = await request.json() as NarrateRequest
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const style = body.style ?? 'brief'
+  const maxWords = body.maxWords ?? 60
+
+  if (env.GEMINI_API_KEY) {
+    const text = await tryGeminiNarrate(body.question, body.context, style, maxWords, env.GEMINI_API_KEY)
+    if (text) return json({ narration: text, model: 'gemini-2.5' })
+  }
+
+  // Fallback — return a structural summary so the UI still has content
+  return json({
+    narration:
+      `Based on the live data, the situation is being monitored. ` +
+      `Set GEMINI_API_KEY on the Worker to enable AI-narrated explanations.`,
+    model: 'template',
+  })
+}
+
+async function tryGeminiNarrate(
+  question: string,
+  context: unknown,
+  style: 'brief' | 'paragraph' | 'mayor',
+  maxWords: number,
+  apiKey: string,
+): Promise<string | null> {
+  const persona =
+    style === 'mayor'
+      ? 'You are a city-operations analyst briefing the Bangkok governor. Be direct, actionable, citing actual numbers.'
+      : style === 'paragraph'
+      ? 'You are a calm city-intelligence narrator. One paragraph, grounded in the numbers, no hedging.'
+      : 'You are a city-intelligence analyst. Answer in 1–2 sharp sentences, grounded in the data.'
+
+  const prompt =
+    `${persona}\n\n` +
+    `Question: ${question}\n\n` +
+    `Live context (JSON):\n${JSON.stringify(context, null, 2)}\n\n` +
+    `Constraints:\n` +
+    `- Maximum ${maxWords} words total\n` +
+    `- Use specific numbers from the context\n` +
+    `- No greeting, no closing, no "Based on the data" preamble\n` +
+    `- Plain text only, no markdown formatting`
+
+  try {
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.45,
+          maxOutputTokens: Math.max(256, maxWords * 8),
+        },
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) return null
+    return text.trim()
+  } catch {
+    return null
+  }
 }
