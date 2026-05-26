@@ -18,7 +18,7 @@ const TOKEN = (import.meta.env.VITE_WAQI_TOKEN as string | undefined) ?? 'demo'
 
 const TTL = 5 * 60 * 1000
 
-const BKK_BBOX = '13.45,100.30,14.00,100.95'
+const BKK_BBOX: [number, number, number, number] = [100.30, 13.45, 100.95, 14.00]
 
 export interface WAQIStation {
   uid: number
@@ -32,11 +32,22 @@ export function waqiTokenIsReal(): boolean {
   return TOKEN !== 'demo' && TOKEN.length > 4
 }
 
-export async function bangkokWAQIStations(): Promise<GeoJSON.FeatureCollection> {
-  return cachedFetch('waqi/bangkok-bbox', async () => {
+/**
+ * Generic — fetch WAQI stations for any bbox.
+ * bbox = [west, south, east, north]
+ */
+export async function fetchWAQIStationsByBbox(
+  bbox: [number, number, number, number],
+  cacheKey?: string,
+): Promise<GeoJSON.FeatureCollection> {
+  const key = cacheKey ?? `waqi/bbox/${bbox.map((n) => n.toFixed(3)).join(',')}`
+  return cachedFetch(key, async () => {
     const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
     try {
-      const url = `${BASE}/map/bounds/?latlng=${BKK_BBOX}&token=${TOKEN}`
+      // WAQI bounds API uses lat1,lng1,lat2,lng2 (SW corner first, then NE corner)
+      const [w, s, e, n] = bbox
+      const latlng = `${s},${w},${n},${e}`
+      const url = `${BASE}/map/bounds/?latlng=${latlng}&token=${TOKEN}`
       const res = await fetch(url)
       if (!res.ok) return empty
       const json = await res.json()
@@ -67,4 +78,9 @@ export async function bangkokWAQIStations(): Promise<GeoJSON.FeatureCollection> 
       return empty
     }
   }, TTL)
+}
+
+/** Bangkok wrapper — preserves existing import path. */
+export async function bangkokWAQIStations(): Promise<GeoJSON.FeatureCollection> {
+  return fetchWAQIStationsByBbox(BKK_BBOX, 'waqi/bangkok-bbox')
 }

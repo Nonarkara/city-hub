@@ -4,21 +4,23 @@
  * where the ribbon explicitly enables them.
  */
 import { useEffect, useState } from 'react'
-import type { Map as MapLibre } from 'mapbox-gl'
+import type { Map as MapLibre } from 'maplibre-gl'
+import type { CityConfig } from '../config/cities'
 
 interface HUDProps {
   map: MapLibre | null
+  activeCity: CityConfig
   activeLayerCount: number
   sourceCount: number
 }
 
-function fmtClock(date: Date, tz: 'utc' | 'bkk'): string {
+function fmtClock(date: Date, timezone: string): string {
   const opts: Intl.DateTimeFormatOptions = {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-    timeZone: tz === 'utc' ? 'UTC' : 'Asia/Bangkok',
+    timeZone: timezone,
   }
   return new Intl.DateTimeFormat('en-GB', opts).format(date)
 }
@@ -39,12 +41,12 @@ function fmtUptime(): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-export function HUD({ map, activeLayerCount, sourceCount }: HUDProps) {
+export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps) {
   const [now, setNow] = useState(new Date())
   const [center, setCenter] = useState<{ lng: number; lat: number; zoom: number }>({
-    lng: 100.5018,
-    lat: 13.7563,
-    zoom: 11,
+    lng: activeCity.center[0],
+    lat: activeCity.center[1],
+    zoom: activeCity.zoom,
   })
 
   // Clock tick — every second
@@ -95,9 +97,9 @@ export function HUD({ map, activeLayerCount, sourceCount }: HUDProps) {
         <span className="hud-pulse" aria-hidden />
         <span className="hud-cell hud-cell-strong">LIVE</span>
         <span className="hud-sep" />
-        <span className="hud-cell">UTC {fmtClock(now, 'utc')}</span>
+        <span className="hud-cell">UTC {fmtClock(now, 'UTC')}</span>
         <span className="hud-sep" />
-        <span className="hud-cell">BKK {fmtClock(now, 'bkk')}</span>
+        <span className="hud-cell">{activeCity.hudClockLabel} {fmtClock(now, activeCity.timezone)}</span>
         <span className="hud-sep" />
         <span className="hud-cell hud-cell-coord">{fmtCoord(center.lng, center.lat)}</span>
         <span className="hud-sep" />

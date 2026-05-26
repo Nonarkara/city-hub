@@ -1,12 +1,12 @@
 /**
  * Open-Meteo Air Quality API — CORS-safe, no auth.
- * Provides US AQI + individual pollutant readings for Bangkok.
+ * Provides US AQI + individual pollutant readings for any city by lat/lng.
  */
 import { cachedFetch } from '../lib/cached-fetch'
 
 const TTL = 10 * 60_000
 
-export interface BangkokAQI {
+export interface CityAQI {
   usAqi: number
   pm25: number
   pm10: number
@@ -17,7 +17,10 @@ export interface BangkokAQI {
   level: 'good' | 'moderate' | 'unhealthy-sensitive' | 'unhealthy' | 'very-unhealthy' | 'hazardous'
 }
 
-function aqiToLevel(aqi: number): BangkokAQI['level'] {
+/** Back-compat alias. */
+export type BangkokAQI = CityAQI
+
+function aqiToLevel(aqi: number): CityAQI['level'] {
   if (aqi <= 50) return 'good'
   if (aqi <= 100) return 'moderate'
   if (aqi <= 150) return 'unhealthy-sensitive'
@@ -26,13 +29,15 @@ function aqiToLevel(aqi: number): BangkokAQI['level'] {
   return 'hazardous'
 }
 
-export async function bangkokAQI(): Promise<BangkokAQI> {
-  return cachedFetch('openmeteo/bkk-aqi', async () => {
+/** Generic — fetch current AQI for any [lng, lat]. */
+export async function fetchAQI(lng: number, lat: number, timezone = 'Asia/Bangkok'): Promise<CityAQI> {
+  const cacheKey = `openmeteo/aqi/${lat.toFixed(3)},${lng.toFixed(3)}`
+  return cachedFetch(cacheKey, async () => {
     const url =
       'https://air-quality-api.open-meteo.com/v1/air-quality' +
-      '?latitude=13.7563&longitude=100.5018' +
+      `?latitude=${lat}&longitude=${lng}` +
       '&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone' +
-      '&timezone=Asia%2FBangkok'
+      `&timezone=${encodeURIComponent(timezone)}`
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Open-Meteo AQ ${res.status}`)
     const d = await res.json()
@@ -57,4 +62,9 @@ export async function bangkokAQI(): Promise<BangkokAQI> {
       level: aqiToLevel(usAqi),
     }
   }, TTL)
+}
+
+/** Bangkok wrapper. */
+export async function bangkokAQI(): Promise<BangkokAQI> {
+  return fetchAQI(100.5018, 13.7563, 'Asia/Bangkok')
 }

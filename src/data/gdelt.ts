@@ -25,11 +25,16 @@ export interface GdeltNewsResult {
   avgTone: number
 }
 
-export async function fetchBangkokNews(max = 8): Promise<GdeltNewsResult> {
-  return cachedFetch('gdelt/bkk-news', async () => {
+/**
+ * Generic — fetch GDELT news for any free-text query (e.g. "singapore",
+ * "chiang mai thailand", "kuching malaysia"). Cached per query.
+ */
+export async function fetchCityNews(query: string, max = 8): Promise<GdeltNewsResult> {
+  const cacheKey = `gdelt/news/${query.replace(/\s+/g, '-')}`
+  return cachedFetch(cacheKey, async () => {
     const url =
       `${BASE}/doc/doc?query=` +
-      encodeURIComponent('bangkok thailand') +
+      encodeURIComponent(query) +
       `&mode=ArtList&maxrecords=${max}&format=json&sort=DateDesc`
     const res = await fetch(url)
     if (!res.ok) throw new Error(`GDELT ${res.status}`)
@@ -53,4 +58,9 @@ export async function fetchBangkokNews(max = 8): Promise<GdeltNewsResult> {
       : 0
     return { articles: parsed, avgTone }
   }, TTL)
+}
+
+/** Bangkok wrapper — preserves existing import path. */
+export async function fetchBangkokNews(max = 8): Promise<GdeltNewsResult> {
+  return fetchCityNews('bangkok thailand', max)
 }

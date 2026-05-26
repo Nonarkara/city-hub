@@ -1,12 +1,13 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { Map as MapboxMap } from 'mapbox-gl'
-import { CITIES, type CityConfig } from './config/cities'
+import type { Map as MapLibreMap } from 'maplibre-gl'
+import { CITIES, type CityConfig, type BasemapId } from './config/cities'
 import { BANGKOK_LAYERS } from './config/bangkok-layers'
-import { MapView } from './components/MapView'
+import { MapView, defaultBasemap, getBasemapDef, BASEMAPS, hasMapboxToken } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
 import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
 import { AlertPanel, DraftModal } from './components/AlertPanel'
+import { LiteCityPanel } from './components/LiteCityPanel'
 import { DistrictPanel } from './components/DistrictPanel'
 import { HUD } from './components/HUD'
 import { CommandPalette } from './components/CommandPalette'
@@ -25,21 +26,20 @@ const DEFAULT_ACTIVE_LAYERS = new Set(
 export default function App() {
   const [activeCity, setActiveCity] = useState<CityConfig>(CITIES[0])
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
-  const [map, setMap] = useState<MapboxMap | null>(null)
+  const [map, setMap] = useState<MapLibreMap | null>(null)
   const [activeLayers, setActiveLayers] = useState<Set<string>>(DEFAULT_ACTIVE_LAYERS)
-  // Governor mode = default briefing view. Analyst mode = full layer rail.
   const [governorMode, setGovernorMode] = useState(true)
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictSummary | null>(null)
   const [appDraft, setAppDraft] = useState<string | null>(null)
   const [cmdkOpen, setCmdkOpen] = useState(false)
+  const [basemap, setBasemap] = useState<BasemapId>(defaultBasemap())
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
 
-  // Expose a window hook so CommandPalette's global keydown can open it.
-  // Lighter than passing a setter through React context.
   if (typeof window !== 'undefined') {
     (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)
   }
 
-  const bangkokMode = activeCity.id === 'bangkok'
+  const bangkokMode = activeCity.tier === 'full'
 
   useBangkokLayers(map, activeLayers, bangkokMode, bangkokMode ? setSelectedDistrict : undefined)
 
@@ -59,14 +59,17 @@ export default function App() {
     setSelectedDistrict(null)
   }, [])
 
+  const tokenAvailable = hasMapboxToken()
+
   return (
     <>
-      <MapView city={activeCity} onMapReady={setMap} />
+      <MapView city={activeCity} basemap={basemap} onMapReady={setMap} />
 
       <HUD
         map={map}
+        activeCity={activeCity}
         activeLayerCount={bangkokMode ? activeLayers.size : 0}
-        sourceCount={bangkokMode ? 7 : 1}
+        sourceCount={bangkokMode ? 7 : 3}
       />
 
       <CommandPalette
@@ -81,14 +84,33 @@ export default function App() {
 
       {bangkokMode && <FreshnessPanel />}
       <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict} />
-      {bangkokMode && governorMode && <AnomalyPins map={map} anomalies={anomalies} />}
+      {bangkokMode && governorMode && (
+        <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
+      )}
       {bangkokMode && <ASEANStrip />}
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
       <header className="topbar">
-        <span className="topbar-wordmark">DR NON'S CITY HUB<span className="topbar-version">v5</span></span>
-        <div className="topbar-divider" />
+        <span className="topbar-wordmark" title="DR NON'S CITY HUB">
+          CITY HUB<span className="topbar-version">v5</span>
+        </span>
+
+        {/* Desktop tab strip — 5 mono codes */}
+        <nav className="topbar-tabs" aria-label="Switch city">
+          {CITIES.map((city) => (
+            <button
+              key={city.id}
+              className={`topbar-tab ${city.id === activeCity.id ? 'topbar-tab--active' : ''}`}
+              onClick={() => cityHandler(city)}
+              title={city.name}
+            >
+              {city.hudClockLabel}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mobile dropdown button (keeps existing sheet behaviour) */}
         <div className="md-hidden">
           <TopbarCityButton
             city={activeCity}
@@ -96,7 +118,7 @@ export default function App() {
             onClick={() => setMobileSheetOpen((v) => !v)}
           />
         </div>
-        <span className="desktop-city-label">{activeCity.name}</span>
+
         {bangkokMode && (
           <button
             className="topbar-mode-btn"
@@ -106,7 +128,53 @@ export default function App() {
             · {governorMode ? 'SIT ROOM' : 'ANALYST'}
           </button>
         )}
+
         <div className="topbar-spacer" />
+
+        {/* Basemap menu */}
+        <div className="basemap-wrap">
+          <button
+            className="topbar-basemap-btn"
+            onClick={() => setBasemapMenuOpen((v) => !v)}
+            title="Switch basemap"
+            aria-label="Switch basemap"
+            aria-expanded={basemapMenuOpen}
+          >
+            <span className="topbar-basemap-icon" aria-hidden>◐</span>
+            <span className="topbar-basemap-label">{getBasemapDef(basemap).label.toUpperCase()}</span>
+          </button>
+          {basemapMenuOpen && (
+            <>
+              <div className="basemap-menu-backdrop" onClick={() => setBasemapMenuOpen(false)} aria-hidden />
+              <ul className="basemap-menu" role="menu">
+                {BASEMAPS.map((id) => {
+                  const def = getBasemapDef(id)
+                  const disabled = def.requiresToken && !tokenAvailable
+                  return (
+                    <li key={id} role="none">
+                      <button
+                        role="menuitem"
+                        className={`basemap-menu-item ${basemap === id ? 'basemap-menu-item--active' : ''} ${disabled ? 'basemap-menu-item--disabled' : ''}`}
+                        disabled={disabled}
+                        title={disabled ? 'Requires Mapbox token' : def.label}
+                        onClick={() => {
+                          if (disabled) return
+                          setBasemap(id)
+                          setBasemapMenuOpen(false)
+                        }}
+                      >
+                        <span className="basemap-menu-dot" style={{ background: basemap === id ? 'var(--amber)' : 'transparent' }} aria-hidden />
+                        <span className="basemap-menu-label">{def.label}</span>
+                        {disabled && <span className="basemap-menu-lock" aria-hidden>·</span>}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+
         <button
           className="topbar-cmdk"
           onClick={() => setCmdkOpen(true)}
@@ -120,7 +188,6 @@ export default function App() {
 
       <CityRail
         activeCity={activeCity}
-        onSelect={cityHandler}
         onDistrictSelect={bangkokMode ? setSelectedDistrict : undefined}
         selectedDistrict={selectedDistrict}
       />
@@ -134,7 +201,7 @@ export default function App() {
         }}
       />
 
-      {bangkokMode && (
+      {bangkokMode ? (
         governorMode
           ? (selectedDistrict
               ? (
@@ -152,6 +219,8 @@ export default function App() {
               <DataFeedPanel />
             </>
           )
+      ) : (
+        <LiteCityPanel activeCity={activeCity} />
       )}
     </>
   )

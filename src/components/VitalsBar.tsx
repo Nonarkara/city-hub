@@ -1,13 +1,18 @@
 /**
- * Five-vital status strip for the governor's left rail.
- * Now with trend arrows and anomaly indicators.
+ * Vital status strip for the left rail. Two variants:
+ *
+ *  - Full (Bangkok): five vitals — AIR (GISTDA + Open-Meteo), FLOOD (GISTDA),
+ *    HEAT (Open-Meteo), CIVIC (Traffy), DISEASE placeholder.
+ *  - Lite (other cities): two vitals — AIR (Open-Meteo + WAQI) and
+ *    HEAT (Open-Meteo). All other rows are skipped (no source available).
  */
 import { useEffect, useState } from 'react'
+import type { CityConfig } from '../config/cities'
 import { bangkokPm25Live, centralFloods, type Pm25Live } from '../data/gistda'
-import { bangkokWeather, type BangkokWeather } from '../data/openmeteo'
-import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
+import { bangkokWeather, fetchWeather, type CityWeather } from '../data/openmeteo'
+import { bangkokAQI, fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
-import { computeVitals, RISK_COLOR, type RiskLevel } from '../lib/risk'
+import { computeVitals, pm25ToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 
 function RiskDot({ level }: { level: RiskLevel }) {
   return <span className="vital-dot" style={{ background: RISK_COLOR[level] }} title={level} />
@@ -29,11 +34,22 @@ function computeAirTrend(pm25: Pm25Live | null): 'up' | 'down' | 'flat' {
   return 'flat'
 }
 
-export function VitalsBar() {
+interface Props {
+  activeCity: CityConfig
+}
+
+export function VitalsBar({ activeCity }: Props) {
+  if (activeCity.tier === 'full') {
+    return <BangkokVitals />
+  }
+  return <LiteVitals city={activeCity} />
+}
+
+function BangkokVitals() {
   const [pm25, setPm25] = useState<Pm25Live | null>(null)
-  const [weather, setWeather] = useState<BangkokWeather | null>(null)
+  const [weather, setWeather] = useState<CityWeather | null>(null)
   const [floodCount, setFloodCount] = useState(0)
-  const [aqi, setAqi] = useState<BangkokAQI | null>(null)
+  const [aqi, setAqi] = useState<CityAQI | null>(null)
   const [traffy, setTraffy] = useState<TraffyStats | null>(null)
 
   useEffect(() => {
@@ -77,6 +93,66 @@ export function VitalsBar() {
           {v.sub && <span className="vital-sub">{v.sub}</span>}
         </div>
       ))}
+    </div>
+  )
+}
+
+function LiteVitals({ city }: { city: CityConfig }) {
+  const [aqi, setAqi] = useState<CityAQI | null>(null)
+  const [weather, setWeather] = useState<CityWeather | null>(null)
+  const [lng, lat] = city.center
+
+  useEffect(() => {
+    let cancelled = false
+    setAqi(null)
+    setWeather(null)
+    const load = async () => {
+      const [a, w] = await Promise.all([
+        fetchAQI(lng, lat, city.timezone).catch((): null => null),
+        fetchWeather(lng, lat, city.timezone).catch((): null => null),
+      ])
+      if (cancelled) return
+      if (a) setAqi(a)
+      if (w) setWeather(w)
+    }
+    load()
+    const t = setInterval(load, 5 * 60_000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [lng, lat, city.timezone])
+
+  // Map AQI's PM2.5 reading to a risk level using the canonical helper.
+  const airLevel: RiskLevel = aqi ? pm25ToRisk(aqi.pm25) : 'good'
+  const heatLevel: RiskLevel = weather
+    ? weather.feelsLike >= 41 ? 'high'
+      : weather.feelsLike >= 37 ? 'moderate'
+      : 'good'
+    : 'good'
+
+  return (
+    <div className="vitals-bar">
+      <div className="vital-row">
+        <RiskDot level={airLevel} />
+        <div className="vital-main">
+          <span className="vital-label">AIR</span>
+          <span className="vital-value" style={{ color: RISK_COLOR[airLevel] }}>
+            {aqi ? aqi.pm25.toFixed(0) : '—'}
+            {aqi && <span className="vital-unit"> µg/m³</span>}
+          </span>
+        </div>
+        {aqi && <span className="vital-sub">AQI {aqi.usAqi}</span>}
+      </div>
+
+      <div className="vital-row">
+        <RiskDot level={heatLevel} />
+        <div className="vital-main">
+          <span className="vital-label">HEAT</span>
+          <span className="vital-value" style={{ color: RISK_COLOR[heatLevel] }}>
+            {weather ? weather.feelsLike : '—'}
+            {weather && <span className="vital-unit"> °C feels</span>}
+          </span>
+        </div>
+        {weather && <span className="vital-sub">{weather.windCardinal} {weather.windSpeed}km/h</span>}
+      </div>
     </div>
   )
 }

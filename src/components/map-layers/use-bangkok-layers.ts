@@ -10,8 +10,8 @@
  * with the prior MapLibre integration — same call signatures).
  */
 import { useEffect, useRef } from 'react'
-import type { Map as MapLibre, Popup as MapLibrePopup } from 'mapbox-gl'
-import { Popup } from 'mapbox-gl'
+import type { Map as MapLibre, Popup as MapLibrePopup } from 'maplibre-gl'
+import { Popup } from 'maplibre-gl'
 import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, bangkokHistoricalFloods } from '../../data/gistda'
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'

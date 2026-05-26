@@ -49,7 +49,6 @@ const FLAG: Record<string, string> = {
 
 interface CityRailProps {
   activeCity: CityConfig
-  onSelect: (city: CityConfig) => void
   onDistrictSelect?: (d: DistrictSummary) => void
   selectedDistrict?: DistrictSummary | null
 }
@@ -90,17 +89,23 @@ function CityList({
 }
 
 // Desktop left rail
-export function CityRail({ activeCity, onSelect, onDistrictSelect, selectedDistrict }: CityRailProps) {
+export function CityRail({ activeCity, onDistrictSelect, selectedDistrict }: CityRailProps) {
   const isBkk = activeCity.id === 'bangkok'
   return (
     <aside className="rail">
-      <CityList activeCity={activeCity} onSelect={onSelect} />
+      <div className="rail-active-city">
+        <span className="rail-active-name">{activeCity.name}</span>
+        {activeCity.nameLocal && (
+          <span className="rail-active-local" lang="th">{activeCity.nameLocal}</span>
+        )}
+        <span className="rail-active-country">{activeCity.country}</span>
+      </div>
 
       <div className="rail-rule" aria-hidden />
 
-      {isBkk ? (
-        <VitalsBar />
-      ) : (
+      <VitalsBar activeCity={activeCity} />
+
+      {!isBkk && (
         <div className="kpi-grid">
           {activeCity.kpis.map((kpi) => (
             <KpiCard key={kpi.label} kpi={kpi} />

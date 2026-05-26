@@ -1,6 +1,6 @@
 /**
  * Open-Meteo Air Quality — 24h hourly forecast.
- * Same CORS-safe, no-auth endpoint as bangkokAQI() but with hourly forecast.
+ * Same CORS-safe, no-auth endpoint as the current-AQI fetch but with hourly forecast.
  * TTL: 30 min (forecast changes slowly).
  */
 import { cachedFetch } from '../lib/cached-fetch'
@@ -22,14 +22,16 @@ export interface AQIForecast {
   currentAqi: number
 }
 
-export async function bangkokAQIForecast(): Promise<AQIForecast> {
-  return cachedFetch('openmeteo/bkk-aqi-forecast', async () => {
+/** Generic — fetch 24h forecast for any [lng, lat]. */
+export async function fetchAQIForecast(lng: number, lat: number, timezone = 'Asia/Bangkok'): Promise<AQIForecast> {
+  const cacheKey = `openmeteo/aqi-forecast/${lat.toFixed(3)},${lng.toFixed(3)}`
+  return cachedFetch(cacheKey, async () => {
     const url =
       'https://air-quality-api.open-meteo.com/v1/air-quality' +
-      '?latitude=13.7563&longitude=100.5018' +
+      `?latitude=${lat}&longitude=${lng}` +
       '&hourly=us_aqi,pm2_5' +
       '&forecast_days=2' +
-      '&timezone=Asia%2FBangkok'
+      `&timezone=${encodeURIComponent(timezone)}`
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Open-Meteo Forecast ${res.status}`)
     const d = await res.json()
@@ -40,7 +42,7 @@ export async function bangkokAQIForecast(): Promise<AQIForecast> {
 
     // Slice from current hour forward, 24 entries
     const now = new Date()
-    const currentHourStr = now.toISOString().slice(0, 13) // "2026-05-26T07"
+    const currentHourStr = now.toISOString().slice(0, 13)
     const startIdx = allTimes.findIndex((t) => t.startsWith(currentHourStr.slice(0, 13)))
     const from = startIdx >= 0 ? startIdx : 0
 
@@ -53,7 +55,7 @@ export async function bangkokAQIForecast(): Promise<AQIForecast> {
     const peakAqi = Math.max(...hours.map((h) => h.usAqi))
     const peakIdx = hours.findIndex((h) => h.usAqi === peakAqi)
     const peakDate = new Date(hours[peakIdx]?.time ?? now.toISOString())
-    const peakHour = peakDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const peakHour = peakDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone })
 
     return {
       hours,
@@ -63,4 +65,9 @@ export async function bangkokAQIForecast(): Promise<AQIForecast> {
       currentAqi: hours[0]?.usAqi ?? 0,
     }
   }, TTL)
+}
+
+/** Bangkok wrapper. */
+export async function bangkokAQIForecast(): Promise<AQIForecast> {
+  return fetchAQIForecast(100.5018, 13.7563, 'Asia/Bangkok')
 }

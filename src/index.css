@@ -238,6 +238,207 @@
   flex: 1;
 }
 
+/* ── Topbar city tabs (desktop) ──────────────────────────────────────────── */
+.topbar-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 44px;
+  margin-left: var(--space-sm);
+}
+
+.topbar-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.topbar-tab:hover {
+  color: var(--fg);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.topbar-tab--active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+
+.topbar-tab--active:hover {
+  color: var(--amber);
+}
+
+/* ── Basemap menu (top-right) ────────────────────────────────────────────── */
+.basemap-wrap {
+  position: relative;
+  margin-right: var(--space-sm);
+}
+
+.topbar-basemap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.topbar-basemap-btn:hover {
+  color: var(--amber);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.topbar-basemap-icon {
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.topbar-basemap-label {
+  font-weight: 500;
+}
+
+.basemap-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-overlay) + 1);
+  background: transparent;
+}
+
+.basemap-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: calc(var(--z-overlay) + 2);
+  min-width: 220px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: rgba(4, 6, 11, 0.97);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 0.5px rgba(245, 158, 11, 0.18);
+  font-family: var(--font-mono);
+}
+
+.basemap-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: left;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  transition: background 0.1s, color 0.1s;
+}
+
+.basemap-menu-item:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--amber);
+}
+
+.basemap-menu-item--active {
+  color: var(--amber);
+}
+
+.basemap-menu-item--disabled,
+.basemap-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.basemap-menu-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.basemap-menu-label {
+  flex: 1;
+}
+
+.basemap-menu-lock {
+  color: var(--fg-dim);
+  letter-spacing: 0.2em;
+  font-size: 9px;
+}
+
+/* ── Rail active-city header (replaces city list in left rail) ──────────── */
+.rail-active-city {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-md);
+  border-bottom: var(--border);
+}
+
+.rail-active-name {
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+}
+
+.rail-active-local {
+  font-family: var(--font-thai);
+  font-size: var(--text-micro);
+  color: var(--fg-dim);
+}
+
+.rail-active-country {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  margin-top: 2px;
+}
+
+/* ── Lite panel — minor adjustments to .alert-panel for lite cities ────── */
+.alert-panel.lite-panel {
+  /* Same width + chrome as full Bangkok panel. Just no district drill-down
+     or Traffy heatmap content. */
+}
+
+/* ── Mobile: hide topbar-tabs strip; mobile dropdown takes over ────────── */
+@media (max-width: 767px) {
+  .topbar-tabs { display: none; }
+  /* Basemap label trimmed on phones to just the icon */
+  .topbar-basemap-label { display: none; }
+  .topbar-basemap-btn { padding: 4px 6px; }
+}
+
+/* Tablet (768–1024) — hide Cmd+K to save horizontal space for tabs */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .topbar-cmdk { display: none; }
+}
+
 /* ── Left rail (desktop ≥ 768px) ─────────────────────────────────────────── */
 .rail {
   position: absolute;

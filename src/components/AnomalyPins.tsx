@@ -11,23 +11,28 @@
  * popup is regular HTML, (3) no source/layer cleanup needed.
  */
 import { useEffect, useRef, useState } from 'react'
-import type { Map as MapLibre } from 'mapbox-gl'
+import type { Map as MapLibre } from 'maplibre-gl'
 import type { Anomaly } from '../lib/intelligence'
 
 interface Props {
   map: MapLibre | null
   anomalies: Anomaly[]
+  cityCenter: [number, number]   // [lng, lat]
 }
 
-const BKK = { lat: 13.7563, lng: 100.5018 }
 const RADIUS_DEG = 0.04   // ~4 km halo around center for default anchors
 
-function anchorFor(a: Anomaly, idx: number, total: number): [number, number] {
+function anchorFor(
+  a: Anomaly,
+  idx: number,
+  total: number,
+  center: [number, number],
+): [number, number] {
   if (a.lat !== undefined && a.lng !== undefined) return [a.lng, a.lat]
   const angle = (idx / Math.max(1, total)) * Math.PI * 2 - Math.PI / 2
   return [
-    BKK.lng + Math.cos(angle) * RADIUS_DEG,
-    BKK.lat + Math.sin(angle) * RADIUS_DEG,
+    center[0] + Math.cos(angle) * RADIUS_DEG,
+    center[1] + Math.sin(angle) * RADIUS_DEG,
   ]
 }
 
@@ -37,7 +42,7 @@ const SEVERITY_COLOR: Record<Anomaly['severity'], string> = {
   low:    '#fdd835',
 }
 
-export function AnomalyPins({ map, anomalies }: Props) {
+export function AnomalyPins({ map, anomalies, cityCenter }: Props) {
   const [, setTick] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
   const rafRef = useRef<number | null>(null)
@@ -66,7 +71,7 @@ export function AnomalyPins({ map, anomalies }: Props) {
   return (
     <div className="anomaly-pins-root">
       {anomalies.map((a, i) => {
-        const [lng, lat] = anchorFor(a, i, anomalies.length)
+        const [lng, lat] = anchorFor(a, i, anomalies.length, cityCenter)
         const point = map.project([lng, lat])
         const isOpen = openId === a.id
         const color = SEVERITY_COLOR[a.severity]
