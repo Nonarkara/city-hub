@@ -19,6 +19,7 @@ import { PatternsSection } from './PatternsSection'
 import { CitizenReportsSection } from './CitizenReportsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { SingaporeDataSection } from './SingaporeDataSection'
+import { PrepareCard } from './PrepareCard'
 
 interface Props {
   activeCity: CityConfig
@@ -159,6 +160,8 @@ export function LiteCityPanel({ activeCity }: Props) {
               </div>
             )}
           </div>
+
+          <PrepareCard activeCity={activeCity} forecast={forecast} />
 
           <SLICPanel activeCity={activeCity} />
 

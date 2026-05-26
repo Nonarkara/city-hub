@@ -76,18 +76,26 @@ export function useBangkokLayers(
       else map.once('load', fn)
     }
 
-    ensureStyleLoaded(() => {
+    const reconcile = () => {
       const state = stateRef.current
       // For each managed layer: load on first activation, set visibility
       for (const id of MANAGED_IDS) {
         const wanted = activeIds.has(id)
-        if (wanted && !state.loaded.has(id) && !state.loading.has(id)) {
+        // After a basemap setStyle the map may have wiped our source/layers
+        // while our stateRef still says "loaded". Detect by probing the source.
+        const srcId = SOURCE_ID_FOR_TOGGLE[id]
+        const sourceExists = srcId ? !!map.getSource(srcId) : true
+        const reallyLoaded = state.loaded.has(id) && sourceExists
+        if (state.loaded.has(id) && !sourceExists) {
+          // Style was swapped — drop our memory of this layer so we re-add it
+          state.loaded.delete(id)
+        }
+        if (wanted && !reallyLoaded && !state.loading.has(id)) {
           state.loading.add(id)
           loadLayer(id, map).then(() => {
             state.loading.delete(id)
             state.loaded.add(id)
             setVisibility(map, id, activeIds.has(id))
-            // wire popup once after first load (for PM2.5 stations)
             if (id === 'pm25-stations' && !state.popup) {
               state.popup = wirePm25Popup(map)
             }
@@ -101,11 +109,19 @@ export function useBangkokLayers(
             state.loading.delete(id)
             console.warn(`[bangkok-layers] failed to load ${id}:`, err)
           })
-        } else if (state.loaded.has(id)) {
+        } else if (reallyLoaded) {
           setVisibility(map, id, wanted)
         }
       }
-    })
+    }
+
+    ensureStyleLoaded(reconcile)
+
+    // Re-reconcile after setStyle swaps (basemap switching via insights).
+    // 'style.load' fires when MapLibre finishes applying a new style.
+    const onStyleLoad = () => reconcile()
+    map.on('style.load', onStyleLoad)
+    return () => { map.off('style.load', onStyleLoad) }
   }, [map, activeIds, bangkokMode])
 }
 
@@ -1207,31 +1223,34 @@ async function addHistoricalEvents(map: MapLibre) {
 
   // Pulsing halo — references the carbon-saturation hypothesis: heat-events
   // leave persistent particulate signatures we expect to align with aerosol.
+  // Sized to stay readable across all zooms (z6 → z18) since the AEROSOL AS
+  // WITNESS stack reads at z8 while flood-cause reads at z11.
   map.addLayer({
     id: 'ly-historical-events-halo',
     type: 'circle',
     source: 'src-historical-events',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 8, 14, 26],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 10, 10, 18, 14, 32],
       'circle-color': ['coalesce', ['get', 'color'], '#e53935'],
-      'circle-opacity': 0.18,
-      'circle-stroke-width': 1,
+      'circle-opacity': 0.22,
+      'circle-stroke-width': 1.5,
       'circle-stroke-color': ['coalesce', ['get', 'color'], '#e53935'],
-      'circle-stroke-opacity': 0.55,
+      'circle-stroke-opacity': 0.7,
     },
   })
 
-  // Inner solid dot — exact location marker
+  // Inner solid dot — exact location marker. Bright white core for contrast
+  // against any basemap (satellite / aerosol / dark vector).
   map.addLayer({
     id: 'ly-historical-events-core',
     type: 'circle',
     source: 'src-historical-events',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 7],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 4, 10, 6, 14, 9],
       'circle-color': ['coalesce', ['get', 'color'], '#e53935'],
-      'circle-stroke-width': 1,
-      'circle-stroke-color': '#04060b',
-      'circle-opacity': 0.95,
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': '#ffffff',
+      'circle-opacity': 1,
     },
   })
 

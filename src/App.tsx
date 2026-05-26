@@ -41,21 +41,31 @@ export default function App() {
 
   // Apply an insight template — activate its layers, optional basemap + zoom,
   // switch to analyst mode so the map is uncovered.
+  //
+  // Sequence the side effects so they don't race:
+  //  - immediately: switch mode + basemap (basemap triggers map.setStyle)
+  //  - +800ms (after setStyle + style.load + reconcile): set the layer stack
+  //  - +1050ms: flyTo the right zoom
+  // Less elegant than promises but robust against React batching variance.
   const applyInsight = useCallback((t: InsightTemplate) => {
-    setActiveLayers(new Set(t.layers))
-    if (t.basemap) setBasemap(t.basemap)
     setGovernorMode(false)
-    // Zoom to the scale the stack reads at. Different layers want different
-    // scales — aerosol at z8, heat at z11, etc.
-    if (t.zoom && map) {
-      map.flyTo({
-        center: activeCity.center,
-        zoom: t.zoom,
-        duration: 1600,
-        essential: true,
-      })
+    if (t.basemap && t.basemap !== basemap) {
+      setBasemap(t.basemap)
     }
-  }, [map, activeCity])
+    setTimeout(() => {
+      setActiveLayers(new Set(t.layers))
+      if (t.zoom && map) {
+        setTimeout(() => {
+          map.flyTo({
+            center: activeCity.center,
+            zoom: t.zoom!,
+            duration: 1600,
+            essential: true,
+          })
+        }, 250)
+      }
+    }, 800)
+  }, [map, activeCity, basemap])
 
   if (typeof window !== 'undefined') {
     (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)

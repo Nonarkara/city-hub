@@ -33,6 +33,7 @@ import { fetchTmdEarthquakes } from '../data/tmd-earthquake'
 import { SLICPanel } from './SLICPanel'
 import { PatternsSection } from './PatternsSection'
 import { OpenDataInventory } from './OpenDataInventory'
+import { PrepareCard } from './PrepareCard'
 import { CITIES } from '../config/cities'
 
 // Bangkok city config — for SLIC lookup
@@ -736,6 +737,7 @@ export function AlertPanel() {
 
         <div className="alert-scroll">
           <BriefSection brief={brief} onAction={handleBriefAction} />
+          <PrepareCard activeCity={BANGKOK_CITY} forecast={forecast} />
           <SLICPanel activeCity={BANGKOK_CITY} />
           <PatternsSection activeCity={BANGKOK_CITY} />
           <RankSection rank={pm25Rank} />

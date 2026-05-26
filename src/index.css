@@ -4821,3 +4821,118 @@
   margin-left: 4px;
   letter-spacing: 0.1em;
 }
+
+/* ── Prepare Card (predict-and-prepare advisory) ─────────────────────────── */
+.prepare-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  margin: var(--space-sm) var(--space-md);
+  background: rgba(229, 57, 53, 0.06);
+  border: 1px solid var(--line);
+  border-left: 3px solid #e53935;
+  animation: prepare-attn 0.6s ease-out;
+}
+
+@keyframes prepare-attn {
+  from { transform: translateX(-6px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.prepare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.prepare-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: #e53935;
+  font-weight: 600;
+}
+
+.prepare-urgency {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  border: 1px solid;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+
+.prepare-headline {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  font-weight: 500;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.prepare-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(229, 57, 53, 0.18);
+  border-bottom: 1px solid rgba(229, 57, 53, 0.18);
+}
+
+.prepare-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prepare-stat-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--fg-dim);
+}
+
+.prepare-stat-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.prepare-stat-unit {
+  font-size: 8px;
+  font-weight: 400;
+  color: var(--fg-dim);
+  margin-left: 2px;
+  letter-spacing: 0.08em;
+}
+
+.prepare-rec {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--fg);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.prepare-context {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--fg-dim);
+  font-style: italic;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.prepare-foot {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  text-align: right;
+  opacity: 0.7;
+}
