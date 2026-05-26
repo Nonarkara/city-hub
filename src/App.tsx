@@ -20,6 +20,7 @@ import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
 import { InsightPanel, type InsightTemplate } from './components/InsightPanel'
 import { CityFactsCard } from './components/CityFactsCard'
+import { ActiveInsightBanner } from './components/ActiveInsightBanner'
 import { prefetchCity } from './lib/city-prefetch'
 
 const DEFAULT_ACTIVE_LAYERS = new Set(
@@ -38,6 +39,7 @@ export default function App() {
   const [basemap, setBasemap] = useState<BasemapId>(defaultBasemap())
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const [insightOpen, setInsightOpen] = useState(false)
+  const [activeInsight, setActiveInsight] = useState<InsightTemplate | null>(null)
 
   // Apply an insight template — activate its layers, optional basemap + zoom,
   // switch to analyst mode so the map is uncovered.
@@ -49,6 +51,7 @@ export default function App() {
   // Less elegant than promises but robust against React batching variance.
   const applyInsight = useCallback((t: InsightTemplate) => {
     setGovernorMode(false)
+    setActiveInsight(t)
     if (t.basemap && t.basemap !== basemap) {
       setBasemap(t.basemap)
     }
@@ -66,6 +69,14 @@ export default function App() {
       }
     }, 800)
   }, [map, activeCity, basemap])
+
+  // Reset back to defaults — turn off the active insight, restore default layers + basemap.
+  const clearInsight = useCallback(() => {
+    setActiveInsight(null)
+    setActiveLayers(DEFAULT_ACTIVE_LAYERS)
+    setBasemap(defaultBasemap())
+    setGovernorMode(true)
+  }, [])
 
   if (typeof window !== 'undefined') {
     (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)
@@ -124,6 +135,8 @@ export default function App() {
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
       <CityFactsCard activeCity={activeCity} />
+
+      <ActiveInsightBanner active={activeInsight} onClear={clearInsight} />
 
       <header className="topbar">
         <span className="topbar-wordmark" title="DR NON'S CITY HUB">
