@@ -27,6 +27,14 @@ export interface MorningBrief {
   paragraphs: string[]
   actions: BriefAction[]
   gaps: SourceGap[]
+  exposure?: string
+  benchmarks?: Benchmark[]
+}
+
+export interface Benchmark {
+  label: string
+  value: string
+  comparison: string
 }
 
 export interface BriefAction {
@@ -197,6 +205,36 @@ export function generateMorningBrief(
     return true
   })
 
+  // Exposure calculation: PM2.5 × Bangkok population (~10.7M) = rough people affected
+  let exposure: string | undefined
+  const pm25Val = pm25?.pm25 ?? 0
+  if (pm25Val > 25) {
+    // Very rough: WHO says >25 affects everyone, >50 affects sensitive groups severely
+    const affectedPct = pm25Val > 100 ? 95 : pm25Val > 50 ? 75 : 40
+    const affected = Math.round(10.7 * affectedPct / 100)
+    exposure = `~${affected}M people exposed to unhealthy air (${affectedPct}% of Bangkok metro)`
+  }
+
+  // Benchmarks
+  const benchmarks: Benchmark[] = []
+  if (pm25Val > 0) {
+    const thaiAvg = 35 // rough national average
+    const ratio = pm25Val / thaiAvg
+    benchmarks.push({
+      label: 'PM2.5 vs. Thai Average',
+      value: `${pm25Val.toFixed(0)} µg/m³`,
+      comparison: ratio > 1 ? `${ratio.toFixed(1)}× national average` : 'Below national average',
+    })
+  }
+  if (weather && weather.feelsLike > 0) {
+    const normalHigh = 33
+    benchmarks.push({
+      label: 'Heat Index',
+      value: `${weather.feelsLike}°C`,
+      comparison: weather.feelsLike > normalHigh ? `${(weather.feelsLike - normalHigh).toFixed(0)}° above normal` : 'Within normal range',
+    })
+  }
+
   return {
     headline: `${status} · ${new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' })}`,
     status,
@@ -204,6 +242,8 @@ export function generateMorningBrief(
     paragraphs,
     actions: uniqueActions,
     gaps,
+    exposure,
+    benchmarks,
   }
 }
 

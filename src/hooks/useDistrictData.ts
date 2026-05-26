@@ -17,6 +17,8 @@ export interface DistrictSummary {
   risk_level: RiskLevel
   complaint_count: number
   civic_risk: RiskLevel
+  vulnerability_score: number
+  vulnerability_level: RiskLevel
 }
 
 const LEVELS: readonly RiskLevel[] = ['good', 'moderate', 'high', 'critical']
@@ -49,6 +51,8 @@ export function useDistrictData(): { districts: DistrictSummary[]; loading: bool
       // City-wide air score
       const airRisk = pm25Result ? pm25ToRisk(pm25Result.pm25) : 'good'
       const airScore = ({ good: 0, moderate: 1, high: 2, critical: 3 } as Record<string, number>)[airRisk] ?? 0
+      const pm25Value = pm25Result?.pm25 ?? 0
+      const maxCount = Math.max(1, ...Object.values(counts))
 
       // Build per-khet summaries
       const summaries: DistrictSummary[] = (khetResult?.features ?? []).map((f) => {
@@ -57,12 +61,23 @@ export function useDistrictData(): { districts: DistrictSummary[]; loading: bool
         const count = counts[name_th] ?? 0
         const civicScore = count >= 200 ? 3 : count >= 50 ? 2 : count >= 5 ? 1 : 0
         const score = Math.max(airScore, civicScore)
+
+        // Vulnerability Index
+        const civicDensity = Math.min(25, (count / Math.max(maxCount, 50)) * 25)
+        const airQuality = Math.min(25, (pm25Value / 100) * 25)
+        const heatExposure = pm25Value > 50 ? 15 : pm25Value > 25 ? 8 : 3
+        const floodRisk = count >= 50 ? 15 : count >= 10 ? 8 : 3
+        const emergencyAccess = 10
+        const vulnScore = Math.round(civicDensity + airQuality + heatExposure + floodRisk + emergencyAccess)
+
         return {
           name_th,
           name_en,
           risk_level: scoreToLevel(score),
           complaint_count: count,
           civic_risk: civicToRisk(count),
+          vulnerability_score: vulnScore,
+          vulnerability_level: vulnScore >= 70 ? 'critical' : vulnScore >= 50 ? 'high' : vulnScore >= 30 ? 'moderate' : 'good',
         }
       })
 

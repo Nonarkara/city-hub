@@ -22,6 +22,12 @@ import { fetchEETiles } from '../../data/alphaearth'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
+import { fetchAir4ThaiGeoJSON } from '../../data/air4thai'
+import { fetchEarthquakeGeoJSON } from '../../data/tmd-earthquake'
+import { fetchOsmEmergency, fetchOsmEducation } from '../../data/osm-pois'
+import { fetchWaterQualityGeoJSON, fetchWaterLevelGeoJSON } from '../../data/thaiwater'
+import { fetchTrafficIncidentGeoJSON, fetchBangkokTrafficFlow, tomtomKeyAvailable } from '../../data/tomtom-traffic'
+import { fetchAirbnbGeoJSON } from '../../data/airbnb'
 import { PM25_COLORS, AQI_COLORS } from '../../config/bangkok-layers'
 
 interface LayerLoadState {
@@ -100,13 +106,14 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'pm25-stations':    'src-pm25',
   'pm25-heatmap':     'src-pm25-heatmap',
   'aqi-live':         'src-aqi',
+  'air4thai-stations':'src-air4thai',
   'waqi-stations':    'src-waqi',
   'fires-gistda':     'src-fires-gistda',
   'fires-firms':      'src-fires-firms',
@@ -122,10 +129,22 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'sat-esri':         'src-sat-esri',
   'sat-sentinel2':    'src-sat-sentinel2',
   'alphaearth-embeddings': 'src-alphaearth',
+  'sat-s5p-no2':      'src-s5p-no2',
+  'sat-s5p-co':       'src-s5p-co',
+  'sat-s5p-so2':      'src-s5p-so2',
+  'sat-ghsl-pop':     'src-ghsl-pop',
   'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
   'traffy-heatmap':   'src-traffy-heatmap',
-  'buildings-3d':     'omv',  // re-uses UNL's vector tile source
+  'buildings-3d':     'omv',
+  'osm-emergency':    'src-osm-emergency',
+  'osm-education':    'src-osm-education',
+  'water-quality':    'src-water-quality',
+  'water-level':      'src-water-level',
+  'earthquake-tmd':   'src-earthquake-tmd',
+  'tomtom-traffic':   'src-tomtom-traffic',
+  'tomtom-incidents': 'src-tomtom-incidents',
+  'airbnb-density':   'src-airbnb',
 }
 
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
@@ -133,6 +152,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'pm25-stations':    ['ly-pm25'],
   'pm25-heatmap':     ['ly-pm25-heatmap'],
   'aqi-live':         ['ly-aqi'],
+  'air4thai-stations':['ly-air4thai'],
   'waqi-stations':    ['ly-waqi-fill', 'ly-waqi-label'],
   'fires-gistda':     ['ly-fires-gistda'],
   'fires-firms':      ['ly-fires-firms'],
@@ -148,10 +168,22 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sat-esri':         ['ly-sat-esri'],
   'sat-sentinel2':    ['ly-sat-sentinel2'],
   'alphaearth-embeddings': ['ly-alphaearth'],
+  'sat-s5p-no2':      ['ly-s5p-no2'],
+  'sat-s5p-co':       ['ly-s5p-co'],
+  'sat-s5p-so2':      ['ly-s5p-so2'],
+  'sat-ghsl-pop':     ['ly-ghsl-pop'],
   'longdo-basemap':   ['ly-longdo'],
   'traffy-issues':    ['ly-traffy-issues'],
   'traffy-heatmap':   ['ly-traffy-heatmap'],
   'buildings-3d':     ['ly-buildings-3d'],
+  'osm-emergency':    ['ly-osm-emergency'],
+  'osm-education':    ['ly-osm-education'],
+  'water-quality':    ['ly-water-quality'],
+  'water-level':      ['ly-water-level'],
+  'earthquake-tmd':   ['ly-earthquake-tmd', 'ly-earthquake-tmd-pulse'],
+  'tomtom-traffic':   ['ly-tomtom-traffic'],
+  'tomtom-incidents': ['ly-tomtom-incidents'],
+  'airbnb-density':   ['ly-airbnb-density'],
 }
 
 function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
@@ -180,6 +212,7 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'pm25-stations':    return addPm25Stations(map)
     case 'pm25-heatmap':     return addPm25Heatmap(map)
     case 'aqi-live':         return addAQILive(map)
+    case 'air4thai-stations':return addAir4ThaiStations(map)
     case 'waqi-stations':    return addWAQIStations(map)
     case 'fires-gistda':     return addGistdaFires(map)
     case 'fires-firms':      return addFirmsFires(map)
@@ -195,10 +228,22 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'sat-esri':         return addSatEsri(map)
     case 'sat-sentinel2':    return addSatSentinel2(map)
     case 'alphaearth-embeddings': return addAlphaEarth(map)
+    case 'sat-s5p-no2':      return addS5P_NO2(map)
+    case 'sat-s5p-co':       return addS5P_CO(map)
+    case 'sat-s5p-so2':      return addS5P_SO2(map)
+    case 'sat-ghsl-pop':     return addGHSL_Pop(map)
     case 'longdo-basemap':   return addLongdoBasemap(map)
     case 'traffy-issues':    return addTraffyIssues(map)
     case 'traffy-heatmap':   return addTraffyHeatmap(map)
     case 'buildings-3d':     return addBuildings3D(map)
+    case 'osm-emergency':    return addOsmEmergency(map)
+    case 'osm-education':    return addOsmEducation(map)
+    case 'water-quality':    return addWaterQuality(map)
+    case 'water-level':      return addWaterLevel(map)
+    case 'earthquake-tmd':   return addEarthquakeTmd(map)
+    case 'tomtom-traffic':   return addTomtomTraffic(map)
+    case 'tomtom-incidents': return addTomtomIncidents(map)
+    case 'airbnb-density':   return addAirbnbDensity(map)
   }
 }
 
@@ -292,9 +337,6 @@ async function addSatSentinel2(map: MapLibre) {
 }
 
 async function addAlphaEarth(map: MapLibre) {
-  // Worker mints OAuth from GCP_SERVICE_ACCOUNT_JSON, calls EE getMapId,
-  // returns a {z}/{x}/{y} tile URL with embedded EE token. Returns null
-  // (silently) when the secret isn't set — toggle stays harmless.
   const ee = await fetchEETiles('alphaearth')
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
@@ -303,6 +345,54 @@ async function addAlphaEarth(map: MapLibre) {
     tiles:    ee.tiles,
     maxzoom:  14,
     opacity:  0.9,
+  })
+}
+
+async function addS5P_NO2(map: MapLibre) {
+  const ee = await fetchEETiles('s5p-no2')
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-s5p-no2',
+    layerId:  'ly-s5p-no2',
+    tiles:    ee.tiles,
+    maxzoom:  12,
+    opacity:  0.85,
+  })
+}
+
+async function addS5P_CO(map: MapLibre) {
+  const ee = await fetchEETiles('s5p-co')
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-s5p-co',
+    layerId:  'ly-s5p-co',
+    tiles:    ee.tiles,
+    maxzoom:  12,
+    opacity:  0.85,
+  })
+}
+
+async function addS5P_SO2(map: MapLibre) {
+  const ee = await fetchEETiles('s5p-so2')
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-s5p-so2',
+    layerId:  'ly-s5p-so2',
+    tiles:    ee.tiles,
+    maxzoom:  12,
+    opacity:  0.85,
+  })
+}
+
+async function addGHSL_Pop(map: MapLibre) {
+  const ee = await fetchEETiles('ghsl-pop')
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-ghsl-pop',
+    layerId:  'ly-ghsl-pop',
+    tiles:    ee.tiles,
+    maxzoom:  14,
+    opacity:  0.75,
   })
 }
 
@@ -583,20 +673,35 @@ async function addDistricts(map: MapLibre) {
   // City-wide air risk → numeric score
   const airRisk = pm25Result ? pm25ToRisk(pm25Result.pm25) : 'good'
   const airScore = ({ good: 0, moderate: 1, high: 2, critical: 3 } as Record<string, number>)[airRisk] ?? 0
+  const pm25Value = pm25Result?.pm25 ?? 0
 
-  // Inject per-khet risk_level derived from max(air, civic complaint density)
+  // Compute vulnerability scores per district
+  const maxCount = Math.max(1, ...Object.values(counts))
+
+  // Inject per-khet risk_level + vulnerability score
   const LEVELS = ['good', 'moderate', 'high', 'critical'] as const
   const features = (khetResult?.features ?? []).map((f) => {
     const th = ((f.properties?.name_th as string) ?? '').trim()
     const count = counts[th] ?? 0
     const civicScore = count >= 200 ? 3 : count >= 50 ? 2 : count >= 5 ? 1 : 0
     const score = Math.max(airScore, civicScore)
+
+    // Vulnerability Index: composite of multiple stressors (0-100)
+    const civicDensity = Math.min(25, (count / Math.max(maxCount, 50)) * 25)
+    const airQuality = Math.min(25, (pm25Value / 100) * 25)
+    const heatExposure = pm25Value > 50 ? 15 : pm25Value > 25 ? 8 : 3
+    const floodRisk = count >= 50 ? 15 : count >= 10 ? 8 : 3
+    const emergencyAccess = 10 // baseline; would need OSM POI count per district
+    const vulnScore = Math.round(civicDensity + airQuality + heatExposure + floodRisk + emergencyAccess)
+
     return {
       ...f,
       properties: {
         ...f.properties,
         risk_level: LEVELS[score],
         complaint_count: count,
+        vulnerability_score: vulnScore,
+        vulnerability_level: vulnScore >= 70 ? 'critical' : vulnScore >= 50 ? 'high' : vulnScore >= 30 ? 'moderate' : 'good',
       },
     }
   })
@@ -826,6 +931,266 @@ async function addTraffyHeatmap(map: MapLibre) {
   })
 }
 
+// ── New layer loaders (Air4Thai, OSM, Thaiwater, Earthquake) ─────────────
+
+async function addAir4ThaiStations(map: MapLibre) {
+  const data = await fetchAir4ThaiGeoJSON()
+  map.addSource('src-air4thai', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-air4thai',
+    type: 'circle',
+    source: 'src-air4thai',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 7, 14, 16],
+      'circle-color': [
+        'match', ['get', 'level'],
+        'good',                AQI_COLORS.good,
+        'moderate',            AQI_COLORS.moderate,
+        'unhealthy-sensitive', AQI_COLORS['unhealthy-sensitive'],
+        'unhealthy',           AQI_COLORS.unhealthy,
+        'hazardous',           AQI_COLORS.hazardous,
+        AQI_COLORS['—'],
+      ],
+      'circle-stroke-color': '#00e5ff', // cyan ring to distinguish from GISTDA
+      'circle-stroke-width': 2,
+      'circle-opacity': 0.9,
+    },
+  })
+}
+
+async function addOsmEmergency(map: MapLibre) {
+  const data = await fetchOsmEmergency()
+  map.addSource('src-osm-emergency', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-osm-emergency',
+    type: 'circle',
+    source: 'src-osm-emergency',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 10],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.9,
+    },
+  })
+  // Labels at higher zoom
+  map.addLayer({
+    id: 'ly-osm-emergency-label',
+    type: 'symbol',
+    source: 'src-osm-emergency',
+    minzoom: 13,
+    layout: {
+      'text-field': ['get', 'icon'],
+      'text-size': 9,
+      'text-font': ['Fira GO Regular'],
+      'text-offset': [0, -1.2],
+    },
+    paint: {
+      'text-color': '#f5f5f0',
+      'text-halo-color': '#0a0a0a',
+      'text-halo-width': 1.5,
+    },
+  })
+}
+
+async function addOsmEducation(map: MapLibre) {
+  const data = await fetchOsmEducation()
+  map.addSource('src-osm-education', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-osm-education',
+    type: 'circle',
+    source: 'src-osm-education',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 14, 8],
+      'circle-color': '#4caf50',
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1,
+      'circle-opacity': 0.85,
+    },
+  })
+}
+
+async function addWaterQuality(map: MapLibre) {
+  const data = await fetchWaterQualityGeoJSON()
+  map.addSource('src-water-quality', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-water-quality',
+    type: 'circle',
+    source: 'src-water-quality',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 14, 14],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.9,
+    },
+  })
+}
+
+async function addWaterLevel(map: MapLibre) {
+  const data = await fetchWaterLevelGeoJSON()
+  map.addSource('src-water-level', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-water-level',
+    type: 'circle',
+    source: 'src-water-level',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 14, 12],
+      'circle-color': ['coalesce', ['get', 'color'], '#4caf50'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.9,
+    },
+  })
+}
+
+async function addEarthquakeTmd(map: MapLibre) {
+  const data = await fetchEarthquakeGeoJSON()
+  map.addSource('src-earthquake-tmd', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-earthquake-tmd',
+    type: 'circle',
+    source: 'src-earthquake-tmd',
+    paint: {
+      'circle-radius': [
+        'interpolate', ['linear'], ['get', 'magnitude'],
+        3, 4,
+        4, 8,
+        5, 14,
+        6, 22,
+        7, 34,
+      ],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1,
+      'circle-opacity': 0.9,
+    },
+    layout: { 'visibility': 'none' },
+  })
+  // Pulse animation for events felt in Bangkok
+  map.addLayer({
+    id: 'ly-earthquake-tmd-pulse',
+    type: 'circle',
+    source: 'src-earthquake-tmd',
+    filter: ['==', ['get', 'feltInBangkok'], true],
+    paint: {
+      'circle-radius': [
+        'interpolate', ['linear'], ['get', 'magnitude'],
+        3, 8,
+        4, 16,
+        5, 28,
+        6, 42,
+        7, 60,
+      ],
+      'circle-color': 'transparent',
+      'circle-stroke-color': '#e53935',
+      'circle-stroke-width': 1,
+      'circle-stroke-opacity': 0.4,
+    },
+    layout: { 'visibility': 'none' },
+  })
+}
+
+async function addTomtomTraffic(map: MapLibre) {
+  const flow = await fetchBangkokTrafficFlow()
+  if (flow.length === 0 && !tomtomKeyAvailable()) return
+  const fc: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: flow.map((f) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [f.lng, f.lat] as [number, number] },
+      properties: {
+        currentSpeed: f.currentSpeed,
+        freeFlowSpeed: f.freeFlowSpeed,
+        congestionLevel: f.congestionLevel,
+        confidence: f.confidence,
+        roadClosure: f.roadClosure,
+        // Color by congestion: green (free) → yellow → red (jammed)
+        color: f.roadClosure ? '#7e0023'
+          : f.congestionLevel > 0.7 ? '#e53935'
+          : f.congestionLevel > 0.4 ? '#fb8c00'
+          : f.congestionLevel > 0.2 ? '#fdd835'
+          : '#8bc34a',
+      },
+    })),
+  }
+  map.addSource('src-tomtom-traffic', { type: 'geojson', data: fc })
+  map.addLayer({
+    id: 'ly-tomtom-traffic',
+    type: 'circle',
+    source: 'src-tomtom-traffic',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 8, 14, 20],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.85,
+    },
+  })
+}
+
+async function addTomtomIncidents(map: MapLibre) {
+  const data = await fetchTrafficIncidentGeoJSON()
+  map.addSource('src-tomtom-incidents', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-tomtom-incidents',
+    type: 'circle',
+    source: 'src-tomtom-incidents',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 14, 12],
+      'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.9,
+    },
+  })
+}
+
+async function addAirbnbDensity(map: MapLibre) {
+  const data = await fetchAirbnbGeoJSON()
+  map.addSource('src-airbnb', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-airbnb-density',
+    type: 'heatmap',
+    source: 'src-airbnb',
+    paint: {
+      'heatmap-weight': [
+        'interpolate', ['linear'], ['get', 'pressure'],
+        0, 0.1,
+        100, 0.3,
+        300, 0.6,
+        600, 1,
+      ],
+      'heatmap-intensity': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 0.8,
+        13, 1.5,
+        16, 3,
+      ],
+      // Red → orange → amber — tourism heat
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.15, 'rgba(253,216,53,0.4)',
+        0.4,  'rgba(251,140,0,0.55)',
+        0.65, 'rgba(229,57,53,0.7)',
+        0.9,  'rgba(126,0,35,0.85)',
+      ],
+      'heatmap-radius': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 12,
+        13, 30,
+        16, 60,
+      ],
+      'heatmap-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 0.7,
+        16, 0.5,
+      ],
+    },
+  })
+}
+
 // ── Popup wiring ──────────────────────────────────────────────────────────
 
 function wirePm25Popup(map: MapLibre): MapLibrePopup {
@@ -889,6 +1254,8 @@ function wireDistrictPopup(
     const nameEn = String(props.name_en ?? '—')
     const riskLevel = String(props.risk_level ?? 'good') as RiskLevel
     const count = Number(props.complaint_count ?? 0)
+    const vulnScore = Number(props.vulnerability_score ?? 0)
+    const vulnLevel = String(props.vulnerability_level ?? 'low') as RiskLevel
     const html = `
       <div class="popup-district">
         <div class="popup-district-name">${escape(nameEn)}</div>
@@ -901,6 +1268,10 @@ function wireDistrictPopup(
           <span class="popup-label">CIVIC ISSUES</span>
           <span class="popup-val">${count.toLocaleString()}</span>
         </div>
+        <div class="popup-row">
+          <span class="popup-label">VULNERABILITY</span>
+          <span class="popup-val" style="color: ${RISK_COLOR[vulnLevel] ?? '#888'}">${vulnScore}/100</span>
+        </div>
       </div>`
     popup.setLngLat(e.lngLat).setHTML(html).addTo(map)
     // Fire React callback so App.tsx can open the full DistrictPanel
@@ -910,6 +1281,8 @@ function wireDistrictPopup(
       risk_level: riskLevel,
       complaint_count: count,
       civic_risk: civicToRisk(count),
+      vulnerability_score: vulnScore,
+      vulnerability_level: vulnLevel,
     })
   })
   map.on('mouseenter', 'ly-districts-fill', () => { map.getCanvas().style.cursor = 'pointer' })

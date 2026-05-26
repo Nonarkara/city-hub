@@ -113,6 +113,37 @@ export function DistrictPanel({ district, onClose, onDraft }: Props) {
         </span>
       </div>
 
+      {/* Vulnerability index */}
+      <div className="district-vuln-row">
+        <div className="district-vuln-header">
+          <span className="district-vuln-label">VULNERABILITY INDEX</span>
+          <span
+            className="district-vuln-chip"
+            style={{ color: RISK_COLOR[district.vulnerability_level], borderColor: RISK_COLOR[district.vulnerability_level] }}
+          >
+            {district.vulnerability_level.toUpperCase()}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="district-vuln-bar-bg">
+            <div 
+              className="district-vuln-bar-fill"
+              style={{ 
+                width: `${Math.max(4, district.vulnerability_score)}%`, 
+                background: RISK_COLOR[district.vulnerability_level],
+                color: RISK_COLOR[district.vulnerability_level]
+              }} 
+            />
+          </div>
+          <span
+            className="district-vuln-score"
+            style={{ color: RISK_COLOR[district.vulnerability_level], marginLeft: '12px' }}
+          >
+            {district.vulnerability_score}
+          </span>
+        </div>
+      </div>
+
       <div className="district-panel-scroll">
         {loading ? (
           <div className="district-loading">LOADING DISTRICT DATA…</div>

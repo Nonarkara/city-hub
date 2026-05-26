@@ -43,6 +43,14 @@ const FEEDS: FeedDescriptor[] = [
   { key: 'waqi/bangkok-bbox',             label: 'WAQI STATIONS',   source: 'WAQI'        },
   { key: 'ee/mapid-alphaearth',           label: 'ALPHAEARTH',      source: 'Google EE'   },
   { key: 'bma/khet',                      label: 'DISTRICTS GEO',   source: 'BMA'         },
+  { key: 'air4thai/bangkok',              label: 'AIR4THAI',        source: 'PCD'         },
+  { key: 'tmd/earthquakes',               label: 'EARTHQUAKES',     source: 'TMD'         },
+  { key: 'osm/pois-bangkok',              label: 'OSM POIS',        source: 'OSM'         },
+  { key: 'thaiwater/quality',             label: 'WATER QUALITY',   source: 'Thaiwater'   },
+  { key: 'thaiwater/levels',              label: 'WATER LEVELS',    source: 'Thaiwater'   },
+  { key: 'tomtom/bangkok-flow',           label: 'TRAFFIC FLOW',    source: 'TomTom'      },
+  { key: 'tomtom/bangkok-incidents',      label: 'TRAFFIC INCIDENTS', source: 'TomTom'    },
+  { key: 'airbnb/bangkok-listings',       label: 'AIRBNB DENSITY',  source: 'InsideAirbnb' },
 ]
 
 function ageColor(ms: number | null): string {

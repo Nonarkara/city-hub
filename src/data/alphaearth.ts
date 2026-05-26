@@ -20,7 +20,7 @@ const BASE = PROXY ? `${PROXY}/ee/mapid` : null
 
 const TTL = 50 * 60 * 1000  // Match Worker's token cache window
 
-export type EEPreset = 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi'
+export type EEPreset = 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop'
 
 export interface EEMapResult {
   tiles: string         // {z}/{x}/{y} template

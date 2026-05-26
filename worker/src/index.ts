@@ -28,10 +28,13 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'data-go-th':    { origin: 'https://data.go.th/api/3/action',     cacheSeconds: 300 },
   'data-bma':      { origin: 'https://data.bangkok.go.th/api/3/action', cacheSeconds: 300 },
   'tmd':           { origin: 'https://data.tmd.go.th/api',          cacheSeconds: 600 },
+  'tmd-earthquake':{ origin: 'https://data.tmd.go.th/api/DailySeismicEvent/v1', cacheSeconds: 300 },
   'waqi':          { origin: 'https://api.waqi.info',               cacheSeconds: 300 },
+  'air4thai':      { origin: 'http://air4thai.pcd.go.th/services',  cacheSeconds: 600 },
   'firms':         { origin: 'https://firms.modaps.eosdis.nasa.gov/api', cacheSeconds: 600 },
   'traffy':        { origin: 'https://publicapi.traffy.in.th',      cacheSeconds: 120 },
   'gdelt':         { origin: 'https://api.gdeltproject.org/api/v2', cacheSeconds: 300 },
+  'thaiwater':     { origin: 'https://www.thaiwater.net',           cacheSeconds: 600 },
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -451,12 +454,12 @@ async function tryGeminiNarrate(
 // Pre-built expressions for common products live in EE_PRESETS.
 
 interface EEMapRequest {
-  preset?: 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi'
+  preset?: 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop'
   // Or arbitrary EE expression as JSON (server-side EE objects are huge —
   // for now only preset is supported)
 }
 
-const EE_PRESETS: Record<string, { expression: object; visualization: object }> = {
+const EE_PRESETS: Record<string, { expression: object; visualization: object; attribution?: string }> = {
   // Google AlphaEarth Foundations — 64-dim annual satellite embeddings.
   // Visualize first 3 PCA bands as RGB.
   alphaearth: {
@@ -496,6 +499,158 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object }> 
       },
     },
     visualization: { min: -0.3, max: 0.3, gamma: 1.4 },
+    attribution: 'Google Earth Engine · AlphaEarth Foundations',
+  },
+  // Sentinel-5P NO2 — Nitrogen Dioxide (traffic/industrial indicator)
+  's5p-no2': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.mean',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_NO2' } },
+                            },
+                          },
+                          start: { constantValue: '2025-05-01' },
+                          end: { constantValue: '2025-05-20' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['NO2_column_number_density'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 0, max: 0.0002, palette: ['black', 'blue', 'purple', 'cyan', 'green', 'yellow', 'red'] },
+    attribution: 'Copernicus Sentinel-5P · ESA',
+  },
+  // Sentinel-5P CO — Carbon Monoxide (burning/vehicle indicator)
+  's5p-co': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.mean',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_CO' } },
+                            },
+                          },
+                          start: { constantValue: '2025-05-01' },
+                          end: { constantValue: '2025-05-20' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['CO_column_number_density'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 0, max: 0.05, palette: ['black', 'blue', 'green', 'yellow', 'red'] },
+    attribution: 'Copernicus Sentinel-5P · ESA',
+  },
+  // Sentinel-5P SO2 — Sulfur Dioxide (industrial/power plant indicator)
+  's5p-so2': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.mean',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_SO2' } },
+                            },
+                          },
+                          start: { constantValue: '2025-05-01' },
+                          end: { constantValue: '2025-05-20' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['SO2_column_number_density'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 0, max: 0.001, palette: ['black', 'blue', 'cyan', 'yellow', 'red'] },
+    attribution: 'Copernicus Sentinel-5P · ESA',
+  },
+  // GHSL Population Density 2025 — Global Human Settlement Layer
+  'ghsl-pop': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.first',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.load',
+                        arguments: { id: { constantValue: 'JRC/GHSL/P2023A/GHS_POP' } },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['population_count'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 0, max: 1000, palette: ['000004', '1b0c41', '4a0c6b', '781c6d', 'a52c60', 'cf4446', 'f17020', 'fca50a', 'f7d31d', 'fcfdbf'] },
+    attribution: 'GHSL · European Commission JRC',
   },
 }
 
@@ -555,7 +710,7 @@ async function handleEEMapId(request: Request, env: Env): Promise<Response> {
   return json({
     preset: presetKey,
     tiles: tileUrl,
-    attribution: 'Google Earth Engine · AlphaEarth Foundations',
+    attribution: preset.attribution ?? 'Google Earth Engine',
   })
 }
 

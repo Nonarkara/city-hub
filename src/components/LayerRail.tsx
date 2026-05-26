@@ -19,7 +19,12 @@ const SOURCE_CACHE_PROBE: Record<SourceKey, string | null> = {
   'Open-Meteo': 'openmeteo/bkk-aqi',
   WAQI: 'waqi/bangkok-bbox',
   TMD: 'tmd/bangkok-forecast-7d',
-  Longdo: null, // basemap is CDN-cached, no fetch-time tracking; layer enables when VITE_LONGDO_KEY is set
+  Longdo: null, // basemap is CDN-cached, no fetch-time tracking
+  PCD: 'air4thai/bangkok',
+  OSM: 'osm/pois-bangkok',
+  Thaiwater: 'thaiwater/quality',
+  TomTom: 'tomtom/bangkok-flow',
+  InsideAirbnb: 'airbnb/bangkok-listings',
 }
 
 export function LayerRail({ activeIds, onToggle }: LayerRailProps) {

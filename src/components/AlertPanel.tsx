@@ -25,6 +25,11 @@ import {
 import { computeAlerts, RISK_COLOR, type CityAlert, type RiskLevel } from '../lib/risk'
 import { forecastSeries, type ForecastResult } from '../lib/forecast'
 import { narrate, type NarrateResult } from '../lib/narrate'
+import { computeCorrelations, type CorrelationInsight } from '../lib/correlations'
+import { fetchBangkokTrafficFlow } from '../data/tomtom-traffic'
+import { fetchThaiwaterLevels } from '../data/thaiwater'
+import { fetchAirbnbBangkok } from '../data/airbnb'
+import { fetchTmdEarthquakes } from '../data/tmd-earthquake'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -106,6 +111,32 @@ function BriefSection({ brief, onAction }: { brief: MorningBrief; onAction: (dra
                 <span className="brief-gap-bullet">·</span>
                 <span className="brief-gap-headline">{g.headline}</span>
                 <span className="brief-gap-detail">{g.detail}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {brief.exposure && (
+        <>
+          <div className="brief-sep">—</div>
+          <div className="brief-exposure">
+            <span className="brief-aside">population at risk</span>
+            <span className="brief-exposure-val">{brief.exposure}</span>
+          </div>
+        </>
+      )}
+
+      {brief.benchmarks && brief.benchmarks.length > 0 && (
+        <>
+          <div className="brief-sep">—</div>
+          <div className="brief-benchmarks">
+            <div className="brief-aside">benchmarks</div>
+            {brief.benchmarks.map((b, i) => (
+              <div key={i} className="brief-benchmark">
+                <span className="brief-benchmark-label">{b.label}</span>
+                <span className="brief-benchmark-val">{b.value}</span>
+                <span className="brief-benchmark-comp">{b.comparison}</span>
               </div>
             ))}
           </div>
@@ -513,6 +544,25 @@ function formatBriefAsText(brief: MorningBrief): string {
   return out
 }
 
+function CorrelationBar({ insights }: { insights: CorrelationInsight[] }) {
+  if (insights.length === 0) return null
+  return (
+    <div className="correlation-bar">
+      <span className="correlation-label">INTELLIGENCE</span>
+      <div className="correlation-list">
+        {insights.slice(0, 3).map((insight) => (
+          <div key={insight.id} className={`correlation-chip correlation-chip--${insight.severity}`}>
+            <span className="correlation-confidence">{Math.round(insight.confidence * 100)}%</span>
+            <span className="correlation-headline">{insight.headline}</span>
+            <span className="correlation-detail">{insight.detail}</span>
+            <span className="correlation-sources">{insight.sources.join(' · ')}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function AlertPanel() {
@@ -528,6 +578,7 @@ export function AlertPanel() {
   const [news, setNews] = useState<GdeltNewsResult | null>(null)
   const [draft, setDraft] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [correlations, setCorrelations] = useState<CorrelationInsight[]>([])
   // Mobile drawer — desktop ignores this; ::media queries hide the peek + backdrop
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -558,6 +609,24 @@ export function AlertPanel() {
       setTraffyGeo(tg as GeoJSON.FeatureCollection | null)
       setNews(n as GdeltNewsResult | null)
       setLastUpdate(new Date())
+
+      // Compute correlations asynchronously — non-blocking
+      Promise.all([
+        fetchBangkokTrafficFlow().catch((): [] => []),
+        fetchThaiwaterLevels().catch((): [] => []),
+        fetchAirbnbBangkok().catch((): [] => []),
+        fetchTmdEarthquakes().catch((): [] => []),
+      ]).then(([trafficFlow, waterLevels, airbnbListings, earthquakes]) => {
+        if (cancelled) return
+        const pm25Value = p?.pm25 ?? 0
+        const civicActive = tg ? (tg.features.filter((f) => {
+          const state = String((f.properties as Record<string, unknown>)?.state ?? '')
+          return state !== 'เสร็จสิ้น'
+        }).length) : 0
+        const floodCnt = Array.isArray(f?.features) ? f.features.length : 0
+        const insights = computeCorrelations(trafficFlow, waterLevels, airbnbListings, earthquakes, pm25Value, civicActive, floodCnt)
+        setCorrelations(insights)
+      }).catch(() => {})
     }
     load()
     const t = setInterval(load, 5 * 60_000)
@@ -664,6 +733,7 @@ export function AlertPanel() {
           <TMDSection tmd={tmd} />
           {pm25 && <TimeFMSection history={pm25.history24h.map(([v]) => v)} />}
           <AnomalyBar anomalies={anomalies} />
+          <CorrelationBar insights={correlations} />
 
           <div className="alert-list">
             {forecastAlert && <AlertCard key="forecast-aqi" alert={forecastAlert} onAction={handleAction} />}
@@ -692,10 +762,10 @@ export function AlertPanel() {
             <span className="footer-aphorism-en">— the data has gaps. the city still moves.</span>
           </div>
           <div className="footer-sources">
-            live · gistda · tmd · open-meteo · traffy · gdelt · nasa · bma
+            live · gistda · tmd · open-meteo · traffy · gdelt · nasa · bma · air4thai · thaiwater · tomtom · osm
           </div>
           <div className="footer-sources">
-            predictive · gemini 2.5 · holt-winters
+            predictive · gemini 2.5 · holt-winters · correlation engine
           </div>
           <div className="footer-signature">
             Non Arkaraprasertkul · DEPA Thailand
