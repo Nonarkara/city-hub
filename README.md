@@ -1,10 +1,12 @@
 # City Hub
 
+![Dr Non's City Hub — Open Civic Intelligence. We build. We own. We run. The city is ours to build.](public/hero.jpg)
+
 **A smart-city operating system for Bangkok and the wider ASEAN.** Live air quality, satellite imagery, civic-issue reports, weather forecasts, fires, news sentiment, and an AI-narrated governor's brief — all on one screen, on any device.
 
 → **Live:** [city-hub.pages.dev](https://city-hub.pages.dev)
 
-<!-- HERO_IMAGE_PLACEHOLDER — hero asset pending; insert at repo root and reference here. -->
+> *Replicate it yourself · Run on localhost or in the cloud · Open source, open data, open future · Built for citizens, by citizens.*
 
 ## What it shows
 
