@@ -17,6 +17,8 @@ import { SLICPanel } from './SLICPanel'
 import { slicSummaryText } from './SLICPanel'
 import { PatternsSection } from './PatternsSection'
 import { CitizenReportsSection } from './CitizenReportsSection'
+import { OpenDataInventory } from './OpenDataInventory'
+import { SingaporeDataSection } from './SingaporeDataSection'
 
 interface Props {
   activeCity: CityConfig
@@ -160,9 +162,13 @@ export function LiteCityPanel({ activeCity }: Props) {
 
           <SLICPanel activeCity={activeCity} />
 
+          <SingaporeDataSection activeCity={activeCity} />
+
           <PatternsSection activeCity={activeCity} />
 
           <CitizenReportsSection activeCity={activeCity} />
+
+          <OpenDataInventory activeCity={activeCity} />
 
           {forecast && (
             <div className="forecast-strip">

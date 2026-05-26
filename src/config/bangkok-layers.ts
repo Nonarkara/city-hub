@@ -2,7 +2,7 @@
  * Bangkok layer catalog — the single source of truth for the toggle rail.
  * Each layer is loaded lazily on first activation and toggled via visibility.
  */
-export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo' | 'WAQI' | 'TMD' | 'Longdo' | 'PCD' | 'OSM' | 'Thaiwater' | 'TomTom' | 'InsideAirbnb' | 'OpenAQ' | 'OpenWeatherMap' | 'GTFS'
+export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo' | 'WAQI' | 'TMD' | 'Longdo' | 'PCD' | 'OSM' | 'Thaiwater' | 'TomTom' | 'InsideAirbnb' | 'OpenAQ' | 'OpenWeatherMap' | 'GTFS' | 'Historical' | 'data.gov.sg' | 'LTA-SG' | 'NEA-SG' | 'DOSM' | 'CMUCCDC' | 'DEQP-TH'
 
 export interface LayerSpec {
   id: string
@@ -56,9 +56,10 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'tomtom-incidents', label: 'TRAFFIC INCIDENTS', description: 'Accidents, road closures, and construction from TomTom. Major incidents highlighted in red. Set VITE_TOMTOM_KEY for live data.', source: 'TomTom', defaultOn: false, status: 'live', category: 'transit' },
   { id: 'airbnb-density',  label: 'AIRBNB DENSITY',  description: 'Inside Airbnb quarterly data — ~20,000 short-term rental listings across Bangkok. Tourism pressure indicator: where visitors concentrate, where housing is commodified.', source: 'InsideAirbnb', defaultOn: false, status: 'live', category: 'admin' },
   { id: 'bma-open',        label: 'BMA OPEN DATA',   description: '1,431 BMA datasets via data.bangkok.go.th — drainage, traffic, public works, parks, citizen services, budget. Browse in the Data Feed panel (Analyst mode).', source: 'BMA', defaultOn: false, status: 'live', category: 'admin' },
+  { id: 'historical-events', label: 'HISTORICAL EVENTS', description: 'Curated archive: WWII Allied bombing targets (1942–45, USSBS Pacific), post-1945 industrial fires, major floods, civil-unrest sites. Stack with MODIS Aerosol Optical Depth to test the carbon-saturation hypothesis — does the aerosol pattern still anchor to historical heat-event geography?', source: 'Historical', defaultOn: false, status: 'live', category: 'admin' },
 ]
 
-export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo', 'PCD', 'OSM', 'Thaiwater', 'TomTom', 'InsideAirbnb', 'OpenAQ', 'OpenWeatherMap', 'GTFS']
+export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo', 'PCD', 'OSM', 'Thaiwater', 'TomTom', 'InsideAirbnb', 'OpenAQ', 'OpenWeatherMap', 'GTFS', 'Historical']
 
 /** PM2.5 → color (Thai PCD bands) */
 export const PM25_COLORS: Record<string, string> = {

@@ -33,6 +33,7 @@ import { PM25_COLORS, AQI_COLORS } from '../../config/bangkok-layers'
 import { fetchOpenAQLatest } from '../../data/openaq'
 import { fetchOWMWeather } from '../../data/openweathermap'
 import { fetchMockGTFSRealtime } from '../../data/gtfs-rt'
+import { bangkokHistoricalEventsGeoJSON } from '../../data/historical-events'
 
 interface LayerLoadState {
   loaded: Set<string>
@@ -110,7 +111,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -152,6 +153,7 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'tomtom-traffic':   'src-tomtom-traffic',
   'tomtom-incidents': 'src-tomtom-incidents',
   'airbnb-density':   'src-airbnb',
+  'historical-events':'src-historical-events',
 }
 
 // MapLibre layer IDs (one toggle may add multiple layers — e.g. rail = lines + dots + labels)
@@ -194,6 +196,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'tomtom-traffic':   ['ly-tomtom-traffic'],
   'tomtom-incidents': ['ly-tomtom-incidents'],
   'airbnb-density':   ['ly-airbnb-density'],
+  'historical-events':['ly-historical-events-halo', 'ly-historical-events-core'],
 }
 
 function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
@@ -257,6 +260,7 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'tomtom-traffic':   return addTomtomTraffic(map)
     case 'tomtom-incidents': return addTomtomIncidents(map)
     case 'airbnb-density':   return addAirbnbDensity(map)
+    case 'historical-events':return addHistoricalEvents(map)
   }
 }
 
@@ -1195,6 +1199,70 @@ async function addAirbnbDensity(map: MapLibre) {
       ],
     },
   })
+}
+
+async function addHistoricalEvents(map: MapLibre) {
+  const data = bangkokHistoricalEventsGeoJSON()
+  map.addSource('src-historical-events', { type: 'geojson', data })
+
+  // Pulsing halo — references the carbon-saturation hypothesis: heat-events
+  // leave persistent particulate signatures we expect to align with aerosol.
+  map.addLayer({
+    id: 'ly-historical-events-halo',
+    type: 'circle',
+    source: 'src-historical-events',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 8, 14, 26],
+      'circle-color': ['coalesce', ['get', 'color'], '#e53935'],
+      'circle-opacity': 0.18,
+      'circle-stroke-width': 1,
+      'circle-stroke-color': ['coalesce', ['get', 'color'], '#e53935'],
+      'circle-stroke-opacity': 0.55,
+    },
+  })
+
+  // Inner solid dot — exact location marker
+  map.addLayer({
+    id: 'ly-historical-events-core',
+    type: 'circle',
+    source: 'src-historical-events',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 7],
+      'circle-color': ['coalesce', ['get', 'color'], '#e53935'],
+      'circle-stroke-width': 1,
+      'circle-stroke-color': '#04060b',
+      'circle-opacity': 0.95,
+    },
+  })
+
+  // Wire popup
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
+  map.on('click', 'ly-historical-events-core', (e) => {
+    const f = e.features?.[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const props = f.properties ?? {}
+    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
+    const safe = (s: unknown) => String(s ?? '—').replace(/[<>&"]/g, (c) => `&#${c.charCodeAt(0)};`)
+    const typeLabel: Record<string, string> = {
+      'wwii-bombing': 'WWII BOMBING',
+      'industrial-fire': 'INDUSTRIAL FIRE',
+      'chemical-spill': 'CHEMICAL SPILL',
+      'flood-major': 'MAJOR FLOOD',
+      'civil-unrest': 'CIVIL UNREST',
+    }
+    const html = `
+      <div class="popup-historical">
+        <div class="popup-historical-type">${safe(typeLabel[String(props.type)] ?? props.type)}</div>
+        <div class="popup-historical-name">${safe(props.name)}</div>
+        ${props.nameLocal ? `<div class="popup-historical-name-th">${safe(props.nameLocal)}</div>` : ''}
+        <div class="popup-historical-date">${safe(props.date)}</div>
+        <div class="popup-historical-impact">${safe(props.impactDescription)}</div>
+        <div class="popup-historical-source">SOURCE · ${safe(props.source)}</div>
+      </div>`
+    popup.setLngLat(coords).setHTML(html).addTo(map)
+  })
+  map.on('mouseenter', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = '' })
 }
 
 // ── Popup wiring ──────────────────────────────────────────────────────────

@@ -32,6 +32,7 @@ import { fetchAirbnbBangkok } from '../data/airbnb'
 import { fetchTmdEarthquakes } from '../data/tmd-earthquake'
 import { SLICPanel } from './SLICPanel'
 import { PatternsSection } from './PatternsSection'
+import { OpenDataInventory } from './OpenDataInventory'
 import { CITIES } from '../config/cities'
 
 // Bangkok city config — for SLIC lookup
@@ -756,6 +757,8 @@ export function AlertPanel() {
           </div>
 
           {forecast && <ForecastStrip forecast={forecast} />}
+
+          <OpenDataInventory activeCity={BANGKOK_CITY} />
         </div>
 
         <div className="alert-brief-row">

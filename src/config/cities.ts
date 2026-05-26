@@ -28,6 +28,13 @@ export interface CityConfig {
   tier: 'full' | 'lite'
   availableLayers: string[]                             // layer IDs available for this city
   basemapDefault?: BasemapId                            // optional per-city default basemap
+
+  // City onboarding — these fields power the CityFactsCard that introduces
+  // a newcomer to the city in ~30 seconds. Static, curated facts.
+  area_km2: number
+  founded?: string                                      // year, era, or "ancient"
+  climate: string                                       // e.g. "Tropical monsoon", "Tropical rainforest"
+  distinctiveness: string                               // 1-line "what's special about this city"
 }
 
 /** Basemap variant IDs. Defined here for type sharing with MapView. */
@@ -68,7 +75,11 @@ export const CITIES: CityConfig[] = [
     countryName: 'Thailand',
     gdeltQuery: 'bangkok thailand',
     tier: 'full',
-    availableLayers: ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density'],
+    availableLayers: ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events'],
+    area_km2: 1568,
+    founded: '1782',
+    climate: 'Tropical savanna · monsoon-driven',
+    distinctiveness: 'Thailand\'s capital and largest city. Founded by Rama I after Ayutthaya\'s fall. Sits on the Chao Phraya delta — flat, river-veined, sinking ~2cm per year.',
     kpis: [
       { label: 'POPULATION', value: '10.5', unit: 'M' },
       { label: 'SMART SCORE', value: '71.2' },
@@ -89,6 +100,10 @@ export const CITIES: CityConfig[] = [
     gdeltQuery: 'chiang mai thailand',
     tier: 'lite',
     availableLayers: LITE_LAYERS,
+    area_km2: 152,
+    founded: '1296',
+    climate: 'Tropical savanna · burning season Jan–Apr',
+    distinctiveness: 'Northern Thailand\'s cultural capital. Lanna kingdom seat from 1296. Sits in a valley bowl that traps haze from agricultural burning every February–April.',
     kpis: [
       { label: 'POPULATION', value: '1.7', unit: 'M' },
       { label: 'BURNING RISK', value: 'HIGH' },
@@ -109,6 +124,10 @@ export const CITIES: CityConfig[] = [
     gdeltQuery: 'phuket thailand',
     tier: 'lite',
     availableLayers: LITE_LAYERS,
+    area_km2: 543,
+    founded: 'Tin-mining colony, 1700s',
+    climate: 'Tropical rainforest · two monsoons',
+    distinctiveness: 'Thailand\'s largest island and busiest tourist economy — 9.9M international visitors a year for a permanent population of 416K. Tin-mining past, Sino-Portuguese old town.',
     kpis: [
       { label: 'POPULATION', value: '416K' },
       { label: 'TOURISM/YR', value: '9.9', unit: 'M' },
@@ -128,6 +147,10 @@ export const CITIES: CityConfig[] = [
     gdeltQuery: 'singapore',
     tier: 'lite',
     availableLayers: LITE_LAYERS,
+    area_km2: 728,
+    founded: '1819',
+    climate: 'Tropical rainforest · equatorial',
+    distinctiveness: 'Southeast Asia\'s reference city for smart-city ambition. 1m residents on reclaimed land. data.gov.sg publishes more public datasets than any other ASEAN city.',
     kpis: [
       { label: 'POPULATION', value: '5.9', unit: 'M' },
       { label: 'SMART SCORE', value: '91.4' },
@@ -147,6 +170,10 @@ export const CITIES: CityConfig[] = [
     gdeltQuery: 'kuching malaysia',
     tier: 'lite',
     availableLayers: LITE_LAYERS,
+    area_km2: 431,
+    founded: '1827',
+    climate: 'Tropical rainforest · equatorial',
+    distinctiveness: 'Sarawak\'s capital, on the south bank of the Sarawak River. Cat-named in Malay. Multicultural by design — Iban, Bidayuh, Malay, Chinese, Indian — and the only Malaysian city where Mandarin signage rivals Malay.',
     kpis: [
       { label: 'POPULATION', value: '750K' },
       { label: 'IOC STATUS', value: 'LIVE' },

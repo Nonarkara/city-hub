@@ -211,16 +211,41 @@ export function MapView({ city, basemap, onMapReady }: MapViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Fly to city when active city changes
+  // Fly to city when active city changes — cinematic 2-stage motion.
+  // Stage 1: zoom out a bit (so the user sees they're moving across the map).
+  // Stage 2: fly across at the lower zoom, then zoom into the target.
+  // Skipped on first mount because the map is already at the start city.
+  const firstFlyRef = useRef(true)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const fly = () =>
-      map.flyTo({ center: city.center, zoom: city.zoom, duration: 1800, essential: true })
+    const flyCinematic = () => {
+      if (firstFlyRef.current) {
+        firstFlyRef.current = false
+        return
+      }
+      // Distance-aware easing: bigger jumps get a wider arc and longer duration
+      const from = map.getCenter()
+      const to = city.center
+      const dx = to[0] - from.lng
+      const dy = to[1] - from.lat
+      const distDeg = Math.sqrt(dx * dx + dy * dy)
+      // For nearby cities (Bangkok ↔ Chiang Mai = ~5°) keep it quick; for
+      // far jumps (Bangkok ↔ Singapore = ~13°) sweep wider.
+      const duration = Math.min(3200, Math.max(1400, distDeg * 200))
+      map.flyTo({
+        center: to,
+        zoom: city.zoom,
+        duration,
+        essential: true,
+        curve: distDeg > 3 ? 1.6 : 1.2,   // bigger arc for longer hauls
+        speed: 0.9,
+      })
+    }
     if (map.isStyleLoaded()) {
-      fly()
+      flyCinematic()
     } else {
-      map.once('load', fly)
+      map.once('load', flyCinematic)
     }
   }, [city])
 

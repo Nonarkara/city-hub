@@ -18,6 +18,9 @@ import { useAnomalies } from './hooks/useAnomalies'
 import { ASEANStrip } from './components/ASEANStrip'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
+import { InsightPanel, type InsightTemplate } from './components/InsightPanel'
+import { CityFactsCard } from './components/CityFactsCard'
+import { prefetchCity } from './lib/city-prefetch'
 
 const DEFAULT_ACTIVE_LAYERS = new Set(
   BANGKOK_LAYERS.filter((l) => l.defaultOn && l.status === 'live').map((l) => l.id),
@@ -34,6 +37,25 @@ export default function App() {
   const [cmdkOpen, setCmdkOpen] = useState(false)
   const [basemap, setBasemap] = useState<BasemapId>(defaultBasemap())
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  const [insightOpen, setInsightOpen] = useState(false)
+
+  // Apply an insight template — activate its layers, optional basemap + zoom,
+  // switch to analyst mode so the map is uncovered.
+  const applyInsight = useCallback((t: InsightTemplate) => {
+    setActiveLayers(new Set(t.layers))
+    if (t.basemap) setBasemap(t.basemap)
+    setGovernorMode(false)
+    // Zoom to the scale the stack reads at. Different layers want different
+    // scales — aerosol at z8, heat at z11, etc.
+    if (t.zoom && map) {
+      map.flyTo({
+        center: activeCity.center,
+        zoom: t.zoom,
+        duration: 1600,
+        essential: true,
+      })
+    }
+  }, [map, activeCity])
 
   if (typeof window !== 'undefined') {
     (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)
@@ -91,6 +113,8 @@ export default function App() {
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
+      <CityFactsCard activeCity={activeCity} />
+
       <header className="topbar">
         <span className="topbar-wordmark" title="DR NON'S CITY HUB">
           CITY HUB<span className="topbar-version">v5</span>
@@ -103,6 +127,8 @@ export default function App() {
               key={city.id}
               className={`topbar-tab ${city.id === activeCity.id ? 'topbar-tab--active' : ''}`}
               onClick={() => cityHandler(city)}
+              onMouseEnter={() => prefetchCity(city)}
+              onFocus={() => prefetchCity(city)}
               title={city.name}
             >
               {city.hudClockLabel}
@@ -175,6 +201,17 @@ export default function App() {
           )}
         </div>
 
+        {/* INSIGHT — the pattern-revealing button */}
+        <button
+          className="topbar-insight-btn"
+          onClick={() => setInsightOpen(true)}
+          title="Open insight templates — pre-configured layer stacks"
+          aria-label="Open insights"
+        >
+          <span className="topbar-insight-icon" aria-hidden>◇</span>
+          <span className="topbar-insight-label">INSIGHT</span>
+        </button>
+
         <button
           className="topbar-cmdk"
           onClick={() => setCmdkOpen(true)}
@@ -185,6 +222,13 @@ export default function App() {
           <span className="topbar-cmdk-key">⌘K</span>
         </button>
       </header>
+
+      <InsightPanel
+        open={insightOpen}
+        onClose={() => setInsightOpen(false)}
+        activeCity={activeCity}
+        onApply={applyInsight}
+      />
 
       <CityRail
         activeCity={activeCity}

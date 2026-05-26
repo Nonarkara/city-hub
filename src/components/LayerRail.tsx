@@ -28,6 +28,13 @@ const SOURCE_CACHE_PROBE: Record<SourceKey, string | null> = {
   OpenAQ: null,
   OpenWeatherMap: null,
   GTFS: null,
+  Historical: null,         // curated archive, no live freshness
+  'data.gov.sg': null,      // Singapore open-data portal
+  'LTA-SG': null,           // Land Transport Authority Singapore
+  'NEA-SG': null,           // National Environment Agency Singapore
+  DOSM: null,               // Department of Statistics Malaysia
+  CMUCCDC: null,            // CMU Center for Climate Change & Disaster
+  'DEQP-TH': null,          // Thai Dept of Environmental Quality Promotion
 }
 
 export function LayerRail({ activeIds, onToggle }: LayerRailProps) {
