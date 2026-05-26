@@ -1,19 +1,28 @@
 import { useEffect, useRef } from 'react'
-import { Map as MapLibre, type StyleSpecification } from 'maplibre-gl'
+import mapboxgl, { Map as MapboxMap, type StyleSpecification } from 'mapbox-gl'
 import type { CityConfig } from '../config/cities'
 
-// UNL vectorial style — same JSON that unl-map-js/getStyle('vectorial') produces.
-// We apply auth via transformRequest so no wrapper dependency needed.
-const UNL_STYLE: StyleSpecification = {
+// Mapbox token — set once at module scope. Public pk.* token, URL-restricted
+// in Mapbox account UI to *.pages.dev + *.nonarkara.org.
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string
+
+// Dark vectorial style — inline so we own the paint. Mapbox Streets v8 schema.
+// Aesthetic preserved from the prior UNL-OMV inline style: water dark navy,
+// roads amber-warm, places amber, buildings dark blue-grey (3D extrusions
+// applied separately via use-bangkok-layers.ts).
+//
+// Thai-first labels via coalesce(name_th, name_en, name). Glyphs hosted by
+// Mapbox; font swapped from "Fira GO Regular" (not in Mapbox defaults) to
+// "DIN Pro Regular" which is included.
+const CITY_HUB_STYLE: StyleSpecification = {
   version: 8,
-  name: 'UNL Vectorial',
+  name: 'City Hub Dark',
   metadata: {},
-  glyphs: 'https://assets.vector.hereapi.com/fonts/{fontstack}/{range}.pbf',
+  glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
   sources: {
-    omv: {
+    composite: {
       type: 'vector',
-      maxzoom: 17,
-      tiles: ['https://tiles.unl.global/v1/vector/1/{z}/{x}/{y}'],
+      url: 'mapbox://mapbox.mapbox-streets-v8',
     },
   },
   layers: [
@@ -25,46 +34,54 @@ const UNL_STYLE: StyleSpecification = {
     {
       id: 'water',
       type: 'fill',
-      source: 'omv',
+      source: 'composite',
       'source-layer': 'water',
       paint: { 'fill-color': '#071a2c' },
     },
     {
       id: 'water_outline',
       type: 'line',
-      source: 'omv',
+      source: 'composite',
       'source-layer': 'water',
       paint: { 'line-color': '#1a4a6e', 'line-width': 0.6, 'line-opacity': 0.6 },
     },
     {
+      id: 'waterway',
+      type: 'line',
+      source: 'composite',
+      'source-layer': 'waterway',
+      paint: { 'line-color': '#1a4a6e', 'line-width': 0.5, 'line-opacity': 0.55 },
+    },
+    {
       id: 'landuse_park',
       type: 'fill',
-      source: 'omv',
+      source: 'composite',
       'source-layer': 'landuse',
-      filter: ['==', 'kind', 'park'],
+      filter: ['==', ['get', 'class'], 'park'],
       paint: { 'fill-color': '#0a1410', 'fill-opacity': 0.85 },
     },
     {
       id: 'admin_boundaries',
       type: 'line',
-      source: 'omv',
-      'source-layer': 'boundaries',
+      source: 'composite',
+      'source-layer': 'admin',
+      filter: ['<=', ['to-number', ['get', 'admin_level']], 2],
       paint: { 'line-color': '#244a6a', 'line-width': 0.5, 'line-opacity': 0.5, 'line-dasharray': [2, 2] },
     },
     {
       id: 'roads_minor',
       type: 'line',
-      source: 'omv',
-      'source-layer': 'roads',
-      filter: ['in', 'kind', 'minor_road', 'path', 'pedestrian'],
+      source: 'composite',
+      'source-layer': 'road',
+      filter: ['in', ['get', 'class'], ['literal', ['street', 'street_limited', 'path', 'pedestrian', 'track', 'service']]],
       paint: { 'line-color': '#0f1626', 'line-width': 0.7 },
     },
     {
       id: 'roads_major_casing',
       type: 'line',
-      source: 'omv',
-      'source-layer': 'roads',
-      filter: ['in', 'kind', 'highway', 'major_road', 'secondary_road'],
+      source: 'composite',
+      'source-layer': 'road',
+      filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
       paint: {
         'line-color': '#1a1206',
         'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.6, 14, 6],
@@ -73,9 +90,9 @@ const UNL_STYLE: StyleSpecification = {
     {
       id: 'roads_major',
       type: 'line',
-      source: 'omv',
-      'source-layer': 'roads',
-      filter: ['in', 'kind', 'highway', 'major_road', 'secondary_road'],
+      source: 'composite',
+      'source-layer': 'road',
+      filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
       paint: {
         'line-color': '#3d2a0f',
         'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.8, 14, 3.2],
@@ -84,49 +101,49 @@ const UNL_STYLE: StyleSpecification = {
     {
       id: 'buildings',
       type: 'fill',
-      source: 'omv',
-      'source-layer': 'buildings',
+      source: 'composite',
+      'source-layer': 'building',
       minzoom: 13,
       paint: { 'fill-color': '#0a1020', 'fill-opacity': 0.92 },
     },
     {
       id: 'buildings_outline',
       type: 'line',
-      source: 'omv',
-      'source-layer': 'buildings',
+      source: 'composite',
+      'source-layer': 'building',
       minzoom: 14,
       paint: { 'line-color': '#1a2540', 'line-width': 0.4, 'line-opacity': 0.7 },
     },
     {
       id: 'roads_labels',
       type: 'symbol',
-      source: 'omv',
-      'source-layer': 'roads',
+      source: 'composite',
+      'source-layer': 'road',
       minzoom: 14,
-      filter: ['in', 'kind', 'major_road', 'secondary_road', 'highway'],
+      filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
       layout: {
         'symbol-placement': 'line',
-        'text-field': '{name}',
+        'text-field': ['coalesce', ['get', 'name_th'], ['get', 'name_en'], ['get', 'name']],
         'text-size': 10,
         'text-letter-spacing': 0.12,
         'text-transform': 'uppercase',
-        'text-font': ['Fira GO Regular'],
+        'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
       },
       paint: { 'text-color': '#7a5a2a', 'text-halo-color': '#04060b', 'text-halo-width': 1.5 },
     },
     {
       id: 'places',
       type: 'symbol',
-      source: 'omv',
-      'source-layer': 'places',
+      source: 'composite',
+      'source-layer': 'place_label',
       minzoom: 10,
-      filter: ['in', 'kind', 'city', 'town', 'suburb', 'neighbourhood'],
+      filter: ['in', ['get', 'type'], ['literal', ['city', 'town', 'suburb', 'neighbourhood']]],
       layout: {
-        'text-field': '{name}',
+        'text-field': ['coalesce', ['get', 'name_th'], ['get', 'name_en'], ['get', 'name']],
         'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 14, 13],
         'text-letter-spacing': 0.16,
         'text-transform': 'uppercase',
-        'text-font': ['Fira GO Regular'],
+        'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
       },
       paint: { 'text-color': '#c87a14', 'text-halo-color': '#04060b', 'text-halo-width': 2 },
     },
@@ -135,38 +152,24 @@ const UNL_STYLE: StyleSpecification = {
 
 interface MapViewProps {
   city: CityConfig
-  vpmId: string
-  apiKey: string
-  onMapReady?: (map: MapLibre) => void
+  onMapReady?: (map: MapboxMap) => void
 }
 
-export function MapView({ city, vpmId, apiKey, onMapReady }: MapViewProps) {
+export function MapView({ city, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<MapLibre | null>(null)
+  const mapRef = useRef<MapboxMap | null>(null)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = new MapLibre({
+    const map = new MapboxMap({
       container: containerRef.current,
-      style: UNL_STYLE,
+      style: CITY_HUB_STYLE,
       center: city.center,
       zoom: city.zoom,
       minZoom: 3,
       renderWorldCopies: false,
       attributionControl: true,
-      transformRequest: (url) => {
-        if (url.includes('tiles.unl.global')) {
-          return {
-            url,
-            headers: {
-              'x-unl-api-key': apiKey,
-              'x-unl-vpm-id': vpmId,
-            },
-          }
-        }
-        return { url }
-      },
     })
 
     mapRef.current = map

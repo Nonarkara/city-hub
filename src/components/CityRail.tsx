@@ -50,7 +50,6 @@ const FLAG: Record<string, string> = {
 interface CityRailProps {
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
-  vpmId: string
   onDistrictSelect?: (d: DistrictSummary) => void
   selectedDistrict?: DistrictSummary | null
 }
@@ -91,7 +90,7 @@ function CityList({
 }
 
 // Desktop left rail
-export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, selectedDistrict }: CityRailProps) {
+export function CityRail({ activeCity, onSelect, onDistrictSelect, selectedDistrict }: CityRailProps) {
   const isBkk = activeCity.id === 'bangkok'
   return (
     <aside className="rail">
@@ -116,10 +115,6 @@ export function CityRail({ activeCity, onSelect, vpmId, onDistrictSelect, select
         </>
       )}
 
-      <div className="vpm-badge">
-        <span className="vpm-badge-label">VPM</span>
-        <span className="vpm-badge-id">{vpmId}</span>
-      </div>
       <div className="rail-credit">
         <span lang="th" className="rail-credit-aphorism">ทุกอย่างเกิดขึ้นเพราะมีเหตุ</span>
         <span className="rail-credit-name">Non Arkaraprasertkul</span>

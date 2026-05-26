@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { Map as MapLibre } from 'maplibre-gl'
-import { CITIES, vpmId, type CityConfig } from './config/cities'
+import type { Map as MapboxMap } from 'mapbox-gl'
+import { CITIES, type CityConfig } from './config/cities'
 import { BANGKOK_LAYERS } from './config/bangkok-layers'
 import { MapView } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
@@ -18,8 +18,6 @@ import { ASEANStrip } from './components/ASEANStrip'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
 import { type DistrictSummary } from './hooks/useDistrictData'
 
-const API_KEY = import.meta.env.VITE_UNL_API_KEY as string
-
 const DEFAULT_ACTIVE_LAYERS = new Set(
   BANGKOK_LAYERS.filter((l) => l.defaultOn && l.status === 'live').map((l) => l.id),
 )
@@ -27,7 +25,7 @@ const DEFAULT_ACTIVE_LAYERS = new Set(
 export default function App() {
   const [activeCity, setActiveCity] = useState<CityConfig>(CITIES[0])
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
-  const [map, setMap] = useState<MapLibre | null>(null)
+  const [map, setMap] = useState<MapboxMap | null>(null)
   const [activeLayers, setActiveLayers] = useState<Set<string>>(DEFAULT_ACTIVE_LAYERS)
   // Governor mode = default briefing view. Analyst mode = full layer rail.
   const [governorMode, setGovernorMode] = useState(true)
@@ -63,7 +61,7 @@ export default function App() {
 
   return (
     <>
-      <MapView city={activeCity} vpmId={vpmId} apiKey={API_KEY} onMapReady={setMap} />
+      <MapView city={activeCity} onMapReady={setMap} />
 
       <HUD
         map={map}
@@ -118,13 +116,11 @@ export default function App() {
           <span className="topbar-cmdk-icon">⌕</span>
           <span className="topbar-cmdk-key">⌘K</span>
         </button>
-        <span className="topbar-vpm-label">UNL VPM</span>
       </header>
 
       <CityRail
         activeCity={activeCity}
         onSelect={cityHandler}
-        vpmId={vpmId}
         onDistrictSelect={bangkokMode ? setSelectedDistrict : undefined}
         selectedDistrict={selectedDistrict}
       />

@@ -1,7 +1,7 @@
 {
   "name": "unl-city-hub",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
+    "@types/mapbox-gl": "^3.4.1",
+    "mapbox-gl": "^3.24.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "unl-map-js": "^0.1.7"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",

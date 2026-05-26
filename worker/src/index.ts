@@ -35,12 +35,14 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'traffy':        { origin: 'https://publicapi.traffy.in.th',      cacheSeconds: 120 },
   'gdelt':         { origin: 'https://api.gdeltproject.org/api/v2', cacheSeconds: 300 },
   'thaiwater':     { origin: 'https://www.thaiwater.net',           cacheSeconds: 600 },
+  'openaq':        { origin: 'https://api.openaq.org/v3',           cacheSeconds: 300 },
+  'owm':           { origin: 'https://api.openweathermap.org/data/3.0', cacheSeconds: 300 },
 }
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
   'Access-Control-Max-Age': '86400',
 }
 
@@ -87,11 +89,17 @@ export default {
     const upstream = new URL(target.origin + '/' + path + url.search)
 
     try {
+      const upstreamHeaders: Record<string, string> = {
+        'Accept': 'application/json, text/csv, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+      }
+      const xApiKey = request.headers.get('X-API-Key')
+      if (xApiKey) {
+        upstreamHeaders['X-API-Key'] = xApiKey
+      }
+
       const upstreamRes = await fetch(upstream.toString(), {
-        headers: {
-          'Accept': 'application/json, text/csv, text/plain, */*',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-        },
+        headers: upstreamHeaders,
       })
 
       // Pass through body with added CORS + cache headers

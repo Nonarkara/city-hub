@@ -25,6 +25,9 @@ const SOURCE_CACHE_PROBE: Record<SourceKey, string | null> = {
   Thaiwater: 'thaiwater/quality',
   TomTom: 'tomtom/bangkok-flow',
   InsideAirbnb: 'airbnb/bangkok-listings',
+  OpenAQ: null,
+  OpenWeatherMap: null,
+  GTFS: null,
 }
 
 export function LayerRail({ activeIds, onToggle }: LayerRailProps) {

@@ -9,8 +9,4 @@ export default defineConfig({
       '@shared': fileURLToPath(new URL('../_shared', import.meta.url)),
     },
   },
-  define: {
-    // unl-core (CJS) references Node's `global` — polyfill for browser
-    global: 'globalThis',
-  },
 })

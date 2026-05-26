@@ -4,7 +4,7 @@
  * where the ribbon explicitly enables them.
  */
 import { useEffect, useState } from 'react'
-import type { Map as MapLibre } from 'maplibre-gl'
+import type { Map as MapLibre } from 'mapbox-gl'
 
 interface HUDProps {
   map: MapLibre | null

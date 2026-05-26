@@ -11,7 +11,7 @@
  * popup is regular HTML, (3) no source/layer cleanup needed.
  */
 import { useEffect, useRef, useState } from 'react'
-import type { Map as MapLibre } from 'maplibre-gl'
+import type { Map as MapLibre } from 'mapbox-gl'
 import type { Anomaly } from '../lib/intelligence'
 
 interface Props {

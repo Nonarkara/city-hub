@@ -6,11 +6,12 @@
  *   - Toggle = set visibility 'visible' | 'none'
  *   - Data fetchers go through cachedFetch (TTL + dedup)
  *
- * Adds layers via standard MapLibre addSource/addLayer.
+ * Adds layers via standard Mapbox GL JS addSource/addLayer (API compatible
+ * with the prior MapLibre integration — same call signatures).
  */
 import { useEffect, useRef } from 'react'
-import type { Map as MapLibre, Popup as MapLibrePopup } from 'maplibre-gl'
-import { Popup } from 'maplibre-gl'
+import type { Map as MapLibre, Popup as MapLibrePopup } from 'mapbox-gl'
+import { Popup } from 'mapbox-gl'
 import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, bangkokHistoricalFloods } from '../../data/gistda'
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'
@@ -29,6 +30,9 @@ import { fetchWaterQualityGeoJSON, fetchWaterLevelGeoJSON } from '../../data/tha
 import { fetchTrafficIncidentGeoJSON, fetchBangkokTrafficFlow, tomtomKeyAvailable } from '../../data/tomtom-traffic'
 import { fetchAirbnbGeoJSON } from '../../data/airbnb'
 import { PM25_COLORS, AQI_COLORS } from '../../config/bangkok-layers'
+import { fetchOpenAQLatest } from '../../data/openaq'
+import { fetchOWMWeather } from '../../data/openweathermap'
+import { fetchMockGTFSRealtime } from '../../data/gtfs-rt'
 
 interface LayerLoadState {
   loaded: Set<string>
@@ -106,7 +110,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'rail', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -115,12 +119,15 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'aqi-live':         'src-aqi',
   'air4thai-stations':'src-air4thai',
   'waqi-stations':    'src-waqi',
+  'openaq-stations':  'src-openaq',
   'fires-gistda':     'src-fires-gistda',
   'fires-firms':      'src-fires-firms',
   'floods-historical':'src-floods-historical',
   'floods':           'src-floods',
   'districts':        'src-districts',
+  'owm-weather':      'src-owm-weather',
   'rail':             'src-rail',
+  'gtfs-transit-live':'src-gtfs',
   'gibs-aod':         'src-gibs-aod',
   'sat-true-color':   'src-sat-true-color',
   'sat-night-lights': 'src-sat-night-lights',
@@ -136,7 +143,7 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
   'traffy-heatmap':   'src-traffy-heatmap',
-  'buildings-3d':     'omv',
+  'buildings-3d':     'composite',
   'osm-emergency':    'src-osm-emergency',
   'osm-education':    'src-osm-education',
   'water-quality':    'src-water-quality',
@@ -154,12 +161,15 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'aqi-live':         ['ly-aqi'],
   'air4thai-stations':['ly-air4thai'],
   'waqi-stations':    ['ly-waqi-fill', 'ly-waqi-label'],
+  'openaq-stations':  ['ly-openaq-fill', 'ly-openaq-label'],
   'fires-gistda':     ['ly-fires-gistda'],
   'fires-firms':      ['ly-fires-firms'],
   'floods-historical':['ly-floods-historical'],
   'floods':           ['ly-floods'],
   'districts':        ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
+  'owm-weather':      ['ly-owm-weather'],
   'rail':             ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
+  'gtfs-transit-live':['ly-gtfs-dots', 'ly-gtfs-labels'],
   'gibs-aod':         ['ly-gibs-aod'],
   'sat-true-color':   ['ly-sat-true-color'],
   'sat-night-lights': ['ly-sat-night-lights'],
@@ -214,12 +224,15 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'aqi-live':         return addAQILive(map)
     case 'air4thai-stations':return addAir4ThaiStations(map)
     case 'waqi-stations':    return addWAQIStations(map)
+    case 'openaq-stations':  return addOpenAQStations(map)
     case 'fires-gistda':     return addGistdaFires(map)
     case 'fires-firms':      return addFirmsFires(map)
     case 'floods-historical':return addHistoricalFloods(map)
     case 'floods':           return addFloods(map)
     case 'districts':        return addDistricts(map)
+    case 'owm-weather':      return addOWMWeather(map)
     case 'rail':             return addRail(map)
+    case 'gtfs-transit-live':return addGTFSTransit(map)
     case 'gibs-aod':         return addGibsAod(map)
     case 'sat-true-color':   return addSatTrueColor(map)
     case 'sat-night-lights': return addSatNightLights(map)
@@ -848,30 +861,23 @@ async function addTraffyIssues(map: MapLibre) {
 }
 
 async function addBuildings3D(map: MapLibre) {
-  // Re-uses UNL's omv vector source — no new fetch. Extrudes the buildings
-  // source-layer using whichever height field UNL exposes; defensive
-  // coalescing handles missing/null fields gracefully.
-  if (!map.getSource('omv')) return  // belt + suspenders
+  // Re-uses Mapbox Streets `composite` vector source — no new fetch. The
+  // `building` source-layer always exposes `height` and `min_height` fields,
+  // so the prior height-coalesce fallback chain is no longer needed.
+  if (!map.getSource('composite')) return  // belt + suspenders
   map.addLayer({
     id: 'ly-buildings-3d',
     type: 'fill-extrusion',
-    source: 'omv',
-    'source-layer': 'buildings',
+    source: 'composite',
+    'source-layer': 'building',
     minzoom: 14,
     paint: {
-      // Try height → render_height → levels*3 → 6m fallback
-      'fill-extrusion-height': [
-        'coalesce',
-        ['get', 'height'],
-        ['get', 'render_height'],
-        ['*', ['coalesce', ['get', 'levels'], 2], 3],
-        6,
-      ],
+      'fill-extrusion-height': ['coalesce', ['get', 'height'], 6],
       'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
       // Color graded by height — short = dark blue-grey, tall = amber-warm
       'fill-extrusion-color': [
         'interpolate', ['linear'],
-        ['coalesce', ['get', 'height'], ['*', ['coalesce', ['get', 'levels'], 2], 3], 6],
+        ['coalesce', ['get', 'height'], 6],
         0,   '#0d1424',
         20,  '#1f2a40',
         50,  '#3d3018',
@@ -1194,7 +1200,7 @@ async function addAirbnbDensity(map: MapLibre) {
 // ── Popup wiring ──────────────────────────────────────────────────────────
 
 function wirePm25Popup(map: MapLibre): MapLibrePopup {
-  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'unl-popup' })
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
   map.on('click', 'ly-pm25', (e) => {
     const f = e.features?.[0]
     if (!f || f.geometry.type !== 'Point') return
@@ -1215,7 +1221,7 @@ function wirePm25Popup(map: MapLibre): MapLibrePopup {
 }
 
 function wireTraffyPopup(map: MapLibre): MapLibrePopup {
-  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'unl-popup' })
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
   map.on('click', 'ly-traffy-issues', (e) => {
     const f = e.features?.[0]
     if (!f || f.geometry.type !== 'Point') return
@@ -1245,7 +1251,7 @@ function wireDistrictPopup(
   map: MapLibre,
   onClickRef: { current: ((d: DistrictSummary) => void) | undefined },
 ): MapLibrePopup {
-  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'unl-popup' })
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
   map.on('click', 'ly-districts-fill', (e) => {
     const f = e.features?.[0]
     if (!f) return
@@ -1292,4 +1298,98 @@ function wireDistrictPopup(
 
 function escape(s: string): string {
   return s.replace(/[&<"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
+}
+
+async function addOpenAQStations(map: MapLibre) {
+  const data = await fetchOpenAQLatest()
+  map.addSource('src-openaq', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-openaq-fill',
+    type: 'circle',
+    source: 'src-openaq',
+    paint: {
+      'circle-radius': 6,
+      'circle-color': '#9c27b0',
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+  })
+  map.addLayer({
+    id: 'ly-openaq-label',
+    type: 'symbol',
+    source: 'src-openaq',
+    layout: {
+      'text-field': ['to-string', ['get', 'value']],
+      'text-size': 10,
+      'text-font': ['Fira GO Regular'],
+      'text-offset': [0, 1.5],
+    },
+    paint: {
+      'text-color': '#fff',
+    },
+  })
+}
+
+async function addOWMWeather(map: MapLibre) {
+  const weather = await fetchOWMWeather()
+  if (!weather) return
+  const fc: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [100.5018, 13.7563] },
+      properties: {
+        temp: weather.current.temp,
+        desc: weather.current.weather[0]?.description ?? '',
+      },
+    }],
+  }
+  map.addSource('src-owm-weather', { type: 'geojson', data: fc })
+  map.addLayer({
+    id: 'ly-owm-weather',
+    type: 'symbol',
+    source: 'src-owm-weather',
+    layout: {
+      'text-field': ['concat', ['to-string', ['get', 'temp']], '°C\n', ['get', 'desc']],
+      'text-size': 16,
+      'text-font': ['Fira GO Regular'],
+    },
+    paint: {
+      'text-color': '#fff',
+      'text-halo-color': '#000',
+      'text-halo-width': 2,
+    },
+  })
+}
+
+async function addGTFSTransit(map: MapLibre) {
+  const data = await fetchMockGTFSRealtime()
+  map.addSource('src-gtfs', { type: 'geojson', data })
+  map.addLayer({
+    id: 'ly-gtfs-dots',
+    type: 'circle',
+    source: 'src-gtfs',
+    paint: {
+      'circle-radius': 6,
+      'circle-color': '#00e5ff',
+      'circle-stroke-color': '#000',
+      'circle-stroke-width': 2,
+    },
+  })
+  map.addLayer({
+    id: 'ly-gtfs-labels',
+    type: 'symbol',
+    source: 'src-gtfs',
+    layout: {
+      'text-field': ['concat', ['get', 'direction'], ' (', ['get', 'speed'], ' km/h)'],
+      'text-size': 10,
+      'text-font': ['Fira GO Regular'],
+      'text-offset': [0, 1.5],
+    },
+    paint: {
+      'text-color': '#00e5ff',
+      'text-halo-color': '#000',
+      'text-halo-width': 1,
+    },
+  })
 }

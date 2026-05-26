@@ -2,7 +2,7 @@
  * Bangkok layer catalog — the single source of truth for the toggle rail.
  * Each layer is loaded lazily on first activation and toggled via visibility.
  */
-export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo' | 'WAQI' | 'TMD' | 'Longdo' | 'PCD' | 'OSM' | 'Thaiwater' | 'TomTom' | 'InsideAirbnb'
+export type SourceKey = 'GISTDA' | 'NASA' | 'BMA' | 'data.go.th' | 'JAXA' | 'Traffy' | 'Open-Meteo' | 'WAQI' | 'TMD' | 'Longdo' | 'PCD' | 'OSM' | 'Thaiwater' | 'TomTom' | 'InsideAirbnb' | 'OpenAQ' | 'OpenWeatherMap' | 'GTFS'
 
 export interface LayerSpec {
   id: string
@@ -20,6 +20,7 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'aqi-live',        label: 'AQI · OPEN-METEO', description: 'Real-time US AQI from Open-Meteo air-quality API: PM2.5, PM10, NO₂, O₃, SO₂, CO', source: 'Open-Meteo', defaultOn: false, status: 'live', category: 'air' },
   { id: 'air4thai-stations', label: 'AIR4THAI · OFFICIAL', description: 'Pollution Control Department (PCD) official air quality stations — the source Bangkok Metropolitan Administration and Ministry of Public Health actually use. Shows all 6 pollutants: PM2.5, PM10, NO₂, SO₂, CO, O₃.', source: 'PCD', defaultOn: true, status: 'live', category: 'air' },
   { id: 'waqi-stations',   label: 'AQI · WAQI',      description: 'World Air Quality Index global sensor network — different stations from GISTDA. Free token from aqicn.org/data-platform/token; set VITE_WAQI_TOKEN. Without token the layer renders empty.', source: 'WAQI', defaultOn: false, status: 'live', category: 'air' },
+  { id: 'openaq-stations', label: 'OPENAQ GLOBAL',   description: 'OpenAQ v3 harmonized global air quality platform. Aggregates multiple sensors. Set VITE_OPENAQ_KEY.', source: 'OpenAQ', defaultOn: false, status: 'live', category: 'air' },
   { id: 'gibs-aod',        label: 'AEROSOL (GIBS)',  description: 'NASA MODIS aerosol optical depth, max zoom 6 — best viewed zoomed-out over Thailand', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'fires-gistda',    label: 'FIRES · GISTDA',  description: 'VIIRS hotspots from GISTDA. Service last refreshed Apr 2023 — historical 2023 fire-season snapshot, not live.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'fire' },
   { id: 'fires-firms',     label: 'FIRES · FIRMS',   description: 'NASA FIRMS live hotspots via Cloudflare Worker proxy.', source: 'NASA', defaultOn: false, status: 'live', category: 'fire' },
@@ -28,7 +29,9 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'traffy-issues',   label: 'CIVIC ISSUES',    description: 'Traffy Fondue real-time citizen reports: roads, floods, broken lights, garbage, buildings. 1.3M+ tickets.', source: 'Traffy', defaultOn: false, status: 'live', category: 'civic' },
   { id: 'traffy-heatmap',  label: 'CIVIC HEATMAP',   description: 'Continuous density field of Traffy citizen reports — shows where complaints concentrate as a smooth gradient, not point markers. Where the city is loudest.', source: 'Traffy', defaultOn: false, status: 'live', category: 'civic' },
   { id: 'districts',       label: 'DISTRICTS',       description: 'All 50 Bangkok khet colored by composite risk: Traffy civic density + PM2.5 air quality per district.', source: 'BMA', defaultOn: true, status: 'live', category: 'admin' },
+  { id: 'owm-weather',     label: 'WEATHER · OWM',   description: 'Current weather from OpenWeatherMap One Call 3.0 API. Set VITE_OPENWEATHERMAP_KEY.', source: 'OpenWeatherMap', defaultOn: false, status: 'live', category: 'admin' },
   { id: 'rail',            label: 'BTS / MRT / ARL', description: 'Curated key stations and simplified line geometry',      source: 'BMA',        defaultOn: true,  status: 'live',    category: 'transit' },
+  { id: 'gtfs-transit-live', label: 'LIVE TRANSIT (GTFS-RT)', description: 'Mock GTFS-Realtime feed showing simulated train movements along the BTS Sukhumvit line.', source: 'GTFS', defaultOn: false, status: 'live', category: 'transit' },
   { id: 'buildings-3d',    label: '3D BUILDINGS',    description: 'Extrude Bangkok buildings to their actual heights with cinematic 50° camera tilt. Color-graded by height: low buildings dark, high-rise warmer.', source: 'BMA', defaultOn: false, status: 'live', category: 'admin' },
   { id: 'sat-true-color',  label: 'SAT · TRUE COLOR',description: 'MODIS Terra Corrected Reflectance — daily 250m natural-color satellite. The ground, today, from orbit. NASA GIBS, zero auth.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'sat-night-lights',label: 'NIGHT LIGHTS',    description: 'VIIRS Black Marble — annual nighttime light composite at 500m. Bangkok lit from orbit. NASA GIBS, zero auth.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
@@ -55,7 +58,7 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'bma-open',        label: 'BMA OPEN DATA',   description: '1,431 BMA datasets via data.bangkok.go.th — drainage, traffic, public works, parks, citizen services, budget. Browse in the Data Feed panel (Analyst mode).', source: 'BMA', defaultOn: false, status: 'live', category: 'admin' },
 ]
 
-export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo', 'PCD', 'OSM', 'Thaiwater', 'TomTom', 'InsideAirbnb']
+export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo', 'PCD', 'OSM', 'Thaiwater', 'TomTom', 'InsideAirbnb', 'OpenAQ', 'OpenWeatherMap', 'GTFS']
 
 /** PM2.5 → color (Thai PCD bands) */
 export const PM25_COLORS: Record<string, string> = {

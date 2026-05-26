@@ -14,8 +14,6 @@ export interface CityConfig {
   kpis: KpiItem[]
 }
 
-const vpmId = import.meta.env.VITE_UNL_VPM_ID as string
-
 export const CITIES: CityConfig[] = [
   {
     id: 'bangkok',
@@ -81,5 +79,3 @@ export const CITIES: CityConfig[] = [
     ],
   },
 ]
-
-export { vpmId }
