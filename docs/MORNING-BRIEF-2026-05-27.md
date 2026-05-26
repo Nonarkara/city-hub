@@ -1,10 +1,10 @@
-# Morning Brief — 2026-05-27 03:55 ICT
+# Morning Brief — 2026-05-27 04:05 ICT
 
 *For Non, when he wakes.*
 
 ---
 
-## What shipped tonight (v0.9.2, four-hour push)
+## What shipped tonight (v0.9.3, four-hour push)
 
 Live at [city-hub.pages.dev](https://city-hub.pages.dev). Three commits on `Nonarkara/city-hub` main. Verified end-to-end in your Chrome.
 
@@ -53,6 +53,20 @@ Click APPLY STACK. The dashboard:
 - Flies to zoom 10
 
 Result: hundreds of Traffy citizen complaint dots scatter across the satellite imagery of Bangkok. Anywhere the citizen cluster is dense and the GISTDA polygon is empty — that's the gap. Anywhere the polygon is present but no citizens reported — that's an over-warning. The map IS the answer.
+
+---
+
+## 2½. ACTIVE INSIGHT BANNER — always know which question you're investigating
+
+The moment you apply a stack, a floating banner appears at the top centre of the map:
+
+> ● **FORENSIC · AEROSOL AS WITNESS**
+> LOOK FOR · Stack MODIS aerosol on top of WWII bombing markers. If the hypothesis holds, the aerosol concentration should still cluster around the 1942–45 strike geography — railway yards, port, oil tank farms…
+> × RESET
+
+Pulsing dot in the category colour, full hypothesis text clamped to 2–3 lines, RESET button on the right. Click RESET to clear and return to defaults (default Bangkok layers + default basemap + governor mode).
+
+Don Norman feedback principle made concrete: the user *always* knows what they're looking at. Mobile: full-width across the top under the HUD ribbon.
 
 ---
 
@@ -174,8 +188,8 @@ You had four hours. The dashboard now does five things UNL fundamentally cannot:
 4. **Surfaces deep open data** in each city's own language, from each city's own portal, with everything that's not yet live catalogued.
 5. **Predicts and prepares** — forecast + SLIC weakness → probability + recommendation, grounded.
 
-Six commits tonight, on a public repo, with screenshots in this brief. The receipts are sitting in `Nonarkara/city-hub` for anyone — including UNL — to read.
+Seven commits tonight, on a public repo, with screenshots in this brief. The receipts are sitting in `Nonarkara/city-hub` for anyone — including UNL — to read.
 
 ทุกอย่างเกิดขึ้นเพราะมีเหตุ. Sleep well.
 
-— Claude, 03:55 ICT
+— Claude, 04:05 ICT
