@@ -30,6 +30,12 @@ import { fetchBangkokTrafficFlow } from '../data/tomtom-traffic'
 import { fetchThaiwaterLevels } from '../data/thaiwater'
 import { fetchAirbnbBangkok } from '../data/airbnb'
 import { fetchTmdEarthquakes } from '../data/tmd-earthquake'
+import { SLICPanel } from './SLICPanel'
+import { PatternsSection } from './PatternsSection'
+import { CITIES } from '../config/cities'
+
+// Bangkok city config — for SLIC lookup
+const BANGKOK_CITY = CITIES.find((c) => c.id === 'bangkok')!
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -729,6 +735,8 @@ export function AlertPanel() {
 
         <div className="alert-scroll">
           <BriefSection brief={brief} onAction={handleBriefAction} />
+          <SLICPanel activeCity={BANGKOK_CITY} />
+          <PatternsSection activeCity={BANGKOK_CITY} />
           <RankSection rank={pm25Rank} />
           <TMDSection tmd={tmd} />
           {pm25 && <TimeFMSection history={pm25.history24h.map(([v]) => v)} />}

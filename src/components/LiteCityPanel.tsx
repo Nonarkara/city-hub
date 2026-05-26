@@ -13,6 +13,10 @@ import { fetchAQIForecast, type AQIForecast } from '../data/openmeteo-forecast'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
 import { fetchCityNews, type GdeltNewsResult } from '../data/gdelt'
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
+import { SLICPanel } from './SLICPanel'
+import { slicSummaryText } from './SLICPanel'
+import { PatternsSection } from './PatternsSection'
+import { CitizenReportsSection } from './CitizenReportsSection'
 
 interface Props {
   activeCity: CityConfig
@@ -72,14 +76,16 @@ export function LiteCityPanel({ activeCity }: Props) {
   const handleOpenPeek = useCallback(() => setMobileOpen(true), [])
   const handleClose = useCallback(() => setMobileOpen(false), [])
 
-  // 1-paragraph narrative templated from real values
+  // 1-paragraph narrative templated from real values, grounded with SLIC structural context
+  const slicLine = slicSummaryText(activeCity)
   const narrative = aqi && weather
     ? `Air quality in ${activeCity.name} is ${levelLabel(overallLevel).toLowerCase()} at PM2.5 ${aqi.pm25.toFixed(1)} µg/m³ (US AQI ${aqi.usAqi}). ` +
       `Temperature ${weather.temp}°C, feels like ${weather.feelsLike}°C; wind ${weather.windCardinal} at ${weather.windSpeed} km/h. ` +
-      (forecast ? `Forecast peaks at AQI ${forecast.peakAqi} around ${forecast.peakHour}.` : '')
+      (forecast ? `Forecast peaks at AQI ${forecast.peakAqi} around ${forecast.peakHour}. ` : '') +
+      (slicLine ? `\n\n${slicLine}` : '')
     : aqi
-    ? `Air quality at PM2.5 ${aqi.pm25.toFixed(1)} µg/m³.`
-    : 'Loading live data…'
+    ? `Air quality at PM2.5 ${aqi.pm25.toFixed(1)} µg/m³. ${slicLine}`
+    : `Loading live data… ${slicLine}`
 
   // Forecast sparkline
   const sparkline = forecast && forecast.hours.length > 0 ? (() => {
@@ -151,6 +157,12 @@ export function LiteCityPanel({ activeCity }: Props) {
               </div>
             )}
           </div>
+
+          <SLICPanel activeCity={activeCity} />
+
+          <PatternsSection activeCity={activeCity} />
+
+          <CitizenReportsSection activeCity={activeCity} />
 
           {forecast && (
             <div className="forecast-strip">

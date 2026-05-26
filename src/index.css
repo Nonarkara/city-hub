@@ -3617,3 +3617,417 @@
   text-transform: uppercase;
   margin-top: 4px;
 }
+
+/* ── SLIC Index Panel (Non's proprietary 5-pillar AMPI scoring) ──────────── */
+.slic-section {
+  padding: var(--space-md);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  background: rgba(245, 158, 11, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.slic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
+.slic-title {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.slic-rank {
+  color: var(--fg-dim);
+}
+
+.slic-no-data {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+  color: var(--fg-dim);
+  padding: 8px 0;
+}
+
+.slic-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.slic-score-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.slic-score-value {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.slic-score-unit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  letter-spacing: 0.08em;
+}
+
+.slic-score-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.slic-score-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+}
+
+.slic-region-rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg);
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.slic-coverage {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--fg-dim);
+  opacity: 0.7;
+}
+
+.slic-radar {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  margin: 4px 0;
+}
+
+.slic-flags {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.slic-flag {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 2px solid;
+}
+
+.slic-flag--strong { border-left-color: #8bc34a; }
+.slic-flag--weak   { border-left-color: #e53935; }
+
+.slic-flag-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+}
+
+.slic-flag-pillar {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.slic-flag-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.slic-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: rgba(229, 57, 53, 0.06);
+  border-left: 2px solid #e53935;
+}
+
+.slic-fix-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: #e53935;
+  font-weight: 500;
+}
+
+.slic-fix-detail {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--fg-dim);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.slic-peers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.slic-peers-header {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  margin-bottom: 2px;
+}
+
+.slic-peers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.slic-peer-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.slic-peer-row--self {
+  border-top: 1px solid rgba(245, 158, 11, 0.18);
+  padding-top: 3px;
+  margin-top: 1px;
+}
+
+.slic-peer-row--self .slic-peer-name {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.slic-peer-name {
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slic-peer-bar {
+  height: 4px;
+  background: rgba(245, 245, 240, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.slic-peer-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+}
+
+.slic-peer-score {
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ── Cross-City Patterns Section ─────────────────────────────────────────── */
+.patterns-section {
+  padding: var(--space-md);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  background: rgba(88, 166, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.patterns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+}
+
+.patterns-title {
+  color: #58a6ff;
+  font-weight: 600;
+}
+
+.patterns-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #58a6ff;
+}
+
+.patterns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pattern-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-left: 2px solid;
+}
+
+.pattern-card--high   { border-left-color: #58a6ff; }
+.pattern-card--medium { border-left-color: rgba(88, 166, 255, 0.6); }
+.pattern-card--low    { border-left-color: rgba(88, 166, 255, 0.3); }
+
+.pattern-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+}
+
+.pattern-from {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.pattern-sim {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #58a6ff;
+  font-weight: 600;
+}
+
+.pattern-msg {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--fg);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pattern-pred {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--fg-dim);
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Citizen Reports Section (city-reporter-v2 live feed) ────────────────── */
+.reports-section {
+  padding: var(--space-md);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  background: rgba(245, 158, 11, 0.025);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.reports-title {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.reports-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.report-row:first-child { border-top: 0; }
+
+.report-urgency {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  border: 1px solid;
+  padding: 1px 4px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.report-type {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.report-age {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+  text-align: right;
+}
+
+.reports-source {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+  opacity: 0.6;
+  text-align: right;
+}
