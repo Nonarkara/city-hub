@@ -3,7 +3,7 @@
  * explanations of any situation snapshot.
  */
 
-const PROXY = import.meta.env.VITE_PROXY_URL as string
+const PROXY = (import.meta.env.VITE_PROXY_URL as string | undefined) ?? 'http://127.0.0.1:8787'
 
 export type NarrateModel = 'gemini-2.5' | 'template'
 
