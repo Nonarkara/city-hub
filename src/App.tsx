@@ -136,7 +136,7 @@ export default function App() {
 
       <CityFactsCard activeCity={activeCity} />
 
-      <ActiveInsightBanner active={activeInsight} onClear={clearInsight} />
+      <ActiveInsightBanner active={activeInsight} activeCity={activeCity} onClear={clearInsight} />
 
       <header className="topbar">
         <span className="topbar-wordmark" title="DR NON'S CITY HUB">
