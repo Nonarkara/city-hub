@@ -4096,12 +4096,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: insight-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes insight-slide-in {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  /* No entry animation — the panel just appears. Past attempts to animate
+     the slide-in had React re-render race conditions that left the panel
+     stuck mid-animation. Backdrop's opacity fade is enough motion. */
 }
 
 .insight-header {
