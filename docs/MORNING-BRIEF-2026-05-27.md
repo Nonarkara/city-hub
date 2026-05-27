@@ -1,10 +1,10 @@
-# Morning Brief — 2026-05-27 04:05 ICT
+# Morning Brief — 2026-05-27 04:35 ICT
 
 *For Non, when he wakes.*
 
 ---
 
-## What shipped tonight (v0.9.3, four-hour push)
+## What shipped tonight (v0.9.4, four-hour push + 30 min overrun)
 
 Live at [city-hub.pages.dev](https://city-hub.pages.dev). Three commits on `Nonarkara/city-hub` main. Verified end-to-end in your Chrome.
 
@@ -67,6 +67,8 @@ The moment you apply a stack, a floating banner appears at the top centre of the
 Pulsing dot in the category colour, full hypothesis text clamped to 2–3 lines, RESET button on the right. Click RESET to clear and return to defaults (default Bangkok layers + default basemap + governor mode).
 
 Don Norman feedback principle made concrete: the user *always* knows what they're looking at. Mobile: full-width across the top under the HUD ribbon.
+
+**Plus** — the banner now asks the Worker's `/narrate` endpoint (Gemini 2.5) for a 2-sentence reading of what the stacked layers should reveal for THIS city. When Gemini is reachable, an `ai` chip pulses next to the title and the reading is per-city. When not, the banner falls back to the static template hypothesis (your `GEMINI_API_KEY` isn't set on the Worker yet — drop it in and the AI readings unlock automatically).
 
 ---
 
@@ -160,7 +162,7 @@ These were on the original plan but ran out the clock. Easy lifts for the next s
 - **30-day time-machine scrubber** — needs Supabase historical ingestion
 - **Mapbox Studio custom dark style** (Bauhaus-tighter than the default)
 - **Geocoding search bar**
-- **Mobile snapshot pass** — I tested visually but didn't run the full 320 / 360 / 390 / 768 verification this session
+- **Mobile snapshot pass at 390×844** — verified ✓ (added in the overrun). Insight panel renders full-width, all 6 cards browsable, APPLY STACK buttons thumb-sized. Animation race that left the panel stuck off-screen on first applications has been fixed.
 
 ---
 
@@ -188,8 +190,8 @@ You had four hours. The dashboard now does five things UNL fundamentally cannot:
 4. **Surfaces deep open data** in each city's own language, from each city's own portal, with everything that's not yet live catalogued.
 5. **Predicts and prepares** — forecast + SLIC weakness → probability + recommendation, grounded.
 
-Seven commits tonight, on a public repo, with screenshots in this brief. The receipts are sitting in `Nonarkara/city-hub` for anyone — including UNL — to read.
+Nine commits tonight, on a public repo, with screenshots in this brief. The receipts are sitting in `Nonarkara/city-hub` for anyone — including UNL — to read.
 
 ทุกอย่างเกิดขึ้นเพราะมีเหตุ. Sleep well.
 
-— Claude, 04:05 ICT
+— Claude, 04:35 ICT
