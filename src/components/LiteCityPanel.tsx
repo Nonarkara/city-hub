@@ -6,7 +6,7 @@
  * Same right-panel chrome as AlertPanel so the mobile drawer + peek strip
  * from v0.5.1 keep working without modification.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import type { CityConfig } from '../config/cities'
 import { fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchAQIForecast, type AQIForecast } from '../data/openmeteo-forecast'
@@ -32,7 +32,7 @@ function levelLabel(level: RiskLevel): string {
     :                           'NORMAL'
 }
 
-export function LiteCityPanel({ activeCity }: Props) {
+export const LiteCityPanel = memo(function LiteCityPanel({ activeCity }: Props) {
   const [aqi, setAqi] = useState<CityAQI | null>(null)
   const [forecast, setForecast] = useState<AQIForecast | null>(null)
   const [weather, setWeather] = useState<CityWeather | null>(null)
@@ -243,4 +243,4 @@ export function LiteCityPanel({ activeCity }: Props) {
       </aside>
     </>
   )
-}
+})

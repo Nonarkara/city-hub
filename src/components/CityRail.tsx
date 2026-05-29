@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CITIES, type CityConfig } from '../config/cities'
+import type { CityConfig } from '../config/cities'
+import { useCityStore } from '../store/cityStore'
 import { KpiCard } from './KpiCard'
 import { VitalsBar } from './VitalsBar'
 import { bangkokPm25Live, type Pm25Live } from '../data/gistda'
@@ -57,14 +58,16 @@ function CityList({
   activeCity,
   onSelect,
   onClose,
+  cities,
 }: {
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
   onClose?: () => void
+  cities: CityConfig[]
 }) {
   return (
     <div className="city-list">
-      {CITIES.map((city) => (
+      {cities.map((city) => (
         <button
           key={city.id}
           className={`city-item ${city.id === activeCity.id ? 'active' : ''}`}
@@ -137,6 +140,7 @@ export function MobileStrip({
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
 }) {
+  const allCities = useCityStore((s) => s.allCities())
   const [sheetOpen, setSheetOpen] = useState(false)
   const [pm25, setPm25] = useState<Pm25Live | null>(null)
   const [aqi, setAqi] = useState<BangkokAQI | null>(null)
@@ -172,6 +176,7 @@ export function MobileStrip({
               activeCity={activeCity}
               onSelect={onSelect}
               onClose={() => setSheetOpen(false)}
+              cities={allCities}
             />
           </div>
         </>

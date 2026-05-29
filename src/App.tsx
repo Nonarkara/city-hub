@@ -1,54 +1,75 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { CITIES, type CityConfig, type BasemapId } from './config/cities'
-import { BANGKOK_LAYERS } from './config/bangkok-layers'
+import type { CityConfig } from './config/cities'
+
 import { MapView, defaultBasemap, getBasemapDef, BASEMAPS, hasMapboxToken } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
 import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
 import { AlertPanel, DraftModal } from './components/AlertPanel'
 import { LiteCityPanel } from './components/LiteCityPanel'
-import { DistrictPanel } from './components/DistrictPanel'
+const DistrictPanel = lazy(() => import('./components/DistrictPanel').then((m) => ({ default: m.DistrictPanel })))
 import { HUD } from './components/HUD'
 import { CommandPalette } from './components/CommandPalette'
 import { FreshnessPanel } from './components/FreshnessPanel'
 import { TimeScrubber } from './components/TimeScrubber'
+import { TimelineSlider } from './components/TimelineSlider'
 import { AnomalyPins } from './components/AnomalyPins'
 import { useAnomalies } from './hooks/useAnomalies'
 import { ASEANStrip } from './components/ASEANStrip'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
-import { type DistrictSummary } from './hooks/useDistrictData'
 import { InsightPanel, type InsightTemplate } from './components/InsightPanel'
 import { CityFactsCard } from './components/CityFactsCard'
 import { ActiveInsightBanner } from './components/ActiveInsightBanner'
 import { prefetchCity } from './lib/city-prefetch'
-
-const DEFAULT_ACTIVE_LAYERS = new Set(
-  BANGKOK_LAYERS.filter((l) => l.defaultOn && l.status === 'live').map((l) => l.id),
-)
+import { useCityStore } from './store/cityStore'
+import { useLayerStore } from './store/layerStore'
+import { useUIStore } from './store/uiStore'
+const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
+const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 
 export default function App() {
-  const [activeCity, setActiveCity] = useState<CityConfig>(CITIES[0])
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
   const [map, setMap] = useState<MapLibreMap | null>(null)
-  const [activeLayers, setActiveLayers] = useState<Set<string>>(DEFAULT_ACTIVE_LAYERS)
-  const [governorMode, setGovernorMode] = useState(true)
-  const [selectedDistrict, setSelectedDistrict] = useState<DistrictSummary | null>(null)
-  const [appDraft, setAppDraft] = useState<string | null>(null)
-  const [cmdkOpen, setCmdkOpen] = useState(false)
-  const [basemap, setBasemap] = useState<BasemapId>(defaultBasemap())
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const [insightOpen, setInsightOpen] = useState(false)
-  const [activeInsight, setActiveInsight] = useState<InsightTemplate | null>(null)
 
-  // Apply an insight template — activate its layers, optional basemap + zoom,
-  // switch to analyst mode so the map is uncovered.
-  //
-  // Sequence the side effects so they don't race:
-  //  - immediately: switch mode + basemap (basemap triggers map.setStyle)
-  //  - +800ms (after setStyle + style.load + reconcile): set the layer stack
-  //  - +1050ms: flyTo the right zoom
-  // Less elegant than promises but robust against React batching variance.
+  // ── City store ──────────────────────────────────────────────────────────────
+  const activeCity = useCityStore((s) => s.activeCity)
+  const allCities = useCityStore((s) => s.allCities())
+  const setActiveCity = useCityStore((s) => s.setActiveCity)
+  const compareMode = useCityStore((s) => s.compareMode)
+  const compareSet = useCityStore((s) => s.compareSet)
+  const toggleCompareCity = useCityStore((s) => s.toggleCompareCity)
+
+  // ── Layer store ─────────────────────────────────────────────────────────────
+  const activeLayers = useLayerStore((s) => s.activeLayers)
+  const setActiveLayers = useLayerStore((s) => s.setActiveLayers)
+
+  // ── UI store ────────────────────────────────────────────────────────────────
+  const governorMode = useUIStore((s) => s.governorMode)
+  const setGovernorMode = useUIStore((s) => s.setGovernorMode)
+  const toggleGovernorMode = useUIStore((s) => s.toggleGovernorMode)
+  const selectedDistrict = useUIStore((s) => s.selectedDistrict)
+  const setSelectedDistrict = useUIStore((s) => s.setSelectedDistrict)
+  const appDraft = useUIStore((s) => s.appDraft)
+  const setAppDraft = useUIStore((s) => s.setAppDraft)
+  const cmdkOpen = useUIStore((s) => s.cmdkOpen)
+  const setCmdkOpen = useUIStore((s) => s.setCmdkOpen)
+  const basemap = useUIStore((s) => s.basemap)
+  const setBasemap = useUIStore((s) => s.setBasemap)
+  const basemapMenuOpen = useUIStore((s) => s.basemapMenuOpen)
+  const setBasemapMenuOpen = useUIStore((s) => s.setBasemapMenuOpen)
+  const insightOpen = useUIStore((s) => s.insightOpen)
+  const setInsightOpen = useUIStore((s) => s.setInsightOpen)
+  const activeInsight = useUIStore((s) => s.activeInsight)
+  const setActiveInsight = useUIStore((s) => s.setActiveInsight)
+  const activeDate = useUIStore((s) => s.activeDate)
+  const setActiveDate = useUIStore((s) => s.setActiveDate)
+  const mobileSheetOpen = useUIStore((s) => s.mobileSheetOpen)
+  const setMobileSheetOpen = useUIStore((s) => s.setMobileSheetOpen)
+
+  // ── Onboarding modal ────────────────────────────────────────────────────────
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
+
+  // ── Insight application ─────────────────────────────────────────────────────
   const applyInsight = useCallback((t: InsightTemplate) => {
     setGovernorMode(false)
     setActiveInsight(t)
@@ -68,14 +89,13 @@ export default function App() {
         }, 250)
       }
     }, 800)
-  }, [map, activeCity, basemap])
+  }, [map, activeCity, basemap, setGovernorMode, setActiveInsight, setBasemap, setActiveLayers])
 
-  // Reset back to defaults — turn off the active insight, restore default layers + basemap.
   const clearInsight = useCallback(() => {
-    setActiveInsight(null)
-    setActiveLayers(DEFAULT_ACTIVE_LAYERS)
-    setBasemap(defaultBasemap())
-    setGovernorMode(true)
+    useUIStore.getState().setActiveInsight(null)
+    useLayerStore.getState().resetToDefaults()
+    useUIStore.getState().setBasemap(defaultBasemap())
+    useUIStore.getState().setGovernorMode(true)
   }, [])
 
   if (typeof window !== 'undefined') {
@@ -84,28 +104,26 @@ export default function App() {
 
   const bangkokMode = activeCity.tier === 'full'
 
-  useBangkokLayers(map, activeLayers, bangkokMode, bangkokMode ? setSelectedDistrict : undefined)
+  useBangkokLayers(map, activeLayers, bangkokMode, activeDate, bangkokMode ? setSelectedDistrict : undefined)
 
   const anomalies = useAnomalies(bangkokMode)
 
   const toggleLayer = useCallback((id: string) => {
-    setActiveLayers((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    useLayerStore.getState().toggleLayer(id)
   }, [])
 
   const cityHandler = useMemo(() => (c: CityConfig) => {
     setActiveCity(c)
     setSelectedDistrict(null)
-  }, [])
+  }, [setActiveCity, setSelectedDistrict])
 
   const tokenAvailable = hasMapboxToken()
 
+  // If compare mode is active, show comparison panel instead of city-specific panels
+  const showComparison = compareMode && compareSet.length >= 2
+
   return (
-    <>
+    <Suspense fallback={null}>
       <MapView city={activeCity} basemap={basemap} onMapReady={setMap} />
 
       <HUD
@@ -126,8 +144,9 @@ export default function App() {
       />
 
       {bangkokMode && <FreshnessPanel />}
-      <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict} />
-      {bangkokMode && governorMode && (
+      <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
+      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
+      {bangkokMode && governorMode && !showComparison && (
         <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
       )}
       {bangkokMode && <ASEANStrip />}
@@ -140,38 +159,70 @@ export default function App() {
 
       <header className="topbar">
         <span className="topbar-wordmark" title="DR NON'S CITY HUB">
-          CITY HUB<span className="topbar-version">v5</span>
+          CITY HUB<span className="topbar-version">v6</span>
         </span>
 
-        {/* Desktop tab strip — 5 mono codes */}
+        {/* Desktop tab strip — all cities + pin toggle */}
         <nav className="topbar-tabs" aria-label="Switch city">
-          {CITIES.map((city) => (
-            <button
-              key={city.id}
-              className={`topbar-tab ${city.id === activeCity.id ? 'topbar-tab--active' : ''}`}
-              onClick={() => cityHandler(city)}
-              onMouseEnter={() => prefetchCity(city)}
-              onFocus={() => prefetchCity(city)}
-              title={city.name}
-            >
-              {city.hudClockLabel}
-            </button>
-          ))}
+          {allCities.map((city) => {
+            const pinned = compareSet.includes(city.id)
+            return (
+              <button
+                key={city.id}
+                className={`topbar-tab ${city.id === activeCity.id ? 'topbar-tab--active' : ''}`}
+                onClick={() => cityHandler(city)}
+                onMouseEnter={() => prefetchCity(city)}
+                onFocus={() => prefetchCity(city)}
+                title={city.name}
+              >
+                <span
+                  className="topbar-tab-pin"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleCompareCity(city.id)
+                  }}
+                  title={pinned ? 'Unpin from comparison' : 'Pin for comparison'}
+                >
+                  {pinned ? '📌' : '·'}
+                </span>
+                {city.hudClockLabel}
+              </button>
+            )
+          })}
+          <button
+            className="topbar-tab topbar-tab--add"
+            onClick={() => setOnboardingOpen(true)}
+            title="Add a new city"
+          >
+            + ADD
+          </button>
         </nav>
 
-        {/* Mobile dropdown button (keeps existing sheet behaviour) */}
+        {/* Mobile dropdown button */}
         <div className="md-hidden">
           <TopbarCityButton
             city={activeCity}
             open={mobileSheetOpen}
-            onClick={() => setMobileSheetOpen((v) => !v)}
+            onClick={() => setMobileSheetOpen(!mobileSheetOpen)}
           />
         </div>
 
-        {bangkokMode && (
+        {compareMode && (
           <button
             className="topbar-mode-btn"
-            onClick={() => setGovernorMode((v) => !v)}
+            onClick={() => {
+              useCityStore.getState().clearCompareSet()
+            }}
+            title="Exit comparison mode"
+          >
+            · COMPARE ({compareSet.length})
+          </button>
+        )}
+
+        {bangkokMode && !compareMode && (
+          <button
+            className="topbar-mode-btn"
+            onClick={() => toggleGovernorMode()}
             title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
           >
             · {governorMode ? 'SIT ROOM' : 'ANALYST'}
@@ -184,7 +235,7 @@ export default function App() {
         <div className="basemap-wrap">
           <button
             className="topbar-basemap-btn"
-            onClick={() => setBasemapMenuOpen((v) => !v)}
+            onClick={() => setBasemapMenuOpen(!basemapMenuOpen)}
             title="Switch basemap"
             aria-label="Switch basemap"
             aria-expanded={basemapMenuOpen}
@@ -253,6 +304,8 @@ export default function App() {
         onApply={applyInsight}
       />
 
+      <CityOnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+
       <CityRail
         activeCity={activeCity}
         onDistrictSelect={bangkokMode ? setSelectedDistrict : undefined}
@@ -268,7 +321,9 @@ export default function App() {
         }}
       />
 
-      {bangkokMode ? (
+      {showComparison ? (
+        <ComparisonPanel />
+      ) : bangkokMode ? (
         governorMode
           ? (selectedDistrict
               ? (
@@ -289,6 +344,6 @@ export default function App() {
       ) : (
         <LiteCityPanel activeCity={activeCity} />
       )}
-    </>
+    </Suspense>
   )
 }

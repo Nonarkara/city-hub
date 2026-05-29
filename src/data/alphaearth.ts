@@ -20,21 +20,22 @@ const BASE = PROXY ? `${PROXY}/ee/mapid` : null
 
 const TTL = 50 * 60 * 1000  // Match Worker's token cache window
 
-export type EEPreset = 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop'
+export type EEPreset = 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop' | 'dynamic-world' | 'sentinel1-sar' | 'landsat-thermal'
 
 export interface EEMapResult {
   tiles: string         // {z}/{x}/{y} template
   attribution: string
 }
 
-export async function fetchEETiles(preset: EEPreset = 'alphaearth'): Promise<EEMapResult | null> {
+export async function fetchEETiles(preset: EEPreset = 'alphaearth', startDate?: string, endDate?: string): Promise<EEMapResult | null> {
   if (!BASE) return null
-  return cachedFetch(`ee/mapid-${preset}`, async () => {
+  const cacheKey = `ee/mapid-${preset}-${startDate ?? 'default'}-${endDate ?? 'default'}`
+  return cachedFetch(cacheKey, async () => {
     try {
       const res = await fetch(BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset }),
+        body: JSON.stringify({ preset, startDate, endDate }),
       })
       if (!res.ok) return null
       const data = await res.json() as EEMapResult

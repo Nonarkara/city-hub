@@ -45,9 +45,11 @@ export function useBangkokLayers(
   map: MapLibre | null,
   activeIds: Set<string>,
   bangkokMode: boolean,
+  activeDate: string,
   onDistrictClick?: (d: DistrictSummary) => void,
 ) {
   const stateRef = useRef<LayerLoadState>({ loaded: new Set(), loading: new Set() })
+  const lastDateRef = useRef(activeDate)
   // Keep callback ref current so the once-wired listener always calls the latest handler
   const onDistrictClickRef = useRef<((d: DistrictSummary) => void) | undefined>(onDistrictClick)
   onDistrictClickRef.current = onDistrictClick
@@ -78,6 +80,28 @@ export function useBangkokLayers(
 
     const reconcile = () => {
       const state = stateRef.current
+
+      // If activeDate changed, drop temporal layers so they get reloaded
+      const dateChanged = lastDateRef.current !== activeDate
+      lastDateRef.current = activeDate
+      if (dateChanged) {
+        const temporalLayers = new Set([
+          'dynamic-world', 'sentinel1-sar', 'landsat-thermal',
+          'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop',
+          'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi'
+        ])
+        for (const id of state.loaded) {
+          if (temporalLayers.has(id)) {
+            LAYER_IDS_FOR_TOGGLE[id]?.forEach((layerId) => {
+              if (map.getLayer(layerId)) map.removeLayer(layerId)
+            })
+            const srcId = SOURCE_ID_FOR_TOGGLE[id]
+            if (srcId && map.getSource(srcId)) map.removeSource(srcId)
+            state.loaded.delete(id)
+          }
+        }
+      }
+
       // For each managed layer: load on first activation, set visibility
       for (const id of MANAGED_IDS) {
         const wanted = activeIds.has(id)
@@ -92,7 +116,7 @@ export function useBangkokLayers(
         }
         if (wanted && !reallyLoaded && !state.loading.has(id)) {
           state.loading.add(id)
-          loadLayer(id, map).then(() => {
+          loadLayer(id, map, activeDate).then(() => {
             state.loading.delete(id)
             state.loaded.add(id)
             setVisibility(map, id, activeIds.has(id))
@@ -122,12 +146,12 @@ export function useBangkokLayers(
     const onStyleLoad = () => reconcile()
     map.on('style.load', onStyleLoad)
     return () => { map.off('style.load', onStyleLoad) }
-  }, [map, activeIds, bangkokMode])
+  }, [map, activeIds, bangkokMode, activeDate])
 }
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'dynamic-world', 'sentinel1-sar', 'landsat-thermal', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -157,6 +181,9 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'sat-s5p-co':       'src-s5p-co',
   'sat-s5p-so2':      'src-s5p-so2',
   'sat-ghsl-pop':     'src-ghsl-pop',
+  'dynamic-world':    'src-dynamic-world',
+  'sentinel1-sar':    'src-sentinel1',
+  'landsat-thermal':  'src-landsat-thermal',
   'longdo-basemap':   'src-longdo',
   'traffy-issues':    'src-traffy',
   'traffy-heatmap':   'src-traffy-heatmap',
@@ -200,6 +227,9 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sat-s5p-co':       ['ly-s5p-co'],
   'sat-s5p-so2':      ['ly-s5p-so2'],
   'sat-ghsl-pop':     ['ly-ghsl-pop'],
+  'dynamic-world':    ['ly-dynamic-world'],
+  'sentinel1-sar':    ['ly-sentinel1'],
+  'landsat-thermal':  ['ly-landsat-thermal'],
   'longdo-basemap':   ['ly-longdo'],
   'traffy-issues':    ['ly-traffy-issues'],
   'traffy-heatmap':   ['ly-traffy-heatmap'],
@@ -236,7 +266,7 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
 
 // ── Layer loaders ─────────────────────────────────────────────────────────
 
-async function loadLayer(id: string, map: MapLibre) {
+async function loadLayer(id: string, map: MapLibre, activeDate: string) {
   switch (id) {
     case 'pm25-stations':    return addPm25Stations(map)
     case 'pm25-heatmap':     return addPm25Heatmap(map)
@@ -252,18 +282,21 @@ async function loadLayer(id: string, map: MapLibre) {
     case 'owm-weather':      return addOWMWeather(map)
     case 'rail':             return addRail(map)
     case 'gtfs-transit-live':return addGTFSTransit(map)
-    case 'gibs-aod':         return addGibsAod(map)
-    case 'sat-true-color':   return addSatTrueColor(map)
-    case 'sat-night-lights': return addSatNightLights(map)
-    case 'sat-surface-temp': return addSatSurfaceTemp(map)
-    case 'sat-ndvi':         return addSatNdvi(map)
+    case 'gibs-aod':         return addGibsAod(map, activeDate)
+    case 'sat-true-color':   return addSatTrueColor(map, activeDate)
+    case 'sat-night-lights': return addSatNightLights(map, activeDate)
+    case 'sat-surface-temp': return addSatSurfaceTemp(map, activeDate)
+    case 'sat-ndvi':         return addSatNdvi(map, activeDate)
     case 'sat-esri':         return addSatEsri(map)
     case 'sat-sentinel2':    return addSatSentinel2(map)
-    case 'alphaearth-embeddings': return addAlphaEarth(map)
-    case 'sat-s5p-no2':      return addS5P_NO2(map)
-    case 'sat-s5p-co':       return addS5P_CO(map)
-    case 'sat-s5p-so2':      return addS5P_SO2(map)
-    case 'sat-ghsl-pop':     return addGHSL_Pop(map)
+    case 'alphaearth-embeddings': return addAlphaEarth(map, activeDate)
+    case 'sat-s5p-no2':      return addS5P_NO2(map, activeDate)
+    case 'sat-s5p-co':       return addS5P_CO(map, activeDate)
+    case 'sat-s5p-so2':      return addS5P_SO2(map, activeDate)
+    case 'sat-ghsl-pop':     return addGHSL_Pop(map, activeDate)
+    case 'dynamic-world':    return addDynamicWorld(map, activeDate)
+    case 'sentinel1-sar':    return addSentinel1Sar(map, activeDate)
+    case 'landsat-thermal':  return addLandsatThermal(map, activeDate)
     case 'longdo-basemap':   return addLongdoBasemap(map)
     case 'traffy-issues':    return addTraffyIssues(map)
     case 'traffy-heatmap':   return addTraffyHeatmap(map)
@@ -309,43 +342,53 @@ function addRasterLayer(
   )
 }
 
-async function addSatTrueColor(map: MapLibre) {
+async function addSatTrueColor(map: MapLibre, activeDate?: string) {
   addRasterLayer(map, {
     sourceId: 'src-sat-true-color',
     layerId:  'ly-sat-true-color',
-    tiles:    gibsTrueColorTiles(),
+    tiles:    gibsTrueColorTiles(activeDate),
     maxzoom:  9,
     opacity:  0.85,
   })
 }
 
-async function addSatNightLights(map: MapLibre) {
+async function addSatNightLights(map: MapLibre, activeDate?: string) {
   addRasterLayer(map, {
     sourceId: 'src-sat-night-lights',
     layerId:  'ly-sat-night-lights',
-    tiles:    gibsNightLightsTiles(),
+    tiles:    gibsNightLightsTiles(activeDate),
     maxzoom:  8,
     opacity:  0.95,
   })
 }
 
-async function addSatSurfaceTemp(map: MapLibre) {
+async function addSatSurfaceTemp(map: MapLibre, activeDate?: string) {
   addRasterLayer(map, {
     sourceId: 'src-sat-surface-temp',
     layerId:  'ly-sat-surface-temp',
-    tiles:    gibsLstTiles(),
+    tiles:    gibsLstTiles(activeDate),
     maxzoom:  7,
     opacity:  0.7,
   })
 }
 
-async function addSatNdvi(map: MapLibre) {
+async function addSatNdvi(map: MapLibre, activeDate?: string) {
   addRasterLayer(map, {
     sourceId: 'src-sat-ndvi',
     layerId:  'ly-sat-ndvi',
-    tiles:    gibsNdviTiles(),
+    tiles:    gibsNdviTiles(activeDate),
     maxzoom:  9,
     opacity:  0.75,
+  })
+}
+
+async function addGibsAod(map: MapLibre, activeDate?: string) {
+  addRasterLayer(map, {
+    sourceId: 'src-gibs-aod',
+    layerId:  'ly-gibs-aod',
+    tiles:    gibsAerosolTileTemplate(activeDate),
+    maxzoom:  19,
+    opacity:  1.0,
   })
 }
 
@@ -369,8 +412,8 @@ async function addSatSentinel2(map: MapLibre) {
   })
 }
 
-async function addAlphaEarth(map: MapLibre) {
-  const ee = await fetchEETiles('alphaearth')
+async function addAlphaEarth(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('alphaearth', activeDate, activeDate)
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
     sourceId: 'src-alphaearth',
@@ -381,8 +424,8 @@ async function addAlphaEarth(map: MapLibre) {
   })
 }
 
-async function addS5P_NO2(map: MapLibre) {
-  const ee = await fetchEETiles('s5p-no2')
+async function addS5P_NO2(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('s5p-no2', activeDate, activeDate)
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
     sourceId: 'src-s5p-no2',
@@ -393,8 +436,8 @@ async function addS5P_NO2(map: MapLibre) {
   })
 }
 
-async function addS5P_CO(map: MapLibre) {
-  const ee = await fetchEETiles('s5p-co')
+async function addS5P_CO(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('s5p-co', activeDate, activeDate)
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
     sourceId: 'src-s5p-co',
@@ -405,8 +448,8 @@ async function addS5P_CO(map: MapLibre) {
   })
 }
 
-async function addS5P_SO2(map: MapLibre) {
-  const ee = await fetchEETiles('s5p-so2')
+async function addS5P_SO2(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('s5p-so2', activeDate, activeDate)
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
     sourceId: 'src-s5p-so2',
@@ -417,8 +460,8 @@ async function addS5P_SO2(map: MapLibre) {
   })
 }
 
-async function addGHSL_Pop(map: MapLibre) {
-  const ee = await fetchEETiles('ghsl-pop')
+async function addGHSL_Pop(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('ghsl-pop', activeDate, activeDate)
   if (!ee || !ee.tiles) return
   addRasterLayer(map, {
     sourceId: 'src-ghsl-pop',
@@ -846,22 +889,6 @@ async function addRail(map: MapLibre) {
   })
 }
 
-async function addGibsAod(map: MapLibre) {
-  const template = gibsAerosolTileTemplate()
-  map.addSource('src-gibs-aod', {
-    type: 'raster',
-    tiles: [template],
-    tileSize: 256,
-    maxzoom: 6,
-  })
-  map.addLayer({
-    id: 'ly-gibs-aod',
-    type: 'raster',
-    source: 'src-gibs-aod',
-    paint: { 'raster-opacity': 0.5 },
-    layout: { 'visibility': 'none' },
-  })
-}
 
 async function addTraffyIssues(map: MapLibre) {
   const data = await fetchTraffyGeoJSON(500)
@@ -1478,5 +1505,41 @@ async function addGTFSTransit(map: MapLibre) {
       'text-halo-color': '#000',
       'text-halo-width': 1,
     },
+  })
+}
+
+async function addDynamicWorld(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('dynamic-world', activeDate, activeDate)
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-dynamic-world',
+    layerId:  'ly-dynamic-world',
+    tiles:    ee.tiles,
+    maxzoom:  15,
+    opacity:  0.8,
+  })
+}
+
+async function addSentinel1Sar(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('sentinel1-sar', activeDate, activeDate)
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-sentinel1',
+    layerId:  'ly-sentinel1',
+    tiles:    ee.tiles,
+    maxzoom:  14,
+    opacity:  0.8,
+  })
+}
+
+async function addLandsatThermal(map: MapLibre, activeDate?: string) {
+  const ee = await fetchEETiles('landsat-thermal', activeDate, activeDate)
+  if (!ee || !ee.tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-landsat-thermal',
+    layerId:  'ly-landsat-thermal',
+    tiles:    ee.tiles,
+    maxzoom:  14,
+    opacity:  0.7,
   })
 }

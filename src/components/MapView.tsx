@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import {
   Map as MapLibreMap,
   type StyleSpecification,
@@ -181,7 +181,7 @@ interface MapViewProps {
   onMapReady?: (map: MapLibreMap) => void
 }
 
-export function MapView({ city, basemap, onMapReady }: MapViewProps) {
+export const MapView = memo(function MapView({ city, basemap, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const currentBasemapRef = useRef<BasemapId>(basemap)
@@ -260,4 +260,4 @@ export function MapView({ city, basemap, onMapReady }: MapViewProps) {
   }, [basemap])
 
   return <div ref={containerRef} className="map-container" />
-}
+})

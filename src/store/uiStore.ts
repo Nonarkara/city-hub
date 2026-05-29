@@ -1,0 +1,55 @@
+import { create } from 'zustand'
+import type { BasemapId } from '../config/cities'
+import { defaultBasemap } from '../components/MapView'
+import type { InsightTemplate } from '../components/InsightPanel'
+import type { DistrictSummary } from '../hooks/useDistrictData'
+
+interface UIStore {
+  governorMode: boolean
+  cmdkOpen: boolean
+  insightOpen: boolean
+  basemap: BasemapId
+  mobileSheetOpen: boolean
+  selectedDistrict: DistrictSummary | null
+  appDraft: string | null
+  basemapMenuOpen: boolean
+  activeInsight: InsightTemplate | null
+  activeDate: string
+
+  setGovernorMode: (v: boolean) => void
+  toggleGovernorMode: () => void
+  setCmdkOpen: (v: boolean) => void
+  setInsightOpen: (v: boolean) => void
+  setBasemap: (v: BasemapId) => void
+  setMobileSheetOpen: (v: boolean) => void
+  setSelectedDistrict: (d: DistrictSummary | null) => void
+  setAppDraft: (d: string | null) => void
+  setBasemapMenuOpen: (v: boolean) => void
+  setActiveInsight: (i: InsightTemplate | null) => void
+  setActiveDate: (d: string) => void
+}
+
+export const useUIStore = create<UIStore>()((set) => ({
+  governorMode: true,
+  cmdkOpen: false,
+  insightOpen: false,
+  basemap: defaultBasemap(),
+  mobileSheetOpen: false,
+  selectedDistrict: null,
+  appDraft: null,
+  basemapMenuOpen: false,
+  activeInsight: null,
+  activeDate: new Date().toISOString().split('T')[0],
+
+  setGovernorMode: (v) => set({ governorMode: v }),
+  toggleGovernorMode: () => set((s) => ({ governorMode: !s.governorMode })),
+  setCmdkOpen: (v) => set({ cmdkOpen: v }),
+  setInsightOpen: (v) => set({ insightOpen: v }),
+  setBasemap: (v) => set({ basemap: v }),
+  setMobileSheetOpen: (v) => set({ mobileSheetOpen: v }),
+  setSelectedDistrict: (d) => set({ selectedDistrict: d }),
+  setAppDraft: (d) => set({ appDraft: d }),
+  setBasemapMenuOpen: (v) => set({ basemapMenuOpen: v }),
+  setActiveInsight: (i) => set({ activeInsight: i }),
+  setActiveDate: (d) => set({ activeDate: d }),
+}))

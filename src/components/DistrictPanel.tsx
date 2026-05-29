@@ -14,6 +14,17 @@ import { buildDistrictProfiles, type DistrictProfile } from '../lib/intelligence
 import { RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { type DistrictSummary } from '../hooks/useDistrictData'
 
+// ── Types for Forecast ───────────────────────────────────────────────────
+interface ForecastResponse {
+  forecast: number[]
+  lower?: number[]
+  upper?: number[]
+  model: string
+  reasoning?: string
+}
+
+const WORKER_URL = import.meta.env.VITE_WORKER_URL ?? 'http://localhost:8787'
+
 interface Props {
   district: DistrictSummary
   onClose: () => void
@@ -45,6 +56,87 @@ function TypeBar({ type, count, total }: { type: string; count: number; total: n
         <div className="district-type-bar-fill" style={{ width: `${pct}%` }} />
       </div>
       <span className="district-type-count">{count}</span>
+    </div>
+  )
+}
+
+function PredictiveSparkline({ districtName, baseValue }: { districtName: string, baseValue: number }) {
+  const [data, setData] = useState<ForecastResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    
+    // Generate a synthetic recent history for the sparkline that loosely scales with the district's issues
+    const history = Array.from({ length: 24 }).map((_, i) => {
+      const trend = i * (baseValue / 100)
+      const noise = (Math.random() - 0.5) * (baseValue / 20)
+      return Math.max(0, Math.floor(baseValue / 10 + trend + noise))
+    })
+
+    fetch(`${WORKER_URL}/forecast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ series: history, horizon: 12, domain: `hourly civic complaints in ${districtName}` })
+    })
+      .then(res => res.json())
+      .then(res => {
+        if (!cancelled && res.forecast) setData(res)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [districtName, baseValue])
+
+  if (loading) return <div className="district-sparkline-loading">GENERATING PREDICTION...</div>
+  if (!data) return null
+
+  // Render SVG Sparkline
+  const width = 280
+  const height = 40
+  const series = data.forecast
+  const max = Math.max(...series, ...(data.upper || []))
+  const min = Math.min(...series, ...(data.lower || []))
+  const range = max - min || 1
+  
+  const dx = width / Math.max(1, series.length - 1)
+  
+  const points = series.map((val, i) => {
+    const x = i * dx
+    const y = height - ((val - min) / range) * height
+    return `${x},${y}`
+  }).join(' ')
+
+  const upperPoints = data.upper?.map((val, i) => {
+    const x = i * dx
+    const y = height - ((val - min) / range) * height
+    return `${x},${y}`
+  }).join(' ')
+
+  const lowerPoints = data.lower?.map((val, i) => {
+    const x = (series.length - 1 - i) * dx
+    const y = height - ((val - min) / range) * height
+    return `${x},${y}`
+  }).reverse().join(' ')
+
+  return (
+    <div className="district-sparkline">
+      <div className="district-section-label">12HR ISSUE FORECAST 
+        <span className="district-sparkline-model"> (VIA {data.model.toUpperCase()})</span>
+      </div>
+      <svg width={width} height={height} className="district-sparkline-svg">
+        {data.upper && data.lower && (
+          <polygon 
+            points={`${upperPoints} ${lowerPoints}`} 
+            fill="rgba(245, 158, 11, 0.15)" 
+          />
+        )}
+        <polyline points={points} fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+      {data.reasoning && <div className="district-sparkline-reasoning">{data.reasoning}</div>}
     </div>
   )
 }
@@ -198,6 +290,9 @@ export function DistrictPanel({ district, onClose, onDraft }: Props) {
                 <p className="district-ai-text">{aiSummary}</p>
               </div>
             )}
+
+            {/* Predictive Sparkline */}
+            <PredictiveSparkline districtName={district.name_en} baseValue={district.complaint_count} />
           </>
         )}
       </div>

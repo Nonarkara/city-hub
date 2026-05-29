@@ -462,12 +462,12 @@ async function tryGeminiNarrate(
 // Pre-built expressions for common products live in EE_PRESETS.
 
 interface EEMapRequest {
-  preset?: 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop'
-  // Or arbitrary EE expression as JSON (server-side EE objects are huge —
-  // for now only preset is supported)
+  preset?: 'alphaearth' | 'sentinel2-rgb' | 'modis-ndvi' | 's5p-no2' | 's5p-co' | 's5p-so2' | 'ghsl-pop' | 'dynamic-world' | 'sentinel1-sar' | 'landsat-thermal'
+  startDate?: string
+  endDate?: string
 }
 
-const EE_PRESETS: Record<string, { expression: object; visualization: object; attribution?: string }> = {
+const getEEPresets = (start: string, end: string): Record<string, { expression: object; visualization: object; attribution?: string }> => ({
   // Google AlphaEarth Foundations — 64-dim annual satellite embeddings.
   // Visualize first 3 PCA bands as RGB.
   alphaearth: {
@@ -492,8 +492,8 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object; at
                               arguments: { id: { constantValue: 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL' } },
                             },
                           },
-                          start: { constantValue: '2024-01-01' },
-                          end: { constantValue: '2024-12-31' },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
                         },
                       },
                     },
@@ -532,8 +532,8 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object; at
                               arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_NO2' } },
                             },
                           },
-                          start: { constantValue: '2025-05-01' },
-                          end: { constantValue: '2025-05-20' },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
                         },
                       },
                     },
@@ -572,8 +572,8 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object; at
                               arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_CO' } },
                             },
                           },
-                          start: { constantValue: '2025-05-01' },
-                          end: { constantValue: '2025-05-20' },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
                         },
                       },
                     },
@@ -612,8 +612,8 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object; at
                               arguments: { id: { constantValue: 'COPERNICUS/S5P/OFFL/L3_SO2' } },
                             },
                           },
-                          start: { constantValue: '2025-05-01' },
-                          end: { constantValue: '2025-05-20' },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
                         },
                       },
                     },
@@ -660,7 +660,124 @@ const EE_PRESETS: Record<string, { expression: object; visualization: object; at
     visualization: { min: 0, max: 1000, palette: ['000004', '1b0c41', '4a0c6b', '781c6d', 'a52c60', 'cf4446', 'f17020', 'fca50a', 'f7d31d', 'fcfdbf'] },
     attribution: 'GHSL · European Commission JRC',
   },
-}
+  'dynamic-world': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.mode',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'GOOGLE/DYNAMICWORLD/V1' } },
+                            },
+                          },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['label'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 0, max: 8, palette: ['419bdf', '397d49', '88b053', '7a87c6', 'e49635', 'dfc35a', 'c4281b', 'a59b8f', 'b39fe1'] },
+    attribution: 'Dynamic World · WRI/Google',
+  },
+  'sentinel1-sar': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.median',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'COPERNICUS/S1_GRD' } },
+                            },
+                          },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['VV'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: -25, max: 0, palette: ['000000', 'FFFFFF'] },
+    attribution: 'Sentinel-1 SAR · ESA',
+  },
+  'landsat-thermal': {
+    expression: {
+      result: '0',
+      values: {
+        '0': {
+          functionInvocationValue: {
+            functionName: 'Image.select',
+            arguments: {
+              input: {
+                functionInvocationValue: {
+                  functionName: 'ImageCollection.median',
+                  arguments: {
+                    collection: {
+                      functionInvocationValue: {
+                        functionName: 'ImageCollection.filterDate',
+                        arguments: {
+                          collection: {
+                            functionInvocationValue: {
+                              functionName: 'ImageCollection.load',
+                              arguments: { id: { constantValue: 'LANDSAT/LC09/C02/T1_L2' } },
+                            },
+                          },
+                          start: { constantValue: start },
+                          end: { constantValue: end },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              bandSelectors: { constantValue: ['ST_B10'] },
+            },
+          },
+        },
+      },
+    },
+    visualization: { min: 40000, max: 50000, palette: ['000088', '0000ff', '00ffff', 'ffff00', 'ff0000'] },
+    attribution: 'Landsat 9 Thermal · USGS/NASA',
+  }
+})
 
 let cachedEEToken: { token: string; expires: number } | null = null
 
@@ -676,7 +793,10 @@ async function handleEEMapId(request: Request, env: Env): Promise<Response> {
   try { body = await request.json() as EEMapRequest } catch { return json({ error: 'Invalid JSON' }, 400) }
 
   const presetKey = body.preset ?? 'alphaearth'
-  const preset = EE_PRESETS[presetKey]
+  const end = body.endDate ?? new Date().toISOString().split('T')[0]
+  const start = body.startDate ?? new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  const presets = getEEPresets(start, end)
+  const preset = presets[presetKey]
   if (!preset) return json({ error: `Unknown preset: ${presetKey}` }, 400)
 
   let sa: { client_email: string; private_key: string; project_id: string }

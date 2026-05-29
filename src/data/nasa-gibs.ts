@@ -42,25 +42,31 @@ function buildTileUrl(
 }
 
 /** MODIS Terra True Color Corrected Reflectance — daily 250m. The ground. */
-export function gibsTrueColorTiles(): string {
-  return buildTileUrl('MODIS_Terra_CorrectedReflectance_TrueColor', yesterdayUtcDate(), 9)
+export function gibsTrueColorTiles(targetDate?: string): string {
+  return buildTileUrl('MODIS_Terra_CorrectedReflectance_TrueColor', targetDate ?? yesterdayUtcDate(), 9)
 }
 
 /** VIIRS Black Marble nighttime lights — 500m. Annual composite. */
-export function gibsNightLightsTiles(): string {
+export function gibsNightLightsTiles(targetDate?: string): string {
   // Annual composite — fixed reference date works across all of 2024
-  return buildTileUrl('VIIRS_Black_Marble', '2024-01-01', 8, 'png')
+  const date = targetDate ? `${targetDate.substring(0, 4)}-01-01` : '2024-01-01'
+  return buildTileUrl('VIIRS_Black_Marble', date, 8, 'png')
 }
 
 /** MODIS Terra Land Surface Temperature Day — monthly 1km. Heat island viz. */
-export function gibsLstTiles(): string {
-  return buildTileUrl('MODIS_Terra_L3_Land_Surface_Temp_Mthly_Day', firstOfPreviousMonth(), 7, 'png')
+export function gibsLstTiles(targetDate?: string): string {
+  const date = targetDate ? `${targetDate.substring(0, 7)}-01` : firstOfPreviousMonth()
+  return buildTileUrl('MODIS_Terra_L3_Land_Surface_Temp_Mthly_Day', date, 7, 'png')
 }
 
 /** MODIS Terra NDVI 8-day — 250m vegetation health. AlphaEarth-class proxy. */
-export function gibsNdviTiles(): string {
+export function gibsNdviTiles(targetDate?: string): string {
   // NDVI 8-day composite uses fixed cadence — go back ~16 days to ensure availability
-  const d = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000)
+  let d = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000)
+  if (targetDate) {
+    d = new Date(targetDate)
+    d = new Date(d.getTime() - 16 * 24 * 60 * 60 * 1000)
+  }
   const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
   return buildTileUrl('MODIS_Terra_NDVI_8Day', date, 9, 'png')
 }
