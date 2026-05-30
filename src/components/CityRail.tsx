@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import type { CityConfig } from '../config/cities'
+import { CITIES } from '../config/cities'
 import { useCityStore } from '../store/cityStore'
 import { KpiCard } from './KpiCard'
 import { VitalsBar } from './VitalsBar'
@@ -140,7 +141,8 @@ export function MobileStrip({
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
 }) {
-  const allCities = useCityStore((s) => s.allCities())
+  const customCities = useCityStore((s) => s.customCities)
+  const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
   const [sheetOpen, setSheetOpen] = useState(false)
   const [pm25, setPm25] = useState<Pm25Live | null>(null)
   const [aqi, setAqi] = useState<BangkokAQI | null>(null)

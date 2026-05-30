@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { CityConfig } from './config/cities'
+import { CITIES } from './config/cities'
 
 import { MapView, defaultBasemap, getBasemapDef, BASEMAPS, hasMapboxToken } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
@@ -33,7 +34,8 @@ export default function App() {
 
   // ── City store ──────────────────────────────────────────────────────────────
   const activeCity = useCityStore((s) => s.activeCity)
-  const allCities = useCityStore((s) => s.allCities())
+  const customCities = useCityStore((s) => s.customCities)
+  const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
   const setActiveCity = useCityStore((s) => s.setActiveCity)
   const compareMode = useCityStore((s) => s.compareMode)
   const compareSet = useCityStore((s) => s.compareSet)
