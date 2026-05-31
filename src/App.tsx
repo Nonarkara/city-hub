@@ -27,6 +27,8 @@ import { useCityStore } from './store/cityStore'
 import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
 import { trackEvent } from './lib/firebase'
+import { ActionCenter } from './components/ActionCenter'
+
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
@@ -74,6 +76,8 @@ export default function App() {
   const setSplitOpen = useUIStore((s) => s.setSplitOpen)
   const chatOpen = useUIStore((s) => s.chatOpen)
   const setChatOpen = useUIStore((s) => s.setChatOpen)
+  const actionCenterOpen = useUIStore((s) => s.actionCenterOpen)
+  const setActionCenterOpen = useUIStore((s) => s.setActionCenterOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -217,6 +221,11 @@ export default function App() {
           </button>
         </nav>
 
+        {/* Action Center (Governor SitRep) */}
+        {actionCenterOpen && (
+          <ActionCenter onClose={() => setActionCenterOpen(false)} />
+        )}
+
         {/* Mobile dropdown button */}
         <div className="md-hidden">
           <TopbarCityButton
@@ -239,13 +248,22 @@ export default function App() {
         )}
 
         {bangkokMode && !compareMode && (
-          <button
-            className="topbar-mode-btn"
-            onClick={() => toggleGovernorMode()}
-            title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
-          >
-            · {governorMode ? 'SIT ROOM' : 'ANALYST'}
-          </button>
+          <>
+            <button
+              className="topbar-mode-btn"
+              onClick={() => toggleGovernorMode()}
+              title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
+            >
+              · {governorMode ? 'SIT ROOM' : 'ANALYST'}
+            </button>
+            <button
+              className="topbar-mode-btn topbar-sitrep-btn"
+              onClick={() => setActionCenterOpen(!actionCenterOpen)}
+              title="Review Global SitRep Actions"
+            >
+              · ACTION CENTER
+            </button>
+          </>
         )}
 
         <div className="topbar-spacer" />
