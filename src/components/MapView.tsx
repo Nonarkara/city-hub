@@ -322,10 +322,12 @@ interface MapViewProps {
   basemap: BasemapId
   /** Active date (YYYY-MM-DD) — drives the temporal satellite tiles. */
   activeDate?: string
+  /** Render the map as a 3D globe instead of flat mercator. */
+  globeView?: boolean
   onMapReady?: (map: MapLibreMap) => void
 }
 
-export const MapView = memo(function MapView({ city, basemap, activeDate, onMapReady }: MapViewProps) {
+export const MapView = memo(function MapView({ city, basemap, activeDate, globeView, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const currentBasemapRef = useRef<BasemapId>(basemap)
@@ -408,6 +410,24 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, onMapR
     const def = getBasemapDef(basemap, activeDate)
     map.setStyle(def.style)
   }, [basemap, activeDate])
+
+  // Globe ↔ mercator. Globe has no world-copy repetition (§11.9), so the zoom
+  // floor relaxes to 0 to let the user pull back and see the whole sphere.
+  // Re-applied on style.load so lens switches keep the projection.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const apply = () => {
+      try {
+        map.setProjection({ type: globeView ? 'globe' : 'mercator' })
+        map.setMinZoom(globeView ? 0 : 3)
+      } catch { /* projection unsupported on this build */ }
+    }
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
+    map.on('style.load', apply)
+    return () => { map.off('style.load', apply) }
+  }, [globeView])
 
   return <div ref={containerRef} className="map-container" />
 })

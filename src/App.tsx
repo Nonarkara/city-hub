@@ -87,6 +87,8 @@ export default function App() {
   const setActionCenterOpen = useUIStore((s) => s.setActionCenterOpen)
   const activeOverlays = useUIStore((s) => s.activeOverlays)
   const toggleOverlay = useUIStore((s) => s.toggleOverlay)
+  const globeView = useUIStore((s) => s.globeView)
+  const setGlobeView = useUIStore((s) => s.setGlobeView)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -155,7 +157,7 @@ export default function App() {
 
   return (
     <Suspense fallback={null}>
-      <MapView city={activeCity} basemap={basemap} activeDate={activeDate} onMapReady={setMap} />
+      <MapView city={activeCity} basemap={basemap} activeDate={activeDate} globeView={globeView} onMapReady={setMap} />
 
       {splitOpen && <SplitCompare />}
 
@@ -350,6 +352,25 @@ export default function App() {
                         </li>
                       )
                     })}
+                  </ul>
+                </li>
+
+                {/* VIEW — projection */}
+                <li role="presentation">
+                  <div className="basemap-menu-group">view</div>
+                  <ul className="basemap-menu-sublist" role="group" aria-label="projection">
+                    <li role="none">
+                      <button
+                        role="menuitemcheckbox"
+                        aria-checked={globeView}
+                        className={`basemap-menu-item ${globeView ? 'basemap-menu-item--active' : ''}`}
+                        onClick={() => setGlobeView(!globeView)}
+                      >
+                        <span className="basemap-menu-dot" style={{ background: globeView ? 'var(--amber)' : 'transparent' }} aria-hidden />
+                        <span className="basemap-menu-label">Globe (3D)</span>
+                        {globeView && <span className="basemap-menu-temporal" aria-hidden>●</span>}
+                      </button>
+                    </li>
                   </ul>
                 </li>
               </ul>

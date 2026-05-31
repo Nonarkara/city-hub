@@ -11,7 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "firebase": "^12.14.0",
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^5.24.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tz-lookup": "^6.1.25",
