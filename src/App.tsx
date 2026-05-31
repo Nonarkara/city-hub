@@ -28,6 +28,7 @@ import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
+const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
 
 export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -67,6 +68,8 @@ export default function App() {
   const setActiveDate = useUIStore((s) => s.setActiveDate)
   const mobileSheetOpen = useUIStore((s) => s.mobileSheetOpen)
   const setMobileSheetOpen = useUIStore((s) => s.setMobileSheetOpen)
+  const splitOpen = useUIStore((s) => s.splitOpen)
+  const setSplitOpen = useUIStore((s) => s.setSplitOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -132,6 +135,8 @@ export default function App() {
   return (
     <Suspense fallback={null}>
       <MapView city={activeCity} basemap={basemap} activeDate={activeDate} onMapReady={setMap} />
+
+      {splitOpen && <SplitCompare />}
 
       <HUD
         map={map}
@@ -290,6 +295,18 @@ export default function App() {
             </>
           )}
         </div>
+
+        {/* SPLIT — side-by-side satellite compare */}
+        <button
+          className={`topbar-insight-btn ${splitOpen ? 'topbar-insight-btn--active' : ''}`}
+          onClick={() => setSplitOpen(!splitOpen)}
+          title="Split-screen compare — any city / lens / date vs any other"
+          aria-label="Toggle split-screen compare"
+          aria-pressed={splitOpen}
+        >
+          <span className="topbar-insight-icon" aria-hidden>◫</span>
+          <span className="topbar-insight-label">SPLIT</span>
+        </button>
 
         {/* INSIGHT — the pattern-revealing button */}
         <button
