@@ -4712,6 +4712,28 @@
   max-width: 320px;
 }
 
+/* Earthquake popup (LIVE quakes overlay) */
+.popup-quake-mag {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.popup-quake-place {
+  font-size: 13px;
+  color: var(--fg);
+  margin-bottom: 4px;
+}
+.popup-quake-meta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--fg-dim);
+}
+
 .popup-historical-type {
   font-family: var(--font-mono);
   font-size: 9px;

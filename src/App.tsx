@@ -19,6 +19,7 @@ import { AnomalyPins } from './components/AnomalyPins'
 import { useAnomalies } from './hooks/useAnomalies'
 import { ASEANStrip } from './components/ASEANStrip'
 import { useBangkokLayers } from './components/map-layers/use-bangkok-layers'
+import { useGlobalOverlays } from './components/map-layers/use-global-overlays'
 import { InsightPanel, type InsightTemplate } from './components/InsightPanel'
 import { CityFactsCard } from './components/CityFactsCard'
 import { ActiveInsightBanner } from './components/ActiveInsightBanner'
@@ -33,6 +34,12 @@ const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
 const CityChat = lazy(() => import('./components/CityChat').then((m) => ({ default: m.CityChat })))
+
+// Real-time global overlays that ride on top of any lens, any city.
+const LIVE_OVERLAYS: { id: string; label: string }[] = [
+  { id: 'quakes', label: 'Earthquakes · 24h' },
+  { id: 'radar',  label: 'Rain Radar' },
+]
 
 export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -78,6 +85,8 @@ export default function App() {
   const setChatOpen = useUIStore((s) => s.setChatOpen)
   const actionCenterOpen = useUIStore((s) => s.actionCenterOpen)
   const setActionCenterOpen = useUIStore((s) => s.setActionCenterOpen)
+  const activeOverlays = useUIStore((s) => s.activeOverlays)
+  const toggleOverlay = useUIStore((s) => s.toggleOverlay)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -118,6 +127,9 @@ export default function App() {
   const bangkokMode = activeCity.tier === 'full'
 
   useBangkokLayers(map, activeLayers, bangkokMode, activeDate, bangkokMode ? setSelectedDistrict : undefined)
+
+  // Global real-time overlays (earthquakes, radar) — every city, every lens.
+  useGlobalOverlays(map, activeOverlays)
 
   const anomalies = useAnomalies(bangkokMode)
 
@@ -316,6 +328,30 @@ export default function App() {
                     </ul>
                   </li>
                 ))}
+
+                {/* LIVE overlays — real-time layers on top of any lens */}
+                <li role="presentation">
+                  <div className="basemap-menu-group">live</div>
+                  <ul className="basemap-menu-sublist" role="group" aria-label="live overlays">
+                    {LIVE_OVERLAYS.map((ov) => {
+                      const on = activeOverlays.has(ov.id)
+                      return (
+                        <li key={ov.id} role="none">
+                          <button
+                            role="menuitemcheckbox"
+                            aria-checked={on}
+                            className={`basemap-menu-item ${on ? 'basemap-menu-item--active' : ''}`}
+                            onClick={() => toggleOverlay(ov.id)}
+                          >
+                            <span className="basemap-menu-dot" style={{ background: on ? 'var(--amber)' : 'transparent' }} aria-hidden />
+                            <span className="basemap-menu-label">{ov.label}</span>
+                            {on && <span className="basemap-menu-temporal" aria-hidden>●</span>}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </li>
               </ul>
             </>
           )}

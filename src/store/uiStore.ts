@@ -18,6 +18,7 @@ interface UIStore {
   splitOpen: boolean
   chatOpen: boolean
   actionCenterOpen: boolean
+  activeOverlays: Set<string>
 
   setGovernorMode: (v: boolean) => void
   toggleGovernorMode: () => void
@@ -33,6 +34,7 @@ interface UIStore {
   setSplitOpen: (v: boolean) => void
   setChatOpen: (v: boolean) => void
   setActionCenterOpen: (v: boolean) => void
+  toggleOverlay: (id: string) => void
 }
 
 export const useUIStore = create<UIStore>()((set) => ({
@@ -49,6 +51,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   splitOpen: false,
   chatOpen: false,
   actionCenterOpen: false,
+  activeOverlays: new Set<string>(),
 
   setGovernorMode: (v) => set({ governorMode: v }),
   toggleGovernorMode: () => set((s) => ({ governorMode: !s.governorMode })),
@@ -64,4 +67,9 @@ export const useUIStore = create<UIStore>()((set) => ({
   setSplitOpen: (v) => set({ splitOpen: v }),
   setChatOpen: (v) => set({ chatOpen: v }),
   setActionCenterOpen: (v) => set({ actionCenterOpen: v }),
+  toggleOverlay: (id) => set((s) => {
+    const next = new Set(s.activeOverlays)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return { activeOverlays: next }
+  }),
 }))
