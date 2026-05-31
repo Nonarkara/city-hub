@@ -29,6 +29,7 @@ import { useUIStore } from './store/uiStore'
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
+const CityChat = lazy(() => import('./components/CityChat').then((m) => ({ default: m.CityChat })))
 
 export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -70,6 +71,8 @@ export default function App() {
   const setMobileSheetOpen = useUIStore((s) => s.setMobileSheetOpen)
   const splitOpen = useUIStore((s) => s.splitOpen)
   const setSplitOpen = useUIStore((s) => s.setSplitOpen)
+  const chatOpen = useUIStore((s) => s.chatOpen)
+  const setChatOpen = useUIStore((s) => s.setChatOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -137,6 +140,8 @@ export default function App() {
       <MapView city={activeCity} basemap={basemap} activeDate={activeDate} onMapReady={setMap} />
 
       {splitOpen && <SplitCompare />}
+
+      {chatOpen && <CityChat activeCity={activeCity} />}
 
       <HUD
         map={map}
@@ -306,6 +311,18 @@ export default function App() {
         >
           <span className="topbar-insight-icon" aria-hidden>◫</span>
           <span className="topbar-insight-label">SPLIT</span>
+        </button>
+
+        {/* ASK — local Ollama city chatbot */}
+        <button
+          className={`topbar-insight-btn ${chatOpen ? 'topbar-insight-btn--active' : ''}`}
+          onClick={() => setChatOpen(!chatOpen)}
+          title="Ask about the cities — local AI (Ollama)"
+          aria-label="Toggle city chatbot"
+          aria-pressed={chatOpen}
+        >
+          <span className="topbar-insight-icon" aria-hidden>✦</span>
+          <span className="topbar-insight-label">ASK</span>
         </button>
 
         {/* INSIGHT — the pattern-revealing button */}

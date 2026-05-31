@@ -16,6 +16,7 @@ interface UIStore {
   activeInsight: InsightTemplate | null
   activeDate: string
   splitOpen: boolean
+  chatOpen: boolean
 
   setGovernorMode: (v: boolean) => void
   toggleGovernorMode: () => void
@@ -29,6 +30,7 @@ interface UIStore {
   setActiveInsight: (i: InsightTemplate | null) => void
   setActiveDate: (d: string) => void
   setSplitOpen: (v: boolean) => void
+  setChatOpen: (v: boolean) => void
 }
 
 export const useUIStore = create<UIStore>()((set) => ({
@@ -43,6 +45,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   activeInsight: null,
   activeDate: new Date().toISOString().split('T')[0],
   splitOpen: false,
+  chatOpen: false,
 
   setGovernorMode: (v) => set({ governorMode: v }),
   toggleGovernorMode: () => set((s) => ({ governorMode: !s.governorMode })),
@@ -56,4 +59,5 @@ export const useUIStore = create<UIStore>()((set) => ({
   setActiveInsight: (i) => set({ activeInsight: i }),
   setActiveDate: (d) => set({ activeDate: d }),
   setSplitOpen: (v) => set({ splitOpen: v }),
+  setChatOpen: (v) => set({ chatOpen: v }),
 }))
