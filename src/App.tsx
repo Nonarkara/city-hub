@@ -26,6 +26,7 @@ import { prefetchCity } from './lib/city-prefetch'
 import { useCityStore } from './store/cityStore'
 import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
+import { trackEvent } from './lib/firebase'
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
@@ -117,6 +118,7 @@ export default function App() {
   const anomalies = useAnomalies(bangkokMode)
 
   const toggleLayer = useCallback((id: string) => {
+    trackEvent('toggle_layer', { layer_id: id })
     useLayerStore.getState().toggleLayer(id)
   }, [])
 

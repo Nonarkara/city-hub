@@ -12,6 +12,9 @@ import { useCityStore } from '../store/cityStore'
 import { useUIStore } from '../store/uiStore'
 import { getCityScore } from '../lib/slic'
 import { streamCityChat, OLLAMA_INFO, type ChatMessage } from '../lib/ollama'
+import { streamGeminiChat, GEMINI_INFO } from '../lib/gemini'
+
+type Backend = 'cloud' | 'local'
 
 function buildSystemPrompt(cities: CityConfig[], active: CityConfig): string {
   const lines = cities.map((c) => {
@@ -43,6 +46,9 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput]       = useState('')
   const [busy, setBusy]         = useState(false)
+  // Cloud (Gemini) is the default — it works on the deployed site for anyone.
+  // Local (Ollama) is the private, offline option for when you're on your machine.
+  const [backend, setBackend]   = useState<Backend>('cloud')
 
   const threadRef = useRef<HTMLDivElement>(null)
   const abortRef  = useRef<AbortController | null>(null)
@@ -72,8 +78,9 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
 
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    const stream = backend === 'cloud' ? streamGeminiChat : streamCityChat
     try {
-      await streamCityChat(
+      await stream(
         [{ role: 'system', content: systemPrompt }, ...history],
         (delta) => setMessages((m) => {
           const copy = [...m]
@@ -84,12 +91,12 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
         ctrl.signal,
       )
     } catch {
+      const fallback = backend === 'cloud'
+        ? `⚠ Gemini (${GEMINI_INFO.model}) isn't responding. In your Firebase console, enable Build → AI Logic (Gemini Developer API). Or switch to LOCAL to use Ollama.`
+        : `⚠ Can't reach Ollama at ${OLLAMA_INFO.url}. Start it with \`ollama serve\` and make sure \`${OLLAMA_INFO.model}\` is pulled. Or switch to CLOUD.`
       setMessages((m) => {
         const copy = [...m]
-        copy[copy.length - 1] = {
-          role: 'assistant',
-          content: `⚠ Can't reach Ollama at ${OLLAMA_INFO.url}. Start it with \`ollama serve\` and make sure \`${OLLAMA_INFO.model}\` is pulled.`,
-        }
+        copy[copy.length - 1] = { role: 'assistant', content: fallback }
         return copy
       })
     } finally {
@@ -102,7 +109,20 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
     <div className="citychat" role="dialog" aria-label="City chatbot">
       <div className="citychat-header">
         <span className="citychat-title">ASK · CITIES</span>
-        <span className="citychat-model" title="Running locally via Ollama">{OLLAMA_INFO.model}</span>
+        <div className="citychat-backend" role="group" aria-label="Chat backend">
+          <button
+            className={`citychat-backend-btn ${backend === 'cloud' ? 'citychat-backend-btn--on' : ''}`}
+            onClick={() => setBackend('cloud')}
+            disabled={busy}
+            title={`Gemini (${GEMINI_INFO.model}) — works anywhere, via Firebase`}
+          >CLOUD</button>
+          <button
+            className={`citychat-backend-btn ${backend === 'local' ? 'citychat-backend-btn--on' : ''}`}
+            onClick={() => setBackend('local')}
+            disabled={busy}
+            title={`Ollama (${OLLAMA_INFO.model}) — private, on your machine`}
+          >LOCAL</button>
+        </div>
         <button className="citychat-close" onClick={() => setChatOpen(false)} aria-label="Close chat">✕</button>
       </div>
 
@@ -110,7 +130,10 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
         {messages.length === 0 ? (
           <div className="citychat-empty">
             <p className="citychat-empty-hint">
-              Ask me anything basic about {activeCity.name} or the other cities. Runs entirely on your machine.
+              Ask me anything basic about {activeCity.name} or the other cities.{' '}
+              {backend === 'cloud'
+                ? `Powered by Gemini (${GEMINI_INFO.model}).`
+                : 'Runs entirely on your machine via Ollama.'}
             </p>
             <div className="citychat-chips">
               {starters.map((s) => (

@@ -597,6 +597,24 @@
   color: var(--dim);
   margin-left: auto;
 }
+.citychat-backend {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--line);
+}
+.citychat-backend-btn {
+  background: transparent;
+  border: 0;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 4px 7px;
+  min-height: 26px;
+  cursor: pointer;
+}
+.citychat-backend-btn--on { background: var(--amber); color: #04060b; }
+.citychat-backend-btn:disabled { cursor: not-allowed; opacity: 0.6; }
 .citychat-close {
   background: transparent;
   border: 0;

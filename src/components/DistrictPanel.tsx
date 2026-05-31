@@ -13,6 +13,7 @@ import { fetchTraffyGeoJSON } from '../data/traffy'
 import { buildDistrictProfiles, type DistrictProfile } from '../lib/intelligence'
 import { RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { type DistrictSummary } from '../hooks/useDistrictData'
+import { saveDraftAction } from '../lib/db'
 
 // ── Types for Forecast ───────────────────────────────────────────────────
 interface ForecastResponse {
@@ -145,6 +146,7 @@ export function DistrictPanel({ district, onClose, onDraft }: Props) {
   const [profile, setProfile] = useState<DistrictProfile | null>(null)
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isDrafting, setIsDrafting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +180,18 @@ export function DistrictPanel({ district, onClose, onDraft }: Props) {
   const draftText = `[BMA · เขต${district.name_th}]
 ขณะนี้มีรายงานปัญหาจากประชาชน ${district.complaint_count.toLocaleString()} รายการ (ระดับ ${district.risk_level.toUpperCase()})
 กรุณาตรวจสอบและดำเนินการแก้ไขโดยเร็ว`
+
+  const handleDraft = async () => {
+    setIsDrafting(true)
+    try {
+      await saveDraftAction(district.name_en, draftText)
+      onDraft(draftText)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsDrafting(false)
+    }
+  }
 
   const topTypes = profile
     ? Object.entries(
@@ -299,8 +313,8 @@ export function DistrictPanel({ district, onClose, onDraft }: Props) {
 
       {/* Action footer */}
       <div className="district-panel-footer">
-        <button className="district-draft-btn" onClick={() => onDraft(draftText)}>
-          DRAFT DISTRICT ACTION →
+        <button className="district-draft-btn" onClick={handleDraft} disabled={isDrafting}>
+          {isDrafting ? 'SAVING TO CLOUD...' : 'DRAFT DISTRICT ACTION →'}
         </button>
         <button className="district-back-btn" onClick={onClose}>
           ← BACK TO SIT ROOM
