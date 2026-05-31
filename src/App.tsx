@@ -29,6 +29,8 @@ import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
 import { trackEvent } from './lib/firebase'
 import { ActionCenter } from './components/ActionCenter'
+import { ShareButton } from './components/ShareButton'
+import { useShareableView } from './hooks/useShareableView'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -135,6 +137,10 @@ export default function App() {
 
   // Global real-time overlays (earthquakes, radar) — every city, every lens.
   useGlobalOverlays(map, activeOverlays)
+
+  // Mirror the view (city · lens · date · overlays · globe) to the URL so it's
+  // shareable, and apply any params from an incoming shared link on load.
+  useShareableView()
 
   const anomalies = useAnomalies(bangkokMode)
 
@@ -429,6 +435,8 @@ export default function App() {
           <span className="topbar-insight-icon" aria-hidden>◇</span>
           <span className="topbar-insight-label">INSIGHT</span>
         </button>
+
+        <ShareButton />
 
         <button
           className="topbar-cmdk"
