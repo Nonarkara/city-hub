@@ -123,6 +123,15 @@ function mapboxSatStreetsStyle(): StyleSpecification {
  *  (upscales the last tile) instead of requesting nonexistent tiles. Critical
  *  for coarse spectral products (aerosol z6, surface-temp z7) viewed at city
  *  zoom (z11) — without it the layer goes blank when you zoom in. */
+// Keyless place-name + road labels (OSM via CARTO), light text with a dark
+// halo so it reads on both dark spectral lenses and bright satellite imagery.
+// Baked into every raster lens → Google-Maps label parity on the whole stack.
+const LABEL_TILES = [
+  'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+  'https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+  'https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+]
+
 function rasterStyle(
   tileTemplate: string,
   attribution: string,
@@ -132,6 +141,9 @@ function rasterStyle(
   return {
     version: 8,
     name,
+    // Present so symbol/text layers added later (Bangkok overlays) validate
+    // instead of throwing "requires a style glyphs property".
+    glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
     sources: {
       basemap: {
         type: 'raster',
@@ -140,10 +152,17 @@ function rasterStyle(
         attribution,
         ...(maxzoom !== undefined ? { maxzoom } : {}),
       },
+      labels: {
+        type: 'raster',
+        tiles: LABEL_TILES,
+        tileSize: 256,
+        attribution: '© OpenStreetMap · © CARTO',
+      },
     },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#04060b' } },
       { id: 'basemap', type: 'raster', source: 'basemap' },
+      { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.92 } },
     ],
   }
 }
