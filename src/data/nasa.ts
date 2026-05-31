@@ -67,7 +67,10 @@ function csvToGeoJSON(csv: string): GeoJSON.FeatureCollection {
  * Date defaults to yesterday (UTC) — many GIBS layers are 1 day behind.
  */
 export function gibsAerosolTileTemplate(targetDate?: string): string {
-  const d = targetDate ?? gibsYesterday()
+  // Daily product — clamp to yesterday; today's granule isn't processed yet.
+  const yest = gibsYesterday()
+  let d = targetDate ?? yest
+  if (d > yest) d = yest
   // MODIS_Combined_Value_Added_AOD — daily, level 6 cap, PNG tiles
   return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/${d}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`
 }

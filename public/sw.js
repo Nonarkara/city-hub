@@ -11,7 +11,7 @@
  * The cache name is versioned — bumping it on each deploy forces a fresh
  * shell on the next visit.
  */
-const VERSION = 'v9-2026-05-30'
+const VERSION = 'v10-2026-05-31'
 const SHELL_CACHE = `shell-${VERSION}`
 const RUNTIME_CACHE = `runtime-${VERSION}`
 

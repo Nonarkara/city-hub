@@ -8,7 +8,11 @@ import {
   esriWorldImageryTiles,
   sentinel2CloudlessTiles,
   gibsTrueColorTiles,
+  gibsNightLightsTiles,
+  gibsLstTiles,
+  gibsNdviTiles,
 } from '../data/nasa-gibs'
+import { gibsAerosolTileTemplate } from '../data/nasa'
 
 // Mapbox token — optional. Unlocks Mapbox vector + Satellite Streets basemaps.
 // MapLibre doesn't need any token for the tokenless raster basemaps below.
@@ -23,11 +27,26 @@ export function hasMapboxToken(): boolean {
 // Five variants. Three are tokenless rasters — the dashboard is never empty.
 // Two require a Mapbox token (dark-vector + satellite-streets).
 
+export type BasemapGroup = 'imagery' | 'spectral' | 'vector'
+
 export interface BasemapDef {
   id: BasemapId
   label: string
   requiresToken: boolean
+  group: BasemapGroup
+  /** True if the tiles change with the selected date (drives the time machine). */
+  temporal: boolean
   style: StyleSpecification
+}
+
+/** Spectral/imagery basemaps whose tiles are date-keyed — these enable the
+ *  temporal scrubber. Pure imagery (ESRI, Sentinel-2) and vector are not. */
+const TEMPORAL_BASEMAPS = new Set<BasemapId>([
+  'nasa-true-color', 'nasa-aerosol', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights',
+])
+
+export function isTemporalBasemap(id: BasemapId): boolean {
+  return TEMPORAL_BASEMAPS.has(id)
 }
 
 /** Mapbox vector tile URL with token query param (MapLibre-compatible). */
@@ -97,8 +116,17 @@ function mapboxSatStreetsStyle(): StyleSpecification {
   }
 }
 
-/** Raster-only style for a single XYZ tile source. Used for tokenless basemaps. */
-function rasterStyle(tileTemplate: string, attribution: string, name: string): StyleSpecification {
+/** Raster-only style for a single XYZ tile source. Used for tokenless basemaps.
+ *  `maxzoom` caps the source's native zoom — beyond it MapLibre overzooms
+ *  (upscales the last tile) instead of requesting nonexistent tiles. Critical
+ *  for coarse spectral products (aerosol z6, surface-temp z7) viewed at city
+ *  zoom (z11) — without it the layer goes blank when you zoom in. */
+function rasterStyle(
+  tileTemplate: string,
+  attribution: string,
+  name: string,
+  maxzoom?: number,
+): StyleSpecification {
   return {
     version: 8,
     name,
@@ -108,6 +136,7 @@ function rasterStyle(tileTemplate: string, attribution: string, name: string): S
         tiles: [tileTemplate],
         tileSize: 256,
         attribution,
+        ...(maxzoom !== undefined ? { maxzoom } : {}),
       },
     },
     layers: [
@@ -117,17 +146,19 @@ function rasterStyle(tileTemplate: string, attribution: string, name: string): S
   }
 }
 
-export function getBasemapDef(id: BasemapId): BasemapDef {
+export function getBasemapDef(id: BasemapId, activeDate?: string): BasemapDef {
   switch (id) {
     case 'dark-vector':
-      return { id, label: 'Dark Vector', requiresToken: true, style: darkVectorStyle() }
+      return { id, label: 'Dark Vector', requiresToken: true, group: 'vector', temporal: false, style: darkVectorStyle() }
     case 'mapbox-sat-streets':
-      return { id, label: 'Satellite + Streets', requiresToken: true, style: mapboxSatStreetsStyle() }
+      return { id, label: 'Satellite + Streets', requiresToken: true, group: 'vector', temporal: false, style: mapboxSatStreetsStyle() }
     case 'esri-imagery':
       return {
         id,
         label: 'ESRI Satellite',
         requiresToken: false,
+        group: 'imagery',
+        temporal: false,
         style: rasterStyle(
           esriWorldImageryTiles(),
           '© Esri · Maxar · Earthstar Geographics',
@@ -139,6 +170,8 @@ export function getBasemapDef(id: BasemapId): BasemapDef {
         id,
         label: 'Sentinel-2 Cloudless',
         requiresToken: false,
+        group: 'imagery',
+        temporal: false,
         style: rasterStyle(
           sentinel2CloudlessTiles(),
           '© EOX IT Services · Sentinel-2 cloudless 2023',
@@ -148,25 +181,85 @@ export function getBasemapDef(id: BasemapId): BasemapDef {
     case 'nasa-true-color':
       return {
         id,
-        label: 'NASA Today',
+        label: 'MODIS True Color',
         requiresToken: false,
+        group: 'imagery',
+        temporal: true,
         style: rasterStyle(
-          gibsTrueColorTiles(),
+          gibsTrueColorTiles(activeDate),
           '© NASA GIBS · MODIS Terra Corrected Reflectance',
-          'NASA MODIS Terra (yesterday)',
+          'NASA MODIS Terra true color',
+          9,
+        ),
+      }
+    case 'nasa-aerosol':
+      return {
+        id,
+        label: 'Aerosol (AOD)',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsAerosolTileTemplate(activeDate),
+          '© NASA GIBS · MODIS Combined Value-Added AOD',
+          'NASA aerosol optical depth',
+          6,
+        ),
+      }
+    case 'nasa-ndvi':
+      return {
+        id,
+        label: 'Vegetation (NDVI)',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsNdviTiles(activeDate),
+          '© NASA GIBS · MODIS Terra NDVI 8-Day',
+          'NASA NDVI vegetation index',
+          9,
+        ),
+      }
+    case 'nasa-surface-temp':
+      return {
+        id,
+        label: 'Surface Heat',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsLstTiles(activeDate),
+          '© NASA GIBS · MODIS Terra Land Surface Temp',
+          'NASA land surface temperature',
+          7,
+        ),
+      }
+    case 'nasa-nightlights':
+      return {
+        id,
+        label: 'Night Lights',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsNightLightsTiles(activeDate),
+          '© NASA GIBS · VIIRS Black Marble',
+          'NASA VIIRS night lights',
+          8,
         ),
       }
   }
 }
 
-/** All basemap defs in display order. */
-export const BASEMAPS: BasemapId[] = [
-  'esri-imagery',
-  'sentinel-cloudless',
-  'nasa-true-color',
-  'dark-vector',
-  'mapbox-sat-streets',
+/** All basemap defs in display order, grouped for the Satellite Stack menu. */
+export const BASEMAP_GROUPS: { label: BasemapGroup; ids: BasemapId[] }[] = [
+  { label: 'imagery',  ids: ['esri-imagery', 'sentinel-cloudless', 'nasa-true-color'] },
+  { label: 'spectral', ids: ['nasa-aerosol', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights'] },
+  { label: 'vector',   ids: ['dark-vector', 'mapbox-sat-streets'] },
 ]
+
+/** Flat list of all basemap IDs, in display order. */
+export const BASEMAPS: BasemapId[] = BASEMAP_GROUPS.flatMap((g) => g.ids)
 
 /** Default basemap — Dark Vector when token is available, ESRI imagery otherwise. */
 export function defaultBasemap(): BasemapId {
@@ -178,19 +271,22 @@ export function defaultBasemap(): BasemapId {
 interface MapViewProps {
   city: CityConfig
   basemap: BasemapId
+  /** Active date (YYYY-MM-DD) — drives the temporal satellite tiles. */
+  activeDate?: string
   onMapReady?: (map: MapLibreMap) => void
 }
 
-export const MapView = memo(function MapView({ city, basemap, onMapReady }: MapViewProps) {
+export const MapView = memo(function MapView({ city, basemap, activeDate, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const currentBasemapRef = useRef<BasemapId>(basemap)
+  const currentDateRef = useRef<string | undefined>(activeDate)
 
   // Init once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const def = getBasemapDef(basemap)
+    const def = getBasemapDef(basemap, activeDate)
     const map = new MapLibreMap({
       container: containerRef.current,
       style: def.style,
@@ -249,15 +345,20 @@ export const MapView = memo(function MapView({ city, basemap, onMapReady }: MapV
     }
   }, [city])
 
-  // Swap basemap style when prop changes
+  // Swap basemap style when the basemap changes, or when the date changes on a
+  // temporal basemap (the time machine — re-keys the NASA tiles to the new day).
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    if (currentBasemapRef.current === basemap) return
+    const basemapChanged = currentBasemapRef.current !== basemap
+    const dateChanged = currentDateRef.current !== activeDate
+    const temporal = isTemporalBasemap(basemap)
+    if (!basemapChanged && !(temporal && dateChanged)) return
     currentBasemapRef.current = basemap
-    const def = getBasemapDef(basemap)
+    currentDateRef.current = activeDate
+    const def = getBasemapDef(basemap, activeDate)
     map.setStyle(def.style)
-  }, [basemap])
+  }, [basemap, activeDate])
 
   return <div ref={containerRef} className="map-container" />
 })

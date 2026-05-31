@@ -165,7 +165,10 @@
   left: 0;
   right: 0;
   height: 44px;
-  z-index: var(--z-overlay);
+  /* +1 so topbar dropdowns (Satellite Stack menu) sit above the side panels,
+     which share --z-overlay and would otherwise clip the menu on DOM order.
+     Full-screen modals (cmdk/insight/onboarding) live at 9000+, unaffected. */
+  z-index: calc(var(--z-overlay) + 1);
   display: flex;
   align-items: center;
   padding: 0 var(--space-md);
@@ -387,6 +390,41 @@
   color: var(--fg-dim);
   letter-spacing: 0.2em;
   font-size: 9px;
+}
+
+/* ── Satellite Stack menu — grouped basemap switcher ───────────────────── */
+.basemap-menu {
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+}
+
+.basemap-menu-title {
+  padding: 9px 12px 7px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--amber);
+  border-bottom: 1px solid var(--line);
+}
+
+.basemap-menu-group {
+  padding: 9px 12px 3px;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.basemap-menu-sublist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.basemap-menu-temporal {
+  color: var(--amber);
+  font-size: 11px;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 /* ── Rail active-city header (replaces city list in left rail) ──────────── */

@@ -41,9 +41,14 @@ function buildTileUrl(
   return `${GIBS_BASE}/${layer}/default/${date}/GoogleMapsCompatible_Level${level}/{z}/{y}/{x}.${ext}`
 }
 
-/** MODIS Terra True Color Corrected Reflectance — daily 250m. The ground. */
+/** MODIS Terra True Color Corrected Reflectance — daily 250m. The ground.
+ *  Clamps to yesterday: today's granule isn't processed yet, so a date of
+ *  "today" (the app default) would 400 and render blank. */
 export function gibsTrueColorTiles(targetDate?: string): string {
-  return buildTileUrl('MODIS_Terra_CorrectedReflectance_TrueColor', targetDate ?? yesterdayUtcDate(), 9)
+  const yest = yesterdayUtcDate()
+  let date = targetDate ?? yest
+  if (date > yest) date = yest
+  return buildTileUrl('MODIS_Terra_CorrectedReflectance_TrueColor', date, 9)
 }
 
 /** VIIRS Black Marble nighttime lights — 500m. Annual composite. */
@@ -53,9 +58,13 @@ export function gibsNightLightsTiles(targetDate?: string): string {
   return buildTileUrl('VIIRS_Black_Marble', date, 8, 'png')
 }
 
-/** MODIS Terra Land Surface Temperature Day — monthly 1km. Heat island viz. */
+/** MODIS Terra Land Surface Temperature Day — monthly 1km. Heat island viz.
+ *  Monthly composites publish after the month closes, so clamp the requested
+ *  month to the last complete one — the current month would 400 and go blank. */
 export function gibsLstTiles(targetDate?: string): string {
-  const date = targetDate ? `${targetDate.substring(0, 7)}-01` : firstOfPreviousMonth()
+  const prevMonth = firstOfPreviousMonth()
+  let date = targetDate ? `${targetDate.substring(0, 7)}-01` : prevMonth
+  if (date > prevMonth) date = prevMonth
   return buildTileUrl('MODIS_Terra_L3_Land_Surface_Temp_Mthly_Day', date, 7, 'png')
 }
 

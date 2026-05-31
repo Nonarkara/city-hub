@@ -3,7 +3,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { CityConfig } from './config/cities'
 import { CITIES } from './config/cities'
 
-import { MapView, defaultBasemap, getBasemapDef, BASEMAPS, hasMapboxToken } from './components/MapView'
+import { MapView, defaultBasemap, getBasemapDef, BASEMAP_GROUPS, isTemporalBasemap, hasMapboxToken } from './components/MapView'
 import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
 import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
@@ -124,9 +124,14 @@ export default function App() {
   // If compare mode is active, show comparison panel instead of city-specific panels
   const showComparison = compareMode && compareSet.length >= 2
 
+  // Time machine — the temporal scrubber is available on ANY city whenever a
+  // date-keyed satellite lens (MODIS, aerosol, NDVI, surface-temp, nightlights)
+  // is the active basemap. Google shows only today; this scrubs 30 days back.
+  const temporalBasemapActive = isTemporalBasemap(basemap)
+
   return (
     <Suspense fallback={null}>
-      <MapView city={activeCity} basemap={basemap} onMapReady={setMap} />
+      <MapView city={activeCity} basemap={basemap} activeDate={activeDate} onMapReady={setMap} />
 
       <HUD
         map={map}
@@ -147,7 +152,7 @@ export default function App() {
 
       {bangkokMode && <FreshnessPanel />}
       <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
-      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
+      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={(temporalBasemapActive || (bangkokMode && governorMode)) && !selectedDistrict && !showComparison} />
       {bangkokMode && governorMode && !showComparison && (
         <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
       )}
@@ -249,29 +254,38 @@ export default function App() {
             <>
               <div className="basemap-menu-backdrop" onClick={() => setBasemapMenuOpen(false)} aria-hidden />
               <ul className="basemap-menu" role="menu">
-                {BASEMAPS.map((id) => {
-                  const def = getBasemapDef(id)
-                  const disabled = def.requiresToken && !tokenAvailable
-                  return (
-                    <li key={id} role="none">
-                      <button
-                        role="menuitem"
-                        className={`basemap-menu-item ${basemap === id ? 'basemap-menu-item--active' : ''} ${disabled ? 'basemap-menu-item--disabled' : ''}`}
-                        disabled={disabled}
-                        title={disabled ? 'Requires Mapbox token' : def.label}
-                        onClick={() => {
-                          if (disabled) return
-                          setBasemap(id)
-                          setBasemapMenuOpen(false)
-                        }}
-                      >
-                        <span className="basemap-menu-dot" style={{ background: basemap === id ? 'var(--amber)' : 'transparent' }} aria-hidden />
-                        <span className="basemap-menu-label">{def.label}</span>
-                        {disabled && <span className="basemap-menu-lock" aria-hidden>·</span>}
-                      </button>
-                    </li>
-                  )
-                })}
+                <li className="basemap-menu-title" role="presentation">SATELLITE STACK</li>
+                {BASEMAP_GROUPS.map((group) => (
+                  <li key={group.label} role="presentation">
+                    <div className="basemap-menu-group">{group.label}</div>
+                    <ul className="basemap-menu-sublist" role="group" aria-label={group.label}>
+                      {group.ids.map((id) => {
+                        const def = getBasemapDef(id)
+                        const disabled = def.requiresToken && !tokenAvailable
+                        return (
+                          <li key={id} role="none">
+                            <button
+                              role="menuitem"
+                              className={`basemap-menu-item ${basemap === id ? 'basemap-menu-item--active' : ''} ${disabled ? 'basemap-menu-item--disabled' : ''}`}
+                              disabled={disabled}
+                              title={disabled ? 'Requires Mapbox token' : def.label}
+                              onClick={() => {
+                                if (disabled) return
+                                setBasemap(id)
+                                setBasemapMenuOpen(false)
+                              }}
+                            >
+                              <span className="basemap-menu-dot" style={{ background: basemap === id ? 'var(--amber)' : 'transparent' }} aria-hidden />
+                              <span className="basemap-menu-label">{def.label}</span>
+                              {def.temporal && <span className="basemap-menu-temporal" title="Scrubbable through time" aria-hidden>⧗</span>}
+                              {disabled && <span className="basemap-menu-lock" aria-hidden>·</span>}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </li>
+                ))}
               </ul>
             </>
           )}

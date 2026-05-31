@@ -43,7 +43,11 @@ export type BasemapId =
   | 'mapbox-sat-streets'    // Mapbox satellite-streets-v12 — requires token
   | 'esri-imagery'          // ESRI World Imagery — no token
   | 'sentinel-cloudless'    // EOX Sentinel-2 cloudless — no token
-  | 'nasa-true-color'       // NASA GIBS MODIS Terra — no token
+  | 'nasa-true-color'       // NASA GIBS MODIS Terra true color — no token, daily
+  | 'nasa-aerosol'          // NASA GIBS aerosol optical depth — no token, daily
+  | 'nasa-ndvi'             // NASA GIBS MODIS NDVI vegetation — no token, 8-day
+  | 'nasa-surface-temp'     // NASA GIBS MODIS land surface temp — no token, monthly
+  | 'nasa-nightlights'      // NASA GIBS VIIRS Black Marble — no token, annual
 
 // Layer IDs that lite-tier cities know how to load. Subset of BANGKOK_LAYERS.
 // Lite cities pull only from sources that are global (WAQI, OpenAQ, NASA, GIBS,
