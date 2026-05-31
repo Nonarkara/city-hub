@@ -45,6 +45,8 @@ export type BasemapId =
   | 'sentinel-cloudless'    // EOX Sentinel-2 cloudless — no token
   | 'nasa-true-color'       // NASA GIBS MODIS Terra true color — no token, daily
   | 'nasa-aerosol'          // NASA GIBS aerosol optical depth — no token, daily
+  | 'nasa-co'               // NASA GIBS AIRS carbon monoxide — no token, daily
+  | 'nasa-so2'              // NASA GIBS OMPS sulphur dioxide — no token, daily
   | 'nasa-ndvi'             // NASA GIBS MODIS NDVI vegetation — no token, 8-day
   | 'nasa-surface-temp'     // NASA GIBS MODIS land surface temp — no token, monthly
   | 'nasa-nightlights'      // NASA GIBS VIIRS Black Marble — no token, annual

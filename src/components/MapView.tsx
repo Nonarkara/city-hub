@@ -11,6 +11,8 @@ import {
   gibsNightLightsTiles,
   gibsLstTiles,
   gibsNdviTiles,
+  gibsCOTiles,
+  gibsSO2Tiles,
 } from '../data/nasa-gibs'
 import { gibsAerosolTileTemplate } from '../data/nasa'
 
@@ -42,7 +44,7 @@ export interface BasemapDef {
 /** Spectral/imagery basemaps whose tiles are date-keyed — these enable the
  *  temporal scrubber. Pure imagery (ESRI, Sentinel-2) and vector are not. */
 const TEMPORAL_BASEMAPS = new Set<BasemapId>([
-  'nasa-true-color', 'nasa-aerosol', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights',
+  'nasa-true-color', 'nasa-aerosol', 'nasa-co', 'nasa-so2', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights',
 ])
 
 export function isTemporalBasemap(id: BasemapId): boolean {
@@ -206,6 +208,34 @@ export function getBasemapDef(id: BasemapId, activeDate?: string): BasemapDef {
           6,
         ),
       }
+    case 'nasa-co':
+      return {
+        id,
+        label: 'Carbon Monoxide',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsCOTiles(activeDate),
+          '© NASA GIBS · AIRS Carbon Monoxide',
+          'NASA AIRS carbon monoxide',
+          6,
+        ),
+      }
+    case 'nasa-so2':
+      return {
+        id,
+        label: 'Sulphur Dioxide',
+        requiresToken: false,
+        group: 'spectral',
+        temporal: true,
+        style: rasterStyle(
+          gibsSO2Tiles(activeDate),
+          '© NASA GIBS · OMPS Sulphur Dioxide',
+          'NASA OMPS sulphur dioxide',
+          6,
+        ),
+      }
     case 'nasa-ndvi':
       return {
         id,
@@ -254,7 +284,7 @@ export function getBasemapDef(id: BasemapId, activeDate?: string): BasemapDef {
 /** All basemap defs in display order, grouped for the Satellite Stack menu. */
 export const BASEMAP_GROUPS: { label: BasemapGroup; ids: BasemapId[] }[] = [
   { label: 'imagery',  ids: ['esri-imagery', 'sentinel-cloudless', 'nasa-true-color'] },
-  { label: 'spectral', ids: ['nasa-aerosol', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights'] },
+  { label: 'spectral', ids: ['nasa-aerosol', 'nasa-co', 'nasa-so2', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights'] },
   { label: 'vector',   ids: ['dark-vector', 'mapbox-sat-streets'] },
 ]
 

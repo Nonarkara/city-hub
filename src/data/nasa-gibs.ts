@@ -68,6 +68,23 @@ export function gibsLstTiles(targetDate?: string): string {
   return buildTileUrl('MODIS_Terra_L3_Land_Surface_Temp_Mthly_Day', date, 7, 'png')
 }
 
+/** AIRS Carbon Monoxide (500 hPa volume mixing ratio) — daily, keyless.
+ *  Clamps to yesterday like the other daily products. */
+export function gibsCOTiles(targetDate?: string): string {
+  const yest = yesterdayUtcDate()
+  let date = targetDate ?? yest
+  if (date > yest) date = yest
+  return buildTileUrl('AIRS_L2_Carbon_Monoxide_500hPa_Volume_Mixing_Ratio_Day', date, 6, 'png')
+}
+
+/** OMPS Sulphur Dioxide (planetary boundary layer) — daily, keyless. */
+export function gibsSO2Tiles(targetDate?: string): string {
+  const yest = yesterdayUtcDate()
+  let date = targetDate ?? yest
+  if (date > yest) date = yest
+  return buildTileUrl('OMPS_SO2_Planetary_Boundary_Layer', date, 6, 'png')
+}
+
 /** MODIS Terra NDVI 8-day — 250m vegetation health. AlphaEarth-class proxy. */
 export function gibsNdviTiles(targetDate?: string): string {
   // NDVI 8-day composite uses fixed cadence — go back ~16 days to ensure availability
