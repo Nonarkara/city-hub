@@ -34,6 +34,7 @@ const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
 const SplitCompare = lazy(() => import('./components/SplitCompare').then((m) => ({ default: m.SplitCompare })))
 const CityChat = lazy(() => import('./components/CityChat').then((m) => ({ default: m.CityChat })))
+const ForecastPanel = lazy(() => import('./components/ForecastPanel').then((m) => ({ default: m.ForecastPanel })))
 
 // Real-time global overlays that ride on top of any lens, any city.
 const LIVE_OVERLAYS: { id: string; label: string }[] = [
@@ -89,6 +90,8 @@ export default function App() {
   const toggleOverlay = useUIStore((s) => s.toggleOverlay)
   const globeView = useUIStore((s) => s.globeView)
   const setGlobeView = useUIStore((s) => s.setGlobeView)
+  const forecastOpen = useUIStore((s) => s.forecastOpen)
+  const setForecastOpen = useUIStore((s) => s.setForecastOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -162,6 +165,8 @@ export default function App() {
       {splitOpen && <SplitCompare />}
 
       {chatOpen && <CityChat activeCity={activeCity} />}
+
+      {forecastOpen && <ForecastPanel activeCity={activeCity} />}
 
       <HUD
         map={map}
@@ -388,6 +393,18 @@ export default function App() {
         >
           <span className="topbar-insight-icon" aria-hidden>◫</span>
           <span className="topbar-insight-label">SPLIT</span>
+        </button>
+
+        {/* FORECAST — 48h AQI + temp outlook */}
+        <button
+          className={`topbar-insight-btn ${forecastOpen ? 'topbar-insight-btn--active' : ''}`}
+          onClick={() => setForecastOpen(!forecastOpen)}
+          title="48-hour air & temperature forecast for this city"
+          aria-label="Toggle forecast"
+          aria-pressed={forecastOpen}
+        >
+          <span className="topbar-insight-icon" aria-hidden>◷</span>
+          <span className="topbar-insight-label">FORECAST</span>
         </button>
 
         {/* ASK — local Ollama city chatbot */}

@@ -20,6 +20,7 @@ interface UIStore {
   actionCenterOpen: boolean
   activeOverlays: Set<string>
   globeView: boolean
+  forecastOpen: boolean
 
   setGovernorMode: (v: boolean) => void
   toggleGovernorMode: () => void
@@ -37,6 +38,7 @@ interface UIStore {
   setActionCenterOpen: (v: boolean) => void
   toggleOverlay: (id: string) => void
   setGlobeView: (v: boolean) => void
+  setForecastOpen: (v: boolean) => void
 }
 
 export const useUIStore = create<UIStore>()((set) => ({
@@ -55,6 +57,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   actionCenterOpen: false,
   activeOverlays: new Set<string>(),
   globeView: false,
+  forecastOpen: false,
 
   setGovernorMode: (v) => set({ governorMode: v }),
   toggleGovernorMode: () => set((s) => ({ governorMode: !s.governorMode })),
@@ -76,4 +79,5 @@ export const useUIStore = create<UIStore>()((set) => ({
     return { activeOverlays: next }
   }),
   setGlobeView: (v) => set({ globeView: v }),
+  setForecastOpen: (v) => set({ forecastOpen: v }),
 }))
