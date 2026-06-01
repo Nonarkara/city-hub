@@ -18,6 +18,7 @@ interface UIStore {
   splitOpen: boolean
   chatOpen: boolean
   actionCenterOpen: boolean
+  aboutOpen: boolean
   activeOverlays: Set<string>
   globeView: boolean
   forecastOpen: boolean
@@ -36,6 +37,7 @@ interface UIStore {
   setSplitOpen: (v: boolean) => void
   setChatOpen: (v: boolean) => void
   setActionCenterOpen: (v: boolean) => void
+  setAboutOpen: (v: boolean) => void
   toggleOverlay: (id: string) => void
   setGlobeView: (v: boolean) => void
   setForecastOpen: (v: boolean) => void
@@ -55,6 +57,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   splitOpen: false,
   chatOpen: false,
   actionCenterOpen: false,
+  aboutOpen: false,
   activeOverlays: new Set<string>(),
   globeView: false,
   forecastOpen: false,
@@ -73,6 +76,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   setSplitOpen: (v) => set({ splitOpen: v }),
   setChatOpen: (v) => set({ chatOpen: v }),
   setActionCenterOpen: (v) => set({ actionCenterOpen: v }),
+  setAboutOpen: (v) => set({ aboutOpen: v }),
   toggleOverlay: (id) => set((s) => {
     const next = new Set(s.activeOverlays)
     if (next.has(id)) next.delete(id); else next.add(id)

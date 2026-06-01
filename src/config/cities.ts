@@ -4,6 +4,14 @@ export interface KpiItem {
   unit?: string
 }
 
+export interface SocioEconomics {
+  gdpBillionUsd: number
+  gdpPerCapitaUsd: number
+  birthRatePer1k: number
+  lifeExpectancyYears: number
+  greenSpacePct: number
+}
+
 /**
  * CityConfig — the per-city manifest. One row per city in CITIES below.
  * `tier: 'full'` means the city has dedicated APIs (Bangkok). `tier: 'lite'`
@@ -35,6 +43,8 @@ export interface CityConfig {
   founded?: string                                      // year, era, or "ancient"
   climate: string                                       // e.g. "Tropical monsoon", "Tropical rainforest"
   distinctiveness: string                               // 1-line "what's special about this city"
+  
+  demographics?: SocioEconomics
 }
 
 /** Basemap variant IDs. Defined here for type sharing with MapView. */
@@ -91,6 +101,13 @@ export const CITIES: CityConfig[] = [
       { label: 'SMART SCORE', value: '71.2' },
       { label: 'IOC STATUS', value: 'ACTIVE' },
     ],
+    demographics: {
+      gdpBillionUsd: 175,
+      gdpPerCapitaUsd: 16000,
+      birthRatePer1k: 9.0,
+      lifeExpectancyYears: 77,
+      greenSpacePct: 6.0
+    }
   },
   {
     id: 'chiang-mai',
@@ -115,6 +132,13 @@ export const CITIES: CityConfig[] = [
       { label: 'BURNING RISK', value: 'HIGH' },
       { label: 'SMART SCORE', value: '64.5' },
     ],
+    demographics: {
+      gdpBillionUsd: 8,
+      gdpPerCapitaUsd: 6000,
+      birthRatePer1k: 10.0,
+      lifeExpectancyYears: 75,
+      greenSpacePct: 15.0
+    }
   },
   {
     id: 'phuket',
@@ -139,6 +163,13 @@ export const CITIES: CityConfig[] = [
       { label: 'TOURISM/YR', value: '9.9', unit: 'M' },
       { label: 'SMART SCORE', value: '68.4' },
     ],
+    demographics: {
+      gdpBillionUsd: 4,
+      gdpPerCapitaUsd: 9000,
+      birthRatePer1k: 11.0,
+      lifeExpectancyYears: 76,
+      greenSpacePct: 25.0
+    }
   },
   {
     id: 'singapore',
@@ -162,6 +193,13 @@ export const CITIES: CityConfig[] = [
       { label: 'SMART SCORE', value: '91.4' },
       { label: 'IOC STATUS', value: 'LIVE' },
     ],
+    demographics: {
+      gdpBillionUsd: 466,
+      gdpPerCapitaUsd: 82800,
+      birthRatePer1k: 8.5,
+      lifeExpectancyYears: 83,
+      greenSpacePct: 46.0
+    }
   },
   {
     id: 'kuching',
@@ -185,5 +223,12 @@ export const CITIES: CityConfig[] = [
       { label: 'IOC STATUS', value: 'LIVE' },
       { label: 'SMART SCORE', value: '63.1' },
     ],
+    demographics: {
+      gdpBillionUsd: 5,
+      gdpPerCapitaUsd: 7000,
+      birthRatePer1k: 14.0,
+      lifeExpectancyYears: 75,
+      greenSpacePct: 35.0
+    }
   },
 ]

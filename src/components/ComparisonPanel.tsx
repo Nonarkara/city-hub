@@ -250,6 +250,57 @@ export function ComparisonPanel() {
           </section>
         )}
 
+        {/* ── Socio-Economics & Environment ─────────────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">SOCIO-ECONOMICS & ENVIRONMENT</div>
+          
+          <MetricRows
+            label="CITY GDP"
+            unit="$B USD"
+            cities={cities}
+            getValue={(c) => c.demographics?.gdpBillionUsd ?? null}
+            fmt={(v) => `$${v}B`}
+            barColor={(_, c) => (c.id === 'singapore' ? 'var(--amber)' : 'var(--indigo)')}
+          />
+          
+          <MetricRows
+            label="GDP PER CAPITA"
+            unit="$ USD"
+            cities={cities}
+            getValue={(c) => c.demographics?.gdpPerCapitaUsd ?? null}
+            fmt={(v) => `$${v.toLocaleString()}`}
+            barColor={() => 'var(--blue)'}
+          />
+          
+          <MetricRows
+            label="GREEN SPACE"
+            unit="% of city area"
+            cities={cities}
+            getValue={(c) => c.demographics?.greenSpacePct ?? null}
+            fmt={(v) => `${v}%`}
+            barColor={() => 'var(--emerald)'}
+          />
+          
+          <MetricRows
+            label="LIFE EXPECTANCY"
+            unit="years"
+            cities={cities}
+            getValue={(c) => c.demographics?.lifeExpectancyYears ?? null}
+            fmt={(v) => `${v} yrs`}
+            barColor={() => 'var(--cyan)'}
+          />
+          
+          <MetricRows
+            label="BIRTH RATE"
+            unit="per 1k"
+            cities={cities}
+            noWinner
+            getValue={(c) => c.demographics?.birthRatePer1k ?? null}
+            fmt={(v) => `${v}`}
+            barColor={() => 'var(--rose)'}
+          />
+        </section>
+
         {/* ── Live Today ─────────────────────────────────────────────────── */}
         <section className="cmp-section">
           <div className="cmp-section-label">

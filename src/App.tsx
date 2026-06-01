@@ -31,6 +31,7 @@ import { trackEvent } from './lib/firebase'
 import { ActionCenter } from './components/ActionCenter'
 import { ShareButton } from './components/ShareButton'
 import { useShareableView } from './hooks/useShareableView'
+import { AboutModal } from './components/AboutModal'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -94,6 +95,7 @@ export default function App() {
   const setGlobeView = useUIStore((s) => s.setGlobeView)
   const forecastOpen = useUIStore((s) => s.forecastOpen)
   const setForecastOpen = useUIStore((s) => s.setForecastOpen)
+  const setAboutOpen = useUIStore((s) => s.setAboutOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -246,12 +248,32 @@ export default function App() {
           </button>
         </nav>
 
+        <div className="topbar-spacer" />
+
+        <div className="topbar-right">
+          <button
+            className="topbar-chat-btn"
+            onClick={() => setChatOpen(!chatOpen)}
+            title="Ask the city chatbot"
+            aria-label="Open city chat"
+          >· CHAT</button>
+          <button
+            className="topbar-chat-btn"
+            onClick={() => setAboutOpen(true)}
+            title="About this dashboard"
+            aria-label="About"
+          >· ABOUT</button>
+        </div>
+
         {/* Action Center (Governor SitRep) */}
         {actionCenterOpen && (
           <ActionCenter onClose={() => setActionCenterOpen(false)} />
         )}
 
-        {/* Mobile dropdown button */}
+        {/* About dossier */}
+        <AboutModal />
+
+        {/* Mobile dropdown */}
         <div className="md-hidden">
           <TopbarCityButton
             city={activeCity}

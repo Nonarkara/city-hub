@@ -31,6 +31,16 @@
   filter: invert(0.85);
 }
 
+/* ── Project-level color extensions (beyond dr-non-brand.css palette) ─────── */
+/* These supplement --amber for data-viz contexts only. Use sparingly. */
+:root {
+  --cyan:    #22d3ee;
+  --emerald: #34d399;
+  --indigo:  #818cf8;
+  --blue:    #60a5fa;
+  --rose:    #fb7185;
+}
+
 /* ── App shell ───────────────────────────────────────────────────────────── */
 #root {
   width: 100vw;
@@ -6324,6 +6334,179 @@
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── About Modal (Dossier card) ───────────────────────────────────────────── */
+.about-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.about-card {
+  position: relative;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  background: #04060b;
+  border: 1px solid var(--line);
+  padding: 28px 28px 24px;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.about-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: var(--text-body);
+  cursor: pointer;
+  padding: 6px 8px;
+  line-height: 1;
+}
+.about-close:hover { color: var(--fg); }
+
+.about-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+
+.about-name {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.about-version-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.about-ver {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+.about-sep { color: var(--line); }
+.about-status-chip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--emerald);
+}
+
+.about-divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 18px 0;
+}
+
+.about-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.about-stat-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.about-stat-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+
+.about-text {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: rgba(245, 245, 240, 0.8);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.about-text:last-of-type { margin-bottom: 0; }
+.about-text strong { color: var(--fg); font-weight: 600; }
+
+.about-sources-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+.about-sources-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.about-source-chip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  padding: 3px 7px;
+}
+
+.about-footer-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.about-footer-dim {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  opacity: 0.5;
+}
+
+/* ── Topbar right cluster ─────────────────────────────────────────────────── */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.topbar-chat-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 8px;
+  height: 44px;
+  white-space: nowrap;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+}
+.topbar-chat-btn:hover { opacity: 1; color: var(--amber); }
 
 /* ── Action Center (Global SitRep) ────────────────────────────────────────── */
 .action-center-panel {
