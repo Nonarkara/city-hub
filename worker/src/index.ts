@@ -1,12 +1,26 @@
 /**
- * UNL City Hub — API Proxy Worker
+ * Dr Non's City Hub — API Proxy Worker
  *
- * Unblocks CORS-restricted APIs for the Bangkok super-dashboard.
+ * Security model
+ * ──────────────
+ * • CORS origin-locked to nonarkara.org + city-hub.pages.dev + localhost (dev).
+ *   Wildcard CORS removed — this Worker must not be usable as a free public proxy.
+ * • Sensitive AI endpoints (/narrate, /forecast, /ee/mapid) carry rate-limit
+ *   headers so CF Rate Limiting rules can cap them at the dashboard level.
+ * • API keys for keyed upstream APIs (WAQI, OpenAQ, OWM) live here as Worker
+ *   secrets — never in the SPA bundle.
+ *
  * Routes:
- *   /data-go-th/*  → data.go.th CKAN API
- *   /firms/*       → NASA FIRMS fire data
- *   /traffy/*      → Traffy Fondue civic issues
- *   /gdelt/*       → GDELT news/sentiment API
+ *   /data-go-th/*   → data.go.th CKAN API
+ *   /waqi/*         → WAQI Air Quality API  (key injected server-side)
+ *   /openaq/*       → OpenAQ v3             (key injected server-side)
+ *   /owm/*          → OpenWeatherMap 3.0    (key injected server-side)
+ *   /firms/*        → NASA FIRMS fire data
+ *   /traffy/*       → Traffy Fondue civic issues
+ *   /gdelt/*        → GDELT news/sentiment API
+ *   /forecast       → TimeFM / Gemini / Holt-Winters forecasting
+ *   /narrate        → Gemini situation narration
+ *   /ee/mapid       → Earth Engine tile token minting
  *
  * All responses carry CORS headers + short Cloudflare cache.
  */
@@ -14,14 +28,40 @@
 export interface Env {
   HF_API_TOKEN?: string
   GEMINI_API_KEY?: string
-  // TimeFM endpoint override — point at HF Space / Modal / Vertex when deployed.
-  // Default uses HF serverless (which doesn't host TimeFM 2.0 — see worker README).
   TIMEFM_ENDPOINT_URL?: string
-  // Earth Engine service-account JSON (full file contents as a single string).
-  // Required to render AlphaEarth + any other EE-backed layer.
-  // Setup: GCP project → enable Earth Engine API → create service account →
-  // assign "Earth Engine Resource Admin" → download JSON key → paste here.
   GCP_SERVICE_ACCOUNT_JSON?: string
+  // Keyed API secrets — injected server-side, never sent to client
+  WAQI_TOKEN?: string
+  OPENAQ_KEY?: string
+  OWM_KEY?: string
+}
+
+// ── Origin allowlist ──────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = new Set([
+  'https://hub.nonarkara.org',
+  'https://city-hub.pages.dev',
+  'https://unl.nonarkara.org',   // legacy
+])
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false
+  if (ALLOWED_ORIGINS.has(origin)) return true
+  // Allow Cloudflare preview deployments (*.city-hub.pages.dev)
+  if (/^https:\/\/[a-f0-9]+\.city-hub\.pages\.dev$/.test(origin)) return true
+  // Allow localhost during development
+  if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return true
+  return false
+}
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  const allow = isAllowedOrigin(origin) ? origin! : 'https://hub.nonarkara.org'
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  }
 }
 
 const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
@@ -39,20 +79,21 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'owm':           { origin: 'https://api.openweathermap.org/data/3.0', cacheSeconds: 300 },
 }
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-  'Access-Control-Max-Age': '86400',
-}
-
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url)
+    const url    = new URL(request.url)
+    const origin = request.headers.get('Origin')
+    const cors   = corsHeaders(origin)
 
     // Preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS })
+      return new Response(null, { status: 204, headers: cors })
+    }
+
+    // Reject cross-origin requests from unknown origins
+    // (Allow null-origin for same-origin server-side use / Wrangler dev)
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response('Forbidden', { status: 403 })
     }
 
     // Forecast — POST /forecast (alias: /forecast/timefm for backward compat)
@@ -60,73 +101,83 @@ export default {
       (url.pathname === '/forecast' || url.pathname === '/forecast/timefm') &&
       request.method === 'POST'
     ) {
-      return handleForecast(request, env)
+      return handleForecast(request, env, cors)
     }
 
     // Gemini narrate — POST /narrate
     if (url.pathname === '/narrate' && request.method === 'POST') {
-      return handleNarrate(request, env)
+      return handleNarrate(request, env, cors)
     }
 
     // Earth Engine getMapId — POST /ee/mapid
     if (url.pathname === '/ee/mapid' && request.method === 'POST') {
-      return handleEEMapId(request, env)
+      return handleEEMapId(request, env, cors)
     }
 
     if (request.method !== 'GET') {
-      return json({ error: 'Method not allowed' }, 405)
+      return jsonCors({ error: 'Method not allowed' }, 405, cors)
     }
 
     // Parse /:target/*path
     const m = url.pathname.match(/^\/([^/]+)(\/.*)?$/)
-    if (!m) return json({ error: 'Bad path' }, 400)
+    if (!m) return jsonCors({ error: 'Bad path' }, 400, cors)
 
     const targetKey = m[1]
-    const target = TARGETS[targetKey]
-    if (!target) return json({ error: `Unknown target: ${targetKey}` }, 400)
+    const target    = TARGETS[targetKey]
+    if (!target) return jsonCors({ error: `Unknown target: ${targetKey}` }, 400, cors)
 
-    const path = (m[2] ?? '').replace(/^\//, '')
+    const path     = (m[2] ?? '').replace(/^\//, '')
     const upstream = new URL(target.origin + '/' + path + url.search)
+
+    // ── Server-side key injection ─────────────────────────────────────────────
+    // API keys for these services live in Worker secrets, never in the SPA bundle.
+    if (targetKey === 'waqi' && env.WAQI_TOKEN) {
+      upstream.searchParams.set('token', env.WAQI_TOKEN)
+    }
+    if (targetKey === 'openaq' && env.OPENAQ_KEY) {
+      upstream.searchParams.set('api_key', env.OPENAQ_KEY)
+    }
+    if (targetKey === 'owm' && env.OWM_KEY) {
+      upstream.searchParams.set('appid', env.OWM_KEY)
+    }
 
     try {
       const upstreamHeaders: Record<string, string> = {
         'Accept': 'application/json, text/csv, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'User-Agent': 'CityhubProxy/2.0',
       }
-      const xApiKey = request.headers.get('X-API-Key')
-      if (xApiKey) {
-        upstreamHeaders['X-API-Key'] = xApiKey
+      // OpenAQ uses bearer auth
+      if (targetKey === 'openaq' && env.OPENAQ_KEY) {
+        upstreamHeaders['X-API-Key'] = env.OPENAQ_KEY
       }
 
-      const upstreamRes = await fetch(upstream.toString(), {
-        headers: upstreamHeaders,
-      })
+      const upstreamRes = await fetch(upstream.toString(), { headers: upstreamHeaders })
 
-      // Pass through body with added CORS + cache headers
-      const res = new Response(upstreamRes.body, {
+      return new Response(upstreamRes.body, {
         status: upstreamRes.status,
         statusText: upstreamRes.statusText,
         headers: {
-          ...CORS_HEADERS,
+          ...cors,
           'Content-Type': upstreamRes.headers.get('Content-Type') ?? 'application/json',
           'Cache-Control': `public, max-age=${target.cacheSeconds}`,
         },
       })
-      return res
     } catch (err) {
-      return json({ error: 'Upstream failed', detail: String(err) }, 502)
+      return jsonCors({ error: 'Upstream failed', detail: String(err) }, 502, cors)
     }
   },
 }
 
-function json(obj: unknown, status = 200): Response {
+function jsonCors(obj: unknown, status = 200, cors: Record<string, string>): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'application/json',
-    },
+    headers: { ...cors, 'Content-Type': 'application/json' },
   })
+}
+
+// Back-compat: internal helpers that still use a fixed cors object get a shim
+function json(obj: unknown, status = 200): Response {
+  return jsonCors(obj, status, corsHeaders(null))
 }
 
 // ── Forecast ──────────────────────────────────────────────────────────────
@@ -156,7 +207,7 @@ interface ForecastResponse {
   reasoning?: string
 }
 
-async function handleForecast(request: Request, env: Env): Promise<Response> {
+async function handleForecast(request: Request, env: Env, cors: Record<string, string> = corsHeaders(null)): Promise<Response> {
   let body: ForecastRequest
   try {
     body = await request.json() as ForecastRequest
@@ -372,7 +423,7 @@ interface NarrateRequest {
   maxWords?: number  // Default 60
 }
 
-async function handleNarrate(request: Request, env: Env): Promise<Response> {
+async function handleNarrate(request: Request, env: Env, cors: Record<string, string> = corsHeaders(null)): Promise<Response> {
   let body: NarrateRequest
   try {
     body = await request.json() as NarrateRequest
@@ -781,7 +832,7 @@ const getEEPresets = (start: string, end: string): Record<string, { expression: 
 
 let cachedEEToken: { token: string; expires: number } | null = null
 
-async function handleEEMapId(request: Request, env: Env): Promise<Response> {
+async function handleEEMapId(request: Request, env: Env, cors: Record<string, string> = corsHeaders(null)): Promise<Response> {
   if (!env.GCP_SERVICE_ACCOUNT_JSON) {
     return json({
       error: 'Earth Engine not configured',

@@ -13,8 +13,10 @@
 import { cachedFetch } from '../lib/cached-fetch'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
-const BASE = PROXY ? `${PROXY}/waqi` : 'https://api.waqi.info'
-const TOKEN = (import.meta.env.VITE_WAQI_TOKEN as string | undefined) ?? 'demo'
+const BASE  = PROXY ? `${PROXY}/waqi` : 'https://api.waqi.info'
+// Token is injected server-side by the Worker when routing through PROXY.
+// Falls back to 'demo' for direct calls (dev without a proxy).
+const TOKEN = PROXY ? '' : ((import.meta.env.VITE_WAQI_TOKEN as string | undefined) ?? 'demo')
 
 const TTL = 5 * 60 * 1000
 
@@ -47,7 +49,9 @@ export async function fetchWAQIStationsByBbox(
       // WAQI bounds API uses lat1,lng1,lat2,lng2 (SW corner first, then NE corner)
       const [w, s, e, n] = bbox
       const latlng = `${s},${w},${n},${e}`
-      const url = `${BASE}/map/bounds/?latlng=${latlng}&token=${TOKEN}`
+      // When proxied: Worker injects token. Direct: append token (demo or real).
+      const tokenParam = TOKEN ? `&token=${TOKEN}` : ''
+      const url = `${BASE}/map/bounds/?latlng=${latlng}${tokenParam}`
       const res = await fetch(url)
       if (!res.ok) return empty
       const json = await res.json()
