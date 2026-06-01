@@ -206,8 +206,8 @@ export default function App() {
       <ActiveInsightBanner active={activeInsight} activeCity={activeCity} onClear={clearInsight} />
 
       <header className="topbar">
-        <span className="topbar-wordmark" title="DR NON'S CITY HUB">
-          CITY HUB<span className="topbar-version">v6</span>
+        <span className="topbar-wordmark" title="Dr Non's City Hub — Open Civic Intelligence">
+          <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB<span className="topbar-version">v6</span>
         </span>
 
         {/* Desktop tab strip — all cities + pin toggle */}

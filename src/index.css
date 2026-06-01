@@ -188,6 +188,16 @@
   white-space: nowrap;
 }
 
+.topbar-wordmark-prefix {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: var(--fg-dim);
+  opacity: 0.6;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 .topbar-version {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -3740,6 +3750,7 @@
     font-size: 11px;
     letter-spacing: 0.10em;
   }
+  .topbar-wordmark-prefix { display: none; }
   .topbar-divider { display: none; }
   .topbar-vpm-label { display: none; }
   /* Cmd+K is keyboard-only — useless on touch, free the pixels */

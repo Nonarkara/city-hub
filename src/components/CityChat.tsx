@@ -78,8 +78,9 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
 
     const ctrl = new AbortController()
     abortRef.current = ctrl
-    const stream = backend === 'cloud' ? streamGeminiChat : streamCityChat
-    try {
+
+    const tryStream = async (b: Backend) => {
+      const stream = b === 'cloud' ? streamGeminiChat : streamCityChat
       await stream(
         [{ role: 'system', content: systemPrompt }, ...history],
         (delta) => setMessages((m) => {
@@ -90,15 +91,36 @@ export function CityChat({ activeCity }: { activeCity: CityConfig }) {
         }),
         ctrl.signal,
       )
-    } catch {
-      const fallback = backend === 'cloud'
-        ? `⚠ Gemini (${GEMINI_INFO.model}) isn't responding. In your Firebase console, enable Build → AI Logic (Gemini Developer API). Or switch to LOCAL to use Ollama.`
-        : `⚠ Can't reach Ollama at ${OLLAMA_INFO.url}. Start it with \`ollama serve\` and make sure \`${OLLAMA_INFO.model}\` is pulled. Or switch to CLOUD.`
-      setMessages((m) => {
-        const copy = [...m]
-        copy[copy.length - 1] = { role: 'assistant', content: fallback }
-        return copy
-      })
+    }
+
+    try {
+      await tryStream(backend)
+    } catch (cloudErr) {
+      // Cloud failed — auto-fallback to local (Ollama) silently
+      if (backend === 'cloud' && !ctrl.signal.aborted) {
+        setBackend('local')
+        // Reset the assistant placeholder before retrying
+        setMessages((m) => {
+          const copy = [...m]
+          copy[copy.length - 1] = { role: 'assistant', content: '' }
+          return copy
+        })
+        try {
+          await tryStream('local')
+        } catch {
+          setMessages((m) => {
+            const copy = [...m]
+            copy[copy.length - 1] = { role: 'assistant', content: `⚠ Can't reach Ollama at ${OLLAMA_INFO.url}. Start it with \`ollama serve\` and make sure \`${OLLAMA_INFO.model}\` is pulled.` }
+            return copy
+          })
+        }
+      } else {
+        setMessages((m) => {
+          const copy = [...m]
+          copy[copy.length - 1] = { role: 'assistant', content: `⚠ Can't reach Ollama at ${OLLAMA_INFO.url}. Start it with \`ollama serve\` and make sure \`${OLLAMA_INFO.model}\` is pulled.` }
+          return copy
+        })
+      }
     } finally {
       setBusy(false)
       abortRef.current = null
