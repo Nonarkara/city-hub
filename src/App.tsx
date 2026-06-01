@@ -35,6 +35,7 @@ import { AboutModal } from './components/AboutModal'
 import { NewsTicker } from './components/NewsTicker'
 import { useCityRisk } from './hooks/useCityRisk'
 import { RISK_COLOR } from './lib/risk'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -161,6 +162,15 @@ export default function App() {
 
   const tokenAvailable = hasMapboxToken()
   const cityRisk = useCityRisk()
+
+  useKeyboardShortcuts({
+    allCities, activeCity, setActiveCity,
+    globeView, setGlobeView,
+    forecastOpen, setForecastOpen,
+    splitOpen, setSplitOpen,
+    chatOpen, setChatOpen,
+    cmdkOpen, setCmdkOpen,
+  })
 
   // If compare mode is active, show comparison panel instead of city-specific panels
   const showComparison = compareMode && compareSet.length >= 2

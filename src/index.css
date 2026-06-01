@@ -6319,6 +6319,54 @@
   white-space: nowrap;
 }
 
+.cmp-city-card-sparkline {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.cmp-city-card-spark-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  opacity: 0.5;
+  margin-top: 2px;
+}
+
+/* ── Cross-city risk summary strip ──────────────────────────────────────── */
+.cmp-risk-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cmp-risk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+}
+
+.cmp-risk-chip--good     { color: var(--emerald); border-color: rgba(52,211,153,0.25); }
+.cmp-risk-chip--moderate { color: var(--amber);   border-color: rgba(245,158,11,0.25); }
+.cmp-risk-chip--high     { color: var(--rose);    border-color: rgba(251,113,133,0.25); }
+.cmp-risk-chip--critical { color: #ef4444;        border-color: rgba(239,68,68,0.25); }
+
+.cmp-risk-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .cmp-section {
   border-top: 1px solid var(--line);
   padding: 14px 16px 4px;
@@ -6604,6 +6652,38 @@
   color: var(--dim);
   border: 1px solid var(--line);
   padding: 3px 7px;
+}
+
+.about-keys-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  margin-bottom: 4px;
+}
+
+.about-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: center;
+}
+
+.about-key-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--dim);
 }
 
 .about-footer-row {

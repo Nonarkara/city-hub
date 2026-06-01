@@ -25,7 +25,7 @@ import {
   PILLAR_ORDER, PILLAR_LABELS, PILLAR_WEIGHTS,
   SLIC_VERSION, type CityScore, type PillarId,
 } from '../lib/slic'
-import { pm25ToRisk, aqiToRisk, RISK_COLOR } from '../lib/risk'
+import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 
 const POLL_MS = 5 * 60_000
 
@@ -101,6 +101,25 @@ function MetricRows({
         )
       })}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AQI sparkline — 24h path compressed to 56×20px
+// ─────────────────────────────────────────────────────────────────────────────
+function AqiSparkline({ hours, color }: { hours: { usAqi: number }[]; color: string }) {
+  if (hours.length < 2) return null
+  const vals  = hours.map((h) => h.usAqi)
+  const lo    = Math.min(...vals)
+  const hi    = Math.max(...vals) || 1
+  const W = 56, H = 18
+  const x = (i: number) => (i / (vals.length - 1)) * W
+  const y = (v: number) => H - ((v - lo) / (hi - lo)) * H
+  const d = vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      <path d={d} fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+    </svg>
   )
 }
 
@@ -192,6 +211,25 @@ export function ComparisonPanel() {
 
       <div className="cmp-body">
 
+        {/* ── Cross-city risk summary ─────────────────────────────────────── */}
+        {!liveLoading && Object.keys(live).length > 0 && (
+          <div className="cmp-risk-summary">
+            {cities.map((city) => {
+              const snap = live[city.id]
+              const pm25 = snap?.aqi?.pm25 ?? null
+              const aqi  = snap?.aqi?.usAqi ?? null
+              const risk: RiskLevel | null = pm25 !== null ? pm25ToRisk(pm25) : aqi !== null ? aqiToRisk(aqi) : null
+              if (!risk) return null
+              return (
+                <span key={city.id} className={`cmp-risk-chip cmp-risk-chip--${risk}`}>
+                  <span className="cmp-risk-dot" style={{ background: RISK_COLOR[risk] }} />
+                  {city.hudClockLabel} · {risk.toUpperCase()}
+                </span>
+              )
+            })}
+          </div>
+        )}
+
         {/* ── Live city header cards ──────────────────────────────────────── */}
         <div className="cmp-city-cards">
           {cities.map((city) => {
@@ -239,6 +277,12 @@ export function ComparisonPanel() {
                   <div className="cmp-city-card-row">
                     <span className="cmp-city-card-label">DENS</span>
                     <span className="cmp-city-card-val">{densityPct.toLocaleString()}/km²</span>
+                  </div>
+                )}
+                {snap?.forecast?.hours && snap.forecast.hours.length > 1 && (
+                  <div className="cmp-city-card-sparkline">
+                    <AqiSparkline hours={snap.forecast.hours} color={riskCol} />
+                    <span className="cmp-city-card-spark-label">24H AQI</span>
                   </div>
                 )}
               </div>

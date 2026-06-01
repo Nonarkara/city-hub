@@ -75,6 +75,26 @@ export function AboutModal() {
           ))}
         </div>
 
+        <div className="about-divider" />
+
+        <div className="about-sources-label">KEYBOARD SHORTCUTS</div>
+        <div className="about-keys-grid">
+          {[
+            ['1–5', 'Switch city'],
+            ['G', 'Toggle globe'],
+            ['F', 'Forecast'],
+            ['S', 'Split compare'],
+            ['A / /', 'Ask chatbot'],
+            ['Cmd+K', 'Command palette'],
+            ['Esc', 'Close panels'],
+          ].map(([key, label]) => (
+            <div key={key} className="about-key-row">
+              <kbd className="about-kbd">{key}</kbd>
+              <span className="about-key-label">{label}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="about-footer-row">
           <span className="about-footer-dim">hub.nonarkara.org</span>
           <span className="about-footer-dim">open source · self-hosted</span>
