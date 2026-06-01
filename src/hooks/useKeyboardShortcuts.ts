@@ -29,6 +29,9 @@ interface Handlers {
   setChatOpen:    (v: boolean) => void
   cmdkOpen:       boolean
   setCmdkOpen:    (v: boolean) => void
+  settingsOpen?:  boolean
+  setSettingsOpen?:(v: boolean) => void
+  onRunInsightScan?: () => void
 }
 
 function isTyping(): boolean {
@@ -79,14 +82,31 @@ export function useKeyboardShortcuts(h: Handlers) {
           break
 
         // Ask / chat
-        case 'a': case 'A': case '/':
+        case '/':
           h.setChatOpen(!h.chatOpen)
           e.preventDefault()
           break
 
+        // Settings
+        case '?':
+          if (h.setSettingsOpen) {
+            h.setSettingsOpen(!h.settingsOpen)
+            e.preventDefault()
+          }
+          break
+
+        // Run insight scan
+        case 'r': case 'R':
+          if (h.onRunInsightScan) {
+            h.onRunInsightScan()
+            e.preventDefault()
+          }
+          break
+
         // Escape: close panels in priority order
         case 'Escape':
-          if (h.forecastOpen) { h.setForecastOpen(false); e.preventDefault() }
+          if (h.settingsOpen && h.setSettingsOpen) { h.setSettingsOpen(false); e.preventDefault() }
+          else if (h.forecastOpen) { h.setForecastOpen(false); e.preventDefault() }
           else if (h.splitOpen)   { h.setSplitOpen(false);   e.preventDefault() }
           else if (h.chatOpen)    { h.setChatOpen(false);    e.preventDefault() }
           break

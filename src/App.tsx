@@ -38,7 +38,14 @@ import { useCityRisk } from './hooks/useCityRisk'
 import { RISK_COLOR } from './lib/risk'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { CounterpartStrip } from './components/CounterpartStrip'
+import { MultiCityChart } from './components/MultiCityChart'
+import { SmallMultiplesGrid } from './components/SmallMultiplesGrid'
+import { DistrictComparePanel } from './components/DistrictComparePanel'
+import { ToastSystem } from './components/ToastSystem'
+import { SettingsPanel } from './components/SettingsPanel'
+import { useToastStore } from './store/toastStore'
 import { AlertToast } from './components/AlertToast'
+import { SituationBrief } from './components/SituationBrief'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -107,6 +114,9 @@ export default function App() {
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
 
+  // ── Settings panel ──────────────────────────────────────────────────────────
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   // ── Insight application ─────────────────────────────────────────────────────
   const applyInsight = useCallback((t: InsightTemplate) => {
     setGovernorMode(false)
@@ -142,6 +152,7 @@ export default function App() {
 
   const bangkokMode = activeCity.tier === 'full'
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
+  const districtComparePair = useSelectionStore((s) => s.districtComparePair)
 
   useBangkokLayers(map, activeLayers, bangkokMode, activeDate, bangkokMode ? setSelectedDistrict : undefined, selectedDistrictId)
 
@@ -177,6 +188,15 @@ export default function App() {
     splitOpen, setSplitOpen,
     chatOpen, setChatOpen,
     cmdkOpen, setCmdkOpen,
+    settingsOpen, setSettingsOpen,
+    onRunInsightScan: () => {
+      useToastStore.getState().addToast({
+        type: 'info',
+        title: 'Insight Scan Running',
+        message: 'Analyzing all data sources for patterns...',
+        duration: 3000,
+      })
+    },
   })
 
   // If compare mode is active, show comparison panel instead of city-specific panels
@@ -189,6 +209,9 @@ export default function App() {
 
   return (
     <Suspense fallback={null}>
+      <ToastSystem />
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+
       <MapView city={activeCity} basemap={basemap} activeDate={activeDate} globeView={globeView} onMapReady={setMap} />
 
       {splitOpen && <SplitCompare />}
@@ -199,6 +222,7 @@ export default function App() {
 
       <NewsTicker activeCity={activeCity} />
       <AlertToast cityRisk={cityRisk} allCities={allCities} />
+      <SituationBrief allCities={allCities} />
 
       <HUD
         map={map}
@@ -239,6 +263,18 @@ export default function App() {
       {bangkokMode && <ASEANStrip />}
 
       {bangkokMode && <CounterpartStrip activeCity={activeCity} />}
+
+      {bangkokMode && compareMode && (
+        <div className="multicity-chart-wrap">
+          <MultiCityChart />
+        </div>
+      )}
+
+      {bangkokMode && !compareMode && (
+        <div className="small-multiples-wrap">
+          <SmallMultiplesGrid activeCity={activeCity} />
+        </div>
+      )}
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
@@ -538,7 +574,9 @@ export default function App() {
       {showComparison ? (
         <ComparisonPanel />
       ) : bangkokMode ? (
-        governorMode
+        districtComparePair ? (
+          <DistrictComparePanel />
+        ) : governorMode
           ? (selectedDistrict
               ? (
                 <DistrictPanel

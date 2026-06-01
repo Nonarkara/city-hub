@@ -26,6 +26,8 @@ function DistrictLeaderboard({
   const { districts, loading } = useDistrictData()
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
   const setSelectedDistrictId = useSelectionStore((s) => s.setSelectedDistrictId)
+  const districtComparePair = useSelectionStore((s) => s.districtComparePair)
+  const setDistrictComparePair = useSelectionStore((s) => s.setDistrictComparePair)
   if (loading) return <div className="leaderboard-loading">LOADING…</div>
   return (
     <div className="leaderboard">
@@ -33,9 +35,28 @@ function DistrictLeaderboard({
         <button
           key={d.name_th}
           className={`leaderboard-row ${selected?.name_th === d.name_th || selectedDistrictId === d.name_th ? 'active' : ''}`}
-          onClick={() => {
-            setSelectedDistrictId(d.name_th)
-            onSelect(d)
+          onClick={(e) => {
+            if (e.shiftKey) {
+              // Shift-click: add to compare pair
+              const current = districtComparePair
+              if (!current) {
+                if (selectedDistrictId) {
+                  setDistrictComparePair([selectedDistrictId, d.name_th])
+                } else {
+                  setSelectedDistrictId(d.name_th)
+                  onSelect(d)
+                }
+              } else if (current[0] === d.name_th || current[1] === d.name_th) {
+                setDistrictComparePair(null)
+                setSelectedDistrictId(d.name_th)
+              } else {
+                setDistrictComparePair([current[1], d.name_th])
+              }
+            } else {
+              setSelectedDistrictId(d.name_th)
+              setDistrictComparePair(null)
+              onSelect(d)
+            }
           }}
         >
           <span className="leaderboard-rank">{i + 1}</span>

@@ -35,6 +35,7 @@ import { PatternsSection } from './PatternsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { PrepareCard } from './PrepareCard'
 import { InsightCardsGrid } from './InsightCardsGrid'
+import { RealityCheckEngine } from './RealityCheckEngine'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { CITIES } from '../config/cities'
 
@@ -281,67 +282,7 @@ export function DraftModal({ draft, onClose }: { draft: string; onClose: () => v
   )
 }
 
-function RealityCheck({ alerts, news }: { alerts: CityAlert[]; news: GdeltNewsResult | null }) {
-  const worst = alerts[0]?.level ?? 'good'
-  const tone = news?.avgTone ?? 0
-  let verdict = 'CALM'
-  let verdictColor = '#8bc34a'
 
-  if (worst === 'critical' || worst === 'high') {
-    if (tone > 0) { verdict = 'UNDERSTATED'; verdictColor = '#fb8c00'; }
-    else { verdict = 'CONFIRMED'; verdictColor = '#e53935'; }
-  } else if (worst === 'moderate') {
-    if (tone < -3) { verdict = 'OVERSTATED'; verdictColor = '#fdd835'; }
-    else { verdict = 'CALM'; verdictColor = '#8bc34a'; }
-  } else {
-    if (tone < -3) { verdict = 'OVERSTATED'; verdictColor = '#fdd835'; }
-    else { verdict = 'CALM'; verdictColor = '#8bc34a'; }
-  }
-
-  if (!news || news.articles.length === 0) {
-    return (
-      <div className="news-section">
-        <div className="news-header">NARRATIVE · GDELT</div>
-        <div className="news-empty">NO NEWS DATA</div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="news-section">
-      <div className="news-header">
-        <span>NARRATIVE · GDELT</span>
-        <span className="news-verdict" style={{ color: verdictColor }}>{verdict}</span>
-      </div>
-      <div className="news-tone-row">
-        <span className="news-tone-label">TONE</span>
-        <span className="news-tone-bar">
-          <span
-            className="news-tone-fill"
-            style={{
-              width: `${Math.min(100, Math.max(0, 50 + tone * 2))}%`,
-              background: tone < -2 ? '#e53935' : tone > 2 ? '#8bc34a' : '#fdd835',
-            }}
-          />
-        </span>
-        <span className="news-tone-val">{tone > 0 ? '+' : ''}{tone.toFixed(1)}</span>
-      </div>
-      <div className="news-list">
-        {news.articles.slice(0, 4).map((a, i) => (
-          <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="news-item" title={a.domain}>
-            <span className="news-item-title">{a.title}</span>
-            <span
-              className="news-item-tone"
-              style={{ color: a.tone < -2 ? '#e53935' : a.tone > 2 ? '#8bc34a' : '#fdd835' }}
-            >
-              {a.tone > 0 ? '+' : ''}{a.tone.toFixed(0)}
-            </span>
-          </a>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function RankSection({ rank }: { rank: Pm25ProvinceRank | null }) {
   if (!rank || rank.rank > 20) return null
@@ -774,7 +715,18 @@ export function AlertPanel() {
 
           <div className="alert-panel-divider" />
           <div className="alert-news-wrap">
-            <RealityCheck alerts={alerts} news={news} />
+            <RealityCheckEngine
+              pm25={pm25?.pm25 ?? 0}
+              aqi={aqi?.usAqi ?? 0}
+              congestionAvg={0.4}
+              floodCount={floodCount}
+              citizenFloodReports={traffyFloods.length}
+              heatIndex={weather?.feelsLike ?? 0}
+              activeComplaints={traffyStats?.active ?? 0}
+              newsTone={news?.avgTone ?? 0}
+              newsCount={news?.articles.length ?? 0}
+              headlines={news?.articles.map((a) => a.title) ?? []}
+            />
           </div>
 
           {forecast && <ForecastStrip forecast={forecast} />}
