@@ -6,6 +6,8 @@
 import { useEffect, useState } from 'react'
 import type { Map as MapLibre } from 'maplibre-gl'
 import type { CityConfig } from '../config/cities'
+import { fetchWeather, type CityWeather } from '../data/openmeteo'
+import { cachedFetch } from '../lib/cached-fetch'
 
 interface HUDProps {
   map: MapLibre | null
@@ -48,6 +50,19 @@ export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps
     lat: activeCity.center[1],
     zoom: activeCity.zoom,
   })
+  const [wx, setWx] = useState<CityWeather | null>(null)
+
+  // Fetch weather for the active city, refresh every 15 min
+  useEffect(() => {
+    let cancelled = false
+    const [lng, lat] = activeCity.center
+    cachedFetch(
+      `hud/wx/${activeCity.id}`,
+      () => fetchWeather(lng, lat, activeCity.timezone),
+      15 * 60_000,
+    ).then((w) => { if (!cancelled) setWx(w) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [activeCity.id])
 
   // Clock tick — every second
   useEffect(() => {
@@ -110,6 +125,12 @@ export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps
         <span className="hud-cell">FEEDS {sourceCount.toString().padStart(2, '0')}</span>
         <span className="hud-sep" />
         <span className="hud-cell hud-cell-uptime">UP {fmtUptime()}</span>
+        {wx && (
+          <>
+            <span className="hud-sep" />
+            <span className="hud-cell hud-cell-wx">{wx.temp}° {wx.condition} {wx.windSpeed}km/h {wx.windCardinal}</span>
+          </>
+        )}
       </div>
 
       {/* CRT scanlines — full viewport texture */}

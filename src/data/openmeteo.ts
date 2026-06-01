@@ -10,6 +10,22 @@ export interface CityWeather {
   windSpeed: number
   windDir: number
   windCardinal: string
+  condition: string   // tactical short-code: CLR / PRT / OVC / FOG / RAIN / SNOW / TSTM / DRZL
+}
+
+/** WMO weather code → tactical short code */
+function wmoToCondition(code: number): string {
+  if (code === 0)                      return 'CLR'
+  if (code <= 2)                       return 'PRT'   // partly cloudy
+  if (code === 3)                      return 'OVC'   // overcast
+  if (code === 45 || code === 48)      return 'FOG'
+  if (code >= 51 && code <= 57)        return 'DRZL'  // drizzle
+  if (code >= 61 && code <= 67)        return 'RAIN'
+  if (code >= 71 && code <= 77)        return 'SNOW'
+  if (code >= 80 && code <= 82)        return 'SHWR'  // showers
+  if (code === 85 || code === 86)      return 'SNOW'
+  if (code >= 95)                      return 'TSTM'
+  return 'PRT'
 }
 
 /** Back-compat alias — Bangkok specifically. */
@@ -31,7 +47,7 @@ export async function fetchWeather(lng: number, lat: number, timezone = 'Asia/Ba
   return cachedFetch(cacheKey, async () => {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-      '&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m' +
+      '&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,weather_code' +
       `&timezone=${encodeURIComponent(timezone)}`
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Open-Meteo ${res.status}`)
@@ -41,6 +57,7 @@ export async function fetchWeather(lng: number, lat: number, timezone = 'Asia/Ba
       apparent_temperature: number
       wind_speed_10m: number
       wind_direction_10m: number
+      weather_code: number
     }
     return {
       temp: Math.round(c.temperature_2m),
@@ -48,6 +65,7 @@ export async function fetchWeather(lng: number, lat: number, timezone = 'Asia/Ba
       windSpeed: Math.round(c.wind_speed_10m),
       windDir: Math.round(c.wind_direction_10m),
       windCardinal: toCardinal(c.wind_direction_10m),
+      condition: wmoToCondition(c.weather_code ?? 0),
     }
   }, TTL)
 }

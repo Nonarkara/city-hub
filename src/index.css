@@ -332,6 +332,7 @@
 }
 
 .topbar-tab {
+  position: relative;  /* anchors risk dot */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -363,10 +364,7 @@
   color: var(--amber);
 }
 
-.topbar-tab {
-  position: relative; /* for the risk dot */
-}
-
+/* Risk dot lives inside a relatively-positioned tab */
 .topbar-tab-risk {
   position: absolute;
   top: 6px;
