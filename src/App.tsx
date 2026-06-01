@@ -207,6 +207,19 @@ export default function App() {
         onSelectDistrict={(d) => setSelectedDistrict(d)}
         governorMode={governorMode}
         onSetGovernorMode={setGovernorMode}
+        allCities={allCities}
+        activeCity={activeCity}
+        onSelectCity={cityHandler}
+        basemap={basemap}
+        onSetBasemap={setBasemap}
+        globeView={globeView}
+        onSetGlobeView={setGlobeView}
+        forecastOpen={forecastOpen}
+        onSetForecast={setForecastOpen}
+        splitOpen={splitOpen}
+        onSetSplit={setSplitOpen}
+        chatOpen={chatOpen}
+        onSetChat={setChatOpen}
       />
 
       {bangkokMode && <FreshnessPanel />}

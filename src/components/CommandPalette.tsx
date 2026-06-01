@@ -17,11 +17,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BANGKOK_LAYERS } from '../config/bangkok-layers'
 import { useDistrictData, type DistrictSummary } from '../hooks/useDistrictData'
+import type { CityConfig, BasemapId } from '../config/cities'
+import { BASEMAP_GROUPS, getBasemapDef } from './MapView'
 
 type Item =
   | { kind: 'layer';    id: string; label: string; sub: string; active: boolean }
   | { kind: 'district'; id: string; label: string; sub: string; payload: DistrictSummary }
   | { kind: 'mode';     id: string; label: string; sub: string }
+  | { kind: 'city';     id: string; label: string; sub: string; city: CityConfig }
+  | { kind: 'lens';     id: string; label: string; sub: string; basemap: BasemapId }
+  | { kind: 'action';   id: string; label: string; sub: string; exec: () => void }
 
 interface CommandPaletteProps {
   open: boolean
@@ -31,6 +36,20 @@ interface CommandPaletteProps {
   onSelectDistrict: (d: DistrictSummary) => void
   governorMode: boolean
   onSetGovernorMode: (v: boolean) => void
+  // Extended
+  allCities:       CityConfig[]
+  activeCity:      CityConfig
+  onSelectCity:    (c: CityConfig) => void
+  basemap:         BasemapId
+  onSetBasemap:    (b: BasemapId) => void
+  globeView:       boolean
+  onSetGlobeView:  (v: boolean) => void
+  forecastOpen:    boolean
+  onSetForecast:   (v: boolean) => void
+  splitOpen:       boolean
+  onSetSplit:      (v: boolean) => void
+  chatOpen:        boolean
+  onSetChat:       (v: boolean) => void
 }
 
 function fmtDistrictName(en: string): string {
@@ -45,13 +64,15 @@ function matchesQuery(haystack: string, query: string): boolean {
 }
 
 export function CommandPalette({
-  open,
-  onClose,
-  activeLayers,
-  onToggleLayer,
-  onSelectDistrict,
-  governorMode,
-  onSetGovernorMode,
+  open, onClose,
+  activeLayers, onToggleLayer, onSelectDistrict,
+  governorMode, onSetGovernorMode,
+  allCities, activeCity, onSelectCity,
+  basemap, onSetBasemap,
+  globeView, onSetGlobeView,
+  forecastOpen, onSetForecast,
+  splitOpen, onSetSplit,
+  chatOpen, onSetChat,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -89,10 +110,41 @@ export function CommandPalette({
     }))
 
     const modeItems: Item[] = [
-      { kind: 'mode' as const, id: governorMode ? 'analyst' : 'governor', label: governorMode ? 'SWITCH TO ANALYST' : 'SWITCH TO SIT ROOM',  sub: 'MODE' },
+      { kind: 'mode' as const, id: governorMode ? 'analyst' : 'governor', label: governorMode ? 'SWITCH TO ANALYST' : 'SWITCH TO SIT ROOM', sub: 'MODE' },
     ]
 
-    return [...modeItems, ...layerItems, ...districtItems]
+    // City items
+    const cityItems: Item[] = allCities.map((c) => ({
+      kind: 'city' as const,
+      id: c.id,
+      label: c.name.toUpperCase(),
+      sub: `${c.hudClockLabel} · ${c.countryName}${c.id === activeCity.id ? ' · ACTIVE' : ''}`,
+      city: c,
+    }))
+
+    // Lens / basemap items
+    const lensItems: Item[] = BASEMAP_GROUPS.flatMap((g) =>
+      g.ids.map((id) => {
+        const def = getBasemapDef(id)
+        return {
+          kind: 'lens' as const,
+          id,
+          label: def.label.toUpperCase(),
+          sub: `LENS · ${g.label.toUpperCase()}${id === basemap ? ' · ACTIVE' : ''}`,
+          basemap: id,
+        }
+      }),
+    )
+
+    // Global action items
+    const actionItems: Item[] = [
+      { kind: 'action' as const, id: 'globe',    label: globeView    ? 'EXIT GLOBE VIEW'    : 'ENTER GLOBE VIEW',    sub: 'VIEW · G',   exec: () => onSetGlobeView(!globeView)    },
+      { kind: 'action' as const, id: 'forecast', label: forecastOpen ? 'CLOSE FORECAST'     : 'OPEN FORECAST',      sub: 'PANEL · F',  exec: () => onSetForecast(!forecastOpen)  },
+      { kind: 'action' as const, id: 'split',    label: splitOpen    ? 'CLOSE SPLIT VIEW'   : 'OPEN SPLIT COMPARE', sub: 'PANEL · S',  exec: () => onSetSplit(!splitOpen)        },
+      { kind: 'action' as const, id: 'chat',     label: chatOpen     ? 'CLOSE CITY CHAT'    : 'OPEN CITY CHAT',     sub: 'PANEL · A',  exec: () => onSetChat(!chatOpen)          },
+    ]
+
+    return [...modeItems, ...cityItems, ...actionItems, ...lensItems, ...layerItems, ...districtItems]
   }, [activeLayers, districts, governorMode])
 
   // Filter by query — district items match either Thai or English
@@ -142,13 +194,12 @@ export function CommandPalette({
   }, [open, filtered, cursor])
 
   function activate(it: Item) {
-    if (it.kind === 'layer') {
-      onToggleLayer(it.id)
-    } else if (it.kind === 'district') {
-      onSelectDistrict(it.payload)
-    } else if (it.kind === 'mode') {
-      onSetGovernorMode(!governorMode)
-    }
+    if (it.kind === 'layer')    { onToggleLayer(it.id) }
+    else if (it.kind === 'district') { onSelectDistrict(it.payload) }
+    else if (it.kind === 'mode')     { onSetGovernorMode(!governorMode) }
+    else if (it.kind === 'city')     { onSelectCity(it.city) }
+    else if (it.kind === 'lens')     { onSetBasemap(it.basemap) }
+    else if (it.kind === 'action')   { it.exec() }
     onClose()
   }
 
@@ -162,7 +213,7 @@ export function CommandPalette({
           <input
             ref={inputRef}
             className="cmdk-input"
-            placeholder="SEARCH DISTRICTS, LAYERS, MODES…"
+            placeholder="CITIES · LENSES · LAYERS · DISTRICTS · ACTIONS…"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setCursor(0) }}
             spellCheck={false}
@@ -182,7 +233,12 @@ export function CommandPalette({
               onClick={() => activate(it)}
             >
               <span className={`cmdk-kind cmdk-kind-${it.kind}`}>
-                {it.kind === 'layer' ? 'LYR' : it.kind === 'district' ? 'DST' : 'MOD'}
+                {it.kind === 'layer'    ? 'LYR'
+                : it.kind === 'district' ? 'DST'
+                : it.kind === 'city'     ? 'CTY'
+                : it.kind === 'lens'     ? 'LNS'
+                : it.kind === 'action'   ? 'ACT'
+                : 'MOD'}
               </span>
               <span className="cmdk-label">{it.label}</span>
               <span className="cmdk-sub">{it.sub}</span>
