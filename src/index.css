@@ -31,6 +31,67 @@
   filter: invert(0.85);
 }
 
+/* ── News ticker strip (below topbar) ────────────────────────────────────── */
+.news-ticker {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: calc(var(--z-overlay));
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  border-bottom: 1px solid rgba(245, 245, 240, 0.06);
+  overflow: hidden;
+}
+.news-ticker--loading { gap: 10px; padding: 0 12px; }
+.news-ticker-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.20em;
+  color: var(--amber);
+  padding: 0 10px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(245, 245, 240, 0.08);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.news-ticker-dim { font-family: var(--font-mono); font-size: 9px; color: var(--dim); }
+.news-ticker-track-wrap { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
+.news-ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: ticker-scroll 80s linear infinite;
+}
+.news-ticker-track:hover { animation-play-state: paused; }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.news-ticker-item {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: rgba(245, 245, 240, 0.55);
+  text-decoration: none;
+  padding: 0 20px 0 0;
+  border-right: 1px solid rgba(245, 245, 240, 0.06);
+  margin-right: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+}
+.news-ticker-item:hover { color: var(--fg); }
+.news-ticker-item--neg { color: rgba(245, 158, 11, 0.75); }
+.news-ticker-item--neg:hover { color: var(--amber); }
+.news-ticker-item--pos { color: rgba(52, 211, 153, 0.65); }
+.news-ticker-dot { font-size: 7px; flex-shrink: 0; }
+.news-ticker-dot--neg { color: var(--amber); }
+.news-ticker-source { font-family: var(--font-mono); font-size: 8px; color: var(--dim); opacity: 0.6; margin-left: 4px; }
+
 /* ── Project-level color extensions (beyond dr-non-brand.css palette) ─────── */
 /* These supplement --amber for data-viz contexts only. Use sparingly. */
 :root {

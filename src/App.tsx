@@ -32,6 +32,7 @@ import { ActionCenter } from './components/ActionCenter'
 import { ShareButton } from './components/ShareButton'
 import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
+import { NewsTicker } from './components/NewsTicker'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -175,6 +176,8 @@ export default function App() {
       {chatOpen && <CityChat activeCity={activeCity} />}
 
       {forecastOpen && <ForecastPanel activeCity={activeCity} />}
+
+      <NewsTicker activeCity={activeCity} />
 
       <HUD
         map={map}
