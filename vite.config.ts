@@ -9,4 +9,15 @@ export default defineConfig({
       '@shared': fileURLToPath(new URL('../_shared', import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          mapbox: ['maplibre-gl'],
+          firebase: ['firebase/app', 'firebase/firestore', 'firebase/analytics']
+        }
+      }
+    }
+  }
 })

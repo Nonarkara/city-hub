@@ -44,7 +44,7 @@ import { DistrictComparePanel } from './components/DistrictComparePanel'
 import { ToastSystem } from './components/ToastSystem'
 import { SettingsPanel } from './components/SettingsPanel'
 import { useToastStore } from './store/toastStore'
-import { AlertToast } from './components/AlertToast'
+import { useEscalationAlerts } from './hooks/useEscalationAlerts'
 import { SituationBrief } from './components/SituationBrief'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
@@ -180,6 +180,7 @@ export default function App() {
 
   const tokenAvailable = hasMapboxToken()
   const cityRisk = useCityRisk()
+  useEscalationAlerts(cityRisk, allCities)   // fires toasts via toastStore on escalation
 
   useKeyboardShortcuts({
     allCities, activeCity, setActiveCity,
@@ -221,7 +222,7 @@ export default function App() {
       {forecastOpen && <ForecastPanel activeCity={activeCity} />}
 
       <NewsTicker activeCity={activeCity} />
-      <AlertToast cityRisk={cityRisk} allCities={allCities} />
+
       <SituationBrief allCities={allCities} />
 
       <HUD

@@ -25,6 +25,7 @@ import { detectCrossCityPatterns } from '../lib/cross-city-patterns'
 import { cachedFetch } from '../lib/cached-fetch'
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { narrate } from '../lib/narrate'
+import { generateText, ollamaReachable } from '../lib/ollama'
 
 const REFRESH_MS = 30 * 60_000
 
@@ -139,19 +140,51 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
 
       const fallback = templateBrief(snaps, patternTexts)
 
-      // Try Gemini narration
-      const result = await narrate(
-        'Give a 3-sentence operational situation brief for a city intelligence operator. Cover: overall air quality status across all cities, notable weather or environmental conditions, and any cross-city intelligence patterns. Be factual and precise. No greetings or sign-off.',
-        context,
-        { style: 'brief', maxWords: 80 },
-      )
+      // Tier 1: Gemini via Worker
+      let text = ''
+      let modelLabel = 'TEMPLATE'
 
-      const text = (result.narration && result.narration !== 'Explanation unavailable — narrate endpoint unreachable.' && !result.narration.startsWith('Set GEMINI_API_KEY'))
-        ? result.narration
-        : fallback
+      try {
+        const result = await narrate(
+          'Give a 3-sentence operational situation brief for a city intelligence operator. Cover: overall air quality status across all cities, notable weather or environmental conditions, and any cross-city intelligence patterns. Be factual and precise. No greetings or sign-off.',
+          context,
+          { style: 'brief', maxWords: 80 },
+        )
+        const narration = result.narration ?? ''
+        if (result.model === 'gemini-2.5' && narration.length > 40 && !narration.startsWith('Set GEMINI')) {
+          text = narration
+          modelLabel = 'GEMINI'
+        }
+      } catch { /* fall through */ }
 
+      // Tier 2: local Ollama (phi4-mini / deepseek-r1)
+      if (!text) {
+        const reachable = await ollamaReachable()
+        if (reachable) {
+          try {
+            const prompt = [
+              'You are a city intelligence operator. Write exactly 3 sentences as a factual operational brief.',
+              'Cover: (1) air quality across monitored cities, (2) notable weather or environmental conditions, (3) any cross-city patterns.',
+              'Be specific with numbers. No greetings. No markdown.',
+              '',
+              'Current data:',
+              JSON.stringify(context, null, 0),
+            ].join('\n')
+            const ollamaText = await generateText(prompt, {
+              model:     'phi4-mini',
+              maxTokens: 120,
+            })
+            if (ollamaText.length > 40) {
+              text = ollamaText
+              modelLabel = 'OLLAMA · PHI4'
+            }
+          } catch { /* fall through */ }
+        }
+      }
+
+      // Tier 3: deterministic template (always works)
       setBrief(text || fallback)
-      setModel(result.model === 'gemini-2.5' ? 'GEMINI' : 'TEMPLATE')
+      setModel(modelLabel)
       setLastUpdated(new Date())
     } catch {
       setBrief('Brief unavailable — data sources offline.')

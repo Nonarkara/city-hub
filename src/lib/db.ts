@@ -17,7 +17,6 @@ export async function saveDraftAction(districtName: string, text: string) {
       status: 'draft',
       createdAt: serverTimestamp(),
     })
-    console.log('Action drafted with ID: ', docRef.id)
     return docRef.id
   } catch (e) {
     console.error('Error adding draft action: ', e)
