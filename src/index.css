@@ -363,6 +363,21 @@
   color: var(--amber);
 }
 
+.topbar-tab {
+  position: relative; /* for the risk dot */
+}
+
+.topbar-tab-risk {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 /* ── Basemap menu (top-right) ────────────────────────────────────────────── */
 .basemap-wrap {
   position: relative;

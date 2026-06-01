@@ -33,6 +33,8 @@ import { ShareButton } from './components/ShareButton'
 import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
 import { NewsTicker } from './components/NewsTicker'
+import { useCityRisk } from './hooks/useCityRisk'
+import { RISK_COLOR } from './lib/risk'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -158,6 +160,7 @@ export default function App() {
   }, [setActiveCity, setSelectedDistrict])
 
   const tokenAvailable = hasMapboxToken()
+  const cityRisk = useCityRisk()
 
   // If compare mode is active, show comparison panel instead of city-specific panels
   const showComparison = compareMode && compareSet.length >= 2
@@ -239,6 +242,13 @@ export default function App() {
                   {pinned ? '📌' : '·'}
                 </span>
                 {city.hudClockLabel}
+                {cityRisk[city.id] && cityRisk[city.id] !== 'good' && (
+                  <span
+                    className="topbar-tab-risk"
+                    style={{ background: RISK_COLOR[cityRisk[city.id]] }}
+                    title={`Air quality: ${cityRisk[city.id]}`}
+                  />
+                )}
               </button>
             )
           })}
