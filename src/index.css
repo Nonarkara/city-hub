@@ -1620,7 +1620,6 @@
 .layer-item--active .layer-dot {
   background: var(--amber);
   border-color: var(--amber);
-  box-shadow: 0 0 6px var(--amber);
 }
 
 .layer-label {
@@ -2821,23 +2820,18 @@
   letter-spacing: 0.15em;
   border: 1px solid;
   padding: 2px 8px;
-  border-radius: 4px;
   background: rgba(255,255,255,0.05);
-  box-shadow: inset 0 0 8px currentColor;
 }
 .district-vuln-bar-bg {
   width: 100%;
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
   overflow: hidden;
   margin-top: 4px;
 }
 .district-vuln-bar-fill {
   height: 100%;
-  border-radius: 2px;
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 10px currentColor;
 }
 
 .district-panel-scroll {
@@ -4212,11 +4206,7 @@
 .correlation-bar {
   margin: var(--space-md) var(--space-md) 0;
   padding: var(--space-md);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: linear-gradient(145deg, rgba(20, 24, 34, 0.6) 0%, rgba(10, 12, 18, 0.8) 100%);
-  backdrop-filter: blur(16px) saturate(180%);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
 }
 .correlation-label {
   display: flex;
@@ -4227,7 +4217,6 @@
   letter-spacing: 0.2em;
   color: var(--amber);
   margin-bottom: var(--space-md);
-  text-shadow: 0 0 12px rgba(251, 140, 0, 0.5);
 }
 .correlation-label::before {
   content: '';
@@ -4236,13 +4225,7 @@
   height: 6px;
   background: var(--amber);
   border-radius: 50%;
-  box-shadow: 0 0 8px var(--amber);
-  animation: pulse-amber 2s infinite;
-}
-@keyframes pulse-amber {
-  0% { box-shadow: 0 0 0 0 rgba(251, 140, 0, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(251, 140, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(251, 140, 0, 0); }
+  animation: briefPulse 2s ease-in-out infinite;
 }
 .correlation-list {
   display: flex;
@@ -4255,38 +4238,16 @@
   align-items: baseline;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 6px;
   border-left: 3px solid var(--line);
-  font-size: 12px;
+  font-size: var(--text-body);
   line-height: 1.45;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, background 0.2s ease;
   cursor: default;
+  transition: background 0.15s;
 }
-.correlation-chip:hover {
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-.correlation-chip--high { 
-  border-left-color: #e53935; 
-  background: linear-gradient(90deg, rgba(229, 57, 53, 0.15) 0%, rgba(229, 57, 53, 0.02) 100%); 
-}
-.correlation-chip--high:hover {
-  background: linear-gradient(90deg, rgba(229, 57, 53, 0.25) 0%, rgba(229, 57, 53, 0.05) 100%); 
-}
-.correlation-chip--medium { 
-  border-left-color: #fb8c00; 
-  background: linear-gradient(90deg, rgba(251, 140, 0, 0.12) 0%, rgba(251, 140, 0, 0.02) 100%); 
-}
-.correlation-chip--medium:hover {
-  background: linear-gradient(90deg, rgba(251, 140, 0, 0.2) 0%, rgba(251, 140, 0, 0.05) 100%); 
-}
-.correlation-chip--low { 
-  border-left-color: #fdd835; 
-  background: linear-gradient(90deg, rgba(253, 216, 53, 0.1) 0%, rgba(253, 216, 53, 0.02) 100%); 
-}
-.correlation-chip--low:hover {
-  background: linear-gradient(90deg, rgba(253, 216, 53, 0.18) 0%, rgba(253, 216, 53, 0.05) 100%); 
-}
+.correlation-chip:hover { background: rgba(245,245,240,0.03); }
+.correlation-chip--high   { border-left-color: #e53935; background: rgba(229, 57, 53, 0.06); }
+.correlation-chip--medium { border-left-color: #fb8c00; background: rgba(251, 140, 0, 0.05); }
+.correlation-chip--low    { border-left-color: #fdd835; background: rgba(253, 216, 53, 0.04); }
 .correlation-confidence {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -7765,6 +7726,35 @@
   .multicity-chart-wrap,
   .small-multiples-wrap {
     display: none;
+  }
+}
+
+/* ── Mobile passes for components missing them ───────────────────────────── */
+@media (max-width: 767px) {
+  /* Alert toasts: stack above bottom nav, full-width */
+  .alert-toasts {
+    bottom: 72px;
+    right: 12px;
+    left: 12px;
+  }
+  .alert-toast {
+    max-width: 100%;
+    min-width: unset;
+  }
+
+  /* News ticker: smaller text, still scrolls */
+  .news-ticker {
+    height: 20px;
+  }
+  .news-ticker-item {
+    font-size: 9px;
+  }
+
+  /* Comparison city cards: 2-col grid on mobile */
+  .cmp-city-cards {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 10px 12px 6px;
+    gap: 6px;
   }
 }
 
