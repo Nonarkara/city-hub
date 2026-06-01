@@ -92,6 +92,61 @@
 .news-ticker-dot--neg { color: var(--amber); }
 .news-ticker-source { font-family: var(--font-mono); font-size: 8px; color: var(--dim); opacity: 0.6; margin-left: 4px; }
 
+/* ── Alert toasts ────────────────────────────────────────────────────────── */
+.alert-toasts {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.alert-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(4, 6, 11, 0.96);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+  padding: 10px 14px;
+  min-width: 240px;
+  max-width: 320px;
+  pointer-events: all;
+  cursor: pointer;
+  animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.alert-toast-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+
+.alert-toast-msg {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: rgba(245, 245, 240, 0.8);
+  flex: 1;
+}
+
+.alert-toast-dismiss {
+  font-size: 10px;
+  color: var(--dim);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
 /* ── Project-level color extensions (beyond dr-non-brand.css palette) ─────── */
 /* These supplement --amber for data-viz contexts only. Use sparingly. */
 :root {

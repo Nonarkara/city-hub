@@ -47,12 +47,17 @@ export function useBangkokLayers(
   bangkokMode: boolean,
   activeDate: string,
   onDistrictClick?: (d: DistrictSummary) => void,
+  selectedDistrictId?: string | null,
 ) {
   const stateRef = useRef<LayerLoadState>({ loaded: new Set(), loading: new Set() })
   const lastDateRef = useRef(activeDate)
   // Keep callback ref current so the once-wired listener always calls the latest handler
   const onDistrictClickRef = useRef<((d: DistrictSummary) => void) | undefined>(onDistrictClick)
   onDistrictClickRef.current = onDistrictClick
+
+  // District highlight layer state
+  const selectedDistrictRef = useRef<string | null>(null)
+  selectedDistrictRef.current = selectedDistrictId ?? null
 
   // Cleanup when Bangkok mode deactivates
   useEffect(() => {
@@ -147,6 +152,20 @@ export function useBangkokLayers(
     map.on('style.load', onStyleLoad)
     return () => { map.off('style.load', onStyleLoad) }
   }, [map, activeIds, bangkokMode, activeDate])
+
+  // Update district highlight when selection changes
+  useEffect(() => {
+    if (!map || !bangkokMode) return
+    const hl = map.getLayer('ly-districts-highlight')
+    if (!hl) return
+    if (selectedDistrictId) {
+      map.setFilter('ly-districts-highlight', ['==', ['get', 'name_th'], selectedDistrictId])
+      map.setPaintProperty('ly-districts-highlight', 'line-opacity', 1)
+    } else {
+      map.setFilter('ly-districts-highlight', ['==', ['get', 'name_th'], ''])
+      map.setPaintProperty('ly-districts-highlight', 'line-opacity', 0)
+    }
+  }, [map, bangkokMode, selectedDistrictId])
 }
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
@@ -816,6 +835,17 @@ async function addDistricts(map: MapLibre) {
       'line-width': 1.2,
       'line-opacity': 0.85,
     },
+  })
+  map.addLayer({
+    id: 'ly-districts-highlight',
+    type: 'line',
+    source: 'src-districts',
+    paint: {
+      'line-color': '#f59e0b',
+      'line-width': 3,
+      'line-opacity': 0,
+    },
+    filter: ['==', ['get', 'name_th'], ''],
   })
   map.addLayer({
     id: 'ly-districts-label',

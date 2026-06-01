@@ -27,6 +27,7 @@ import { prefetchCity } from './lib/city-prefetch'
 import { useCityStore } from './store/cityStore'
 import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
+import { useSelectionStore } from './store/selectionStore'
 import { trackEvent } from './lib/firebase'
 import { ActionCenter } from './components/ActionCenter'
 import { ShareButton } from './components/ShareButton'
@@ -36,6 +37,8 @@ import { NewsTicker } from './components/NewsTicker'
 import { useCityRisk } from './hooks/useCityRisk'
 import { RISK_COLOR } from './lib/risk'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { CounterpartStrip } from './components/CounterpartStrip'
+import { AlertToast } from './components/AlertToast'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -138,8 +141,9 @@ export default function App() {
   }
 
   const bangkokMode = activeCity.tier === 'full'
+  const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
 
-  useBangkokLayers(map, activeLayers, bangkokMode, activeDate, bangkokMode ? setSelectedDistrict : undefined)
+  useBangkokLayers(map, activeLayers, bangkokMode, activeDate, bangkokMode ? setSelectedDistrict : undefined, selectedDistrictId)
 
   // Global real-time overlays (earthquakes, radar) — every city, every lens.
   useGlobalOverlays(map, activeOverlays)
@@ -155,10 +159,13 @@ export default function App() {
     useLayerStore.getState().toggleLayer(id)
   }, [])
 
+  const clearSelection = useSelectionStore((s) => s.clearSelection)
+
   const cityHandler = useMemo(() => (c: CityConfig) => {
     setActiveCity(c)
     setSelectedDistrict(null)
-  }, [setActiveCity, setSelectedDistrict])
+    clearSelection()
+  }, [setActiveCity, setSelectedDistrict, clearSelection])
 
   const tokenAvailable = hasMapboxToken()
   const cityRisk = useCityRisk()
@@ -191,6 +198,7 @@ export default function App() {
       {forecastOpen && <ForecastPanel activeCity={activeCity} />}
 
       <NewsTicker activeCity={activeCity} />
+      <AlertToast cityRisk={cityRisk} allCities={allCities} />
 
       <HUD
         map={map}
@@ -229,6 +237,8 @@ export default function App() {
         <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
       )}
       {bangkokMode && <ASEANStrip />}
+
+      {bangkokMode && <CounterpartStrip activeCity={activeCity} />}
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
