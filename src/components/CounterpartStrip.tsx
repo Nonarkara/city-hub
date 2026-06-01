@@ -12,6 +12,7 @@ import { useCityStore } from '../store/cityStore'
 import { useSelectionStore } from '../store/selectionStore'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { RISK_COLOR } from '../lib/risk'
+import { CITIES } from '../config/cities'
 import type { CityConfig } from '../config/cities'
 
 interface CounterpartStripProps {
@@ -29,7 +30,8 @@ export function CounterpartStrip({ activeCity }: CounterpartStripProps) {
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
   const { districts } = useDistrictData()
   const compareSet = useCityStore((s) => s.compareSet)
-  const allCities = useCityStore((s) => s.allCities())
+    const customCities = useCityStore((s) => s.customCities)
+  const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
 
   const isDistrictView = selectedDistrictId !== null
 

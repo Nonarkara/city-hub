@@ -10,7 +10,7 @@ import { useSelectionStore } from '../store/selectionStore'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { useCityStore } from '../store/cityStore'
 import { RISK_COLOR } from '../lib/risk'
-import type { CityConfig } from '../config/cities'
+import { CITIES, type CityConfig } from '../config/cities'
 
 interface SmallMultiplesGridProps {
   activeCity: CityConfig
@@ -75,7 +75,8 @@ export function SmallMultiplesGrid({ activeCity }: SmallMultiplesGridProps) {
   const { districts } = useDistrictData()
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
   const setSelectedDistrictId = useSelectionStore((s) => s.setSelectedDistrictId)
-  const allCities = useCityStore((s) => s.allCities())
+    const customCities = useCityStore((s) => s.customCities)
+  const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
   const compareSet = useCityStore((s) => s.compareSet)
 
   const isBkk = activeCity.id === 'bangkok'

@@ -36,14 +36,6 @@ function trafficSeries(flow: TrafficFlowPoint[]): number[] {
   return hours.map((h) => mean(buckets[h]))
 }
 
-/** Build time series from water levels */
-function _waterSeries(levels: WaterLevelStation[]): number[] {
-  return levels
-    .filter((w) => w.waterLevelM > 0)
-    .sort(() => 0)
-    .map((w) => w.waterLevelM)
-}
-
 /** Compute cross-domain insights from live data using real statistics */
 export function computeCorrelations(
   trafficFlow: TrafficFlowPoint[],
@@ -79,7 +71,6 @@ export function computeCorrelations(
   }
 
   // ── 2. Water level → Flood risk prediction ─────────────────────────────────
-  void _waterSeries(waterLevels) // ensure usage
   const criticalWater = waterLevels.filter((w) => w.status === 'critical' || w.status === 'severe')
   if (criticalWater.length > 0) {
     const worst = criticalWater.sort((a, b) => b.waterLevelM - a.waterLevelM)[0]

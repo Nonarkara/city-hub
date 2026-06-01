@@ -8,6 +8,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useCityStore } from '../store/cityStore'
 import { cachedFetch } from '../lib/cached-fetch'
 import { fetchAQIForecast } from '../data/openmeteo-forecast'
+import { CITIES } from '../config/cities'
 import { bangkokPm25Live } from '../data/gistda'
 
 interface CitySeries {
@@ -23,7 +24,8 @@ const CITY_COLORS = ['#f59e0b', '#58a6ff', '#e53935', '#8bc34a']
 
 export function MultiCityChart() {
   const compareSet = useCityStore((s) => s.compareSet)
-  const allCities = useCityStore((s) => s.allCities())
+    const customCities = useCityStore((s) => s.customCities)
+  const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
   const activeCity = useCityStore((s) => s.activeCity)
 
   const cities = useMemo(() => {
