@@ -253,12 +253,6 @@ export default function App() {
         <div className="topbar-right">
           <button
             className="topbar-chat-btn"
-            onClick={() => setChatOpen(!chatOpen)}
-            title="Ask the city chatbot"
-            aria-label="Open city chat"
-          >· CHAT</button>
-          <button
-            className="topbar-chat-btn"
             onClick={() => setAboutOpen(true)}
             title="About this dashboard"
             aria-label="About"

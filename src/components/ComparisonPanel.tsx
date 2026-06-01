@@ -192,6 +192,60 @@ export function ComparisonPanel() {
 
       <div className="cmp-body">
 
+        {/* ── Live city header cards ──────────────────────────────────────── */}
+        <div className="cmp-city-cards">
+          {cities.map((city) => {
+            const snap    = live[city.id]
+            const aqi     = snap?.aqi?.usAqi ?? null
+            const pm25    = snap?.aqi?.pm25  ?? null
+            const temp    = snap?.weather?.temp ?? null
+            const wind    = snap?.weather?.windSpeed ?? null
+            const wDir    = snap?.weather?.windCardinal ?? null
+            const risk    = pm25 !== null ? pm25ToRisk(pm25) : aqi !== null ? aqiToRisk(aqi) : null
+            const riskCol = risk ? RISK_COLOR[risk] : 'var(--dim)'
+            const densityPct = city.area_km2 > 0
+              ? Math.round(city.populationMillions * 1_000_000 / city.area_km2)
+              : null
+            return (
+              <div key={city.id} className="cmp-city-card">
+                <div className="cmp-city-card-code">{city.hudClockLabel}</div>
+                <div className="cmp-city-card-name">{city.name}</div>
+                <div className="cmp-city-card-divider" />
+                <div className="cmp-city-card-row">
+                  <span className="cmp-city-card-label">AQI</span>
+                  <span className="cmp-city-card-val" style={{ color: riskCol }}>
+                    {aqi !== null ? aqi : liveLoading ? '…' : '—'}
+                  </span>
+                </div>
+                <div className="cmp-city-card-row">
+                  <span className="cmp-city-card-label">TEMP</span>
+                  <span className="cmp-city-card-val">{temp !== null ? `${temp}°` : liveLoading ? '…' : '—'}</span>
+                </div>
+                <div className="cmp-city-card-row">
+                  <span className="cmp-city-card-label">WIND</span>
+                  <span className="cmp-city-card-val">
+                    {wind !== null ? `${wind} km/h ${wDir ?? ''}` : liveLoading ? '…' : '—'}
+                  </span>
+                </div>
+                <div className="cmp-city-card-row">
+                  <span className="cmp-city-card-label">POP</span>
+                  <span className="cmp-city-card-val">
+                    {city.populationMillions >= 1
+                      ? `${city.populationMillions.toFixed(1)}M`
+                      : `${Math.round(city.populationMillions * 1000)}K`}
+                  </span>
+                </div>
+                {densityPct !== null && (
+                  <div className="cmp-city-card-row">
+                    <span className="cmp-city-card-label">DENS</span>
+                    <span className="cmp-city-card-val">{densityPct.toLocaleString()}/km²</span>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
         {/* ── SLIC Index ─────────────────────────────────────────────────── */}
         {anyHasSlic && (
           <section className="cmp-section">
@@ -249,6 +303,32 @@ export function ComparisonPanel() {
             )}
           </section>
         )}
+
+        {/* ── City Scale ─────────────────────────────────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">CITY SCALE</div>
+          <MetricRows
+            label="POPULATION"
+            unit="millions"
+            cities={cities}
+            getValue={(c) => c.populationMillions}
+            fmt={(v) => v >= 1 ? `${v.toFixed(1)}M` : `${Math.round(v * 1000)}K`}
+          />
+          <MetricRows
+            label="CITY AREA"
+            unit="km²"
+            cities={cities}
+            getValue={(c) => c.area_km2}
+            fmt={(v) => `${v.toLocaleString()} km²`}
+          />
+          <MetricRows
+            label="POPULATION DENSITY"
+            unit="people/km²"
+            cities={cities}
+            getValue={(c) => c.area_km2 > 0 ? Math.round(c.populationMillions * 1_000_000 / c.area_km2) : null}
+            fmt={(v) => `${v.toLocaleString()}/km²`}
+          />
+        </section>
 
         {/* ── Socio-Economics & Environment ─────────────────────────────── */}
         <section className="cmp-section">
@@ -346,6 +426,27 @@ export function ComparisonPanel() {
             noWinner
             getValue={(c) => live[c.id]?.weather?.temp ?? null}
             fmt={(v) => `${v}°`}
+          />
+
+          <MetricRows
+            label="FEELS LIKE"
+            unit="°C"
+            cities={cities}
+            noWinner
+            getValue={(c) => live[c.id]?.weather?.feelsLike ?? null}
+            fmt={(v) => `${v}°`}
+          />
+
+          <MetricRows
+            label="WIND SPEED"
+            unit="km/h"
+            cities={cities}
+            noWinner
+            getValue={(c) => live[c.id]?.weather?.windSpeed ?? null}
+            fmt={(v, city) => {
+              const dir = live[city.id]?.weather?.windCardinal
+              return dir ? `${v} ${dir}` : `${v}`
+            }}
           />
         </section>
 

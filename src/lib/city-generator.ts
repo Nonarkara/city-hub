@@ -92,6 +92,7 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2,
+    populationMillions: 1.0,       // placeholder — update after adding city
     founded: undefined,
     climate: 'Unknown — add locally',
     distinctiveness: `${name}, ${country}. Auto-generated city config.`,

@@ -40,10 +40,11 @@ export interface CityConfig {
   // City onboarding — these fields power the CityFactsCard that introduces
   // a newcomer to the city in ~30 seconds. Static, curated facts.
   area_km2: number
+  populationMillions: number                            // metro / city-region population
   founded?: string                                      // year, era, or "ancient"
   climate: string                                       // e.g. "Tropical monsoon", "Tropical rainforest"
   distinctiveness: string                               // 1-line "what's special about this city"
-  
+
   demographics?: SocioEconomics
 }
 
@@ -93,6 +94,7 @@ export const CITIES: CityConfig[] = [
     tier: 'full',
     availableLayers: ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events'],
     area_km2: 1568,
+    populationMillions: 10.5,
     founded: '1782',
     climate: 'Tropical savanna · monsoon-driven',
     distinctiveness: 'Thailand\'s capital and largest city. Founded by Rama I after Ayutthaya\'s fall. Sits on the Chao Phraya delta — flat, river-veined, sinking ~2cm per year.',
@@ -124,6 +126,7 @@ export const CITIES: CityConfig[] = [
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2: 152,
+    populationMillions: 1.7,
     founded: '1296',
     climate: 'Tropical savanna · burning season Jan–Apr',
     distinctiveness: 'Northern Thailand\'s cultural capital. Lanna kingdom seat from 1296. Sits in a valley bowl that traps haze from agricultural burning every February–April.',
@@ -155,6 +158,7 @@ export const CITIES: CityConfig[] = [
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2: 543,
+    populationMillions: 0.42,
     founded: 'Tin-mining colony, 1700s',
     climate: 'Tropical rainforest · two monsoons',
     distinctiveness: 'Thailand\'s largest island and busiest tourist economy — 9.9M international visitors a year for a permanent population of 416K. Tin-mining past, Sino-Portuguese old town.',
@@ -185,6 +189,7 @@ export const CITIES: CityConfig[] = [
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2: 728,
+    populationMillions: 5.9,
     founded: '1819',
     climate: 'Tropical rainforest · equatorial',
     distinctiveness: 'Southeast Asia\'s reference city for smart-city ambition. 1m residents on reclaimed land. data.gov.sg publishes more public datasets than any other ASEAN city.',
@@ -215,6 +220,7 @@ export const CITIES: CityConfig[] = [
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2: 431,
+    populationMillions: 0.75,
     founded: '1827',
     climate: 'Tropical rainforest · equatorial',
     distinctiveness: 'Sarawak\'s capital, on the south bank of the Sarawak River. Cat-named in Malay. Multicultural by design — Iban, Bidayuh, Malay, Chinese, Indian — and the only Malaysian city where Mandarin signage rivals Malay.',
