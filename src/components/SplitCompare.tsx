@@ -1,21 +1,18 @@
 /**
- * SplitCompare — "any vs any" satellite swipe-compare.
+ * SplitCompare — up to 4 independent satellite panes.
  *
- * Two independent MapLibre panes separated by a draggable divider. Each pane
- * sets its OWN city + satellite lens + date, so one control compares:
- *   - city vs city       (Bangkok NDVI | Singapore NDVI)
- *   - then vs now         (Bangkok aerosol today | Bangkok aerosol −30d)
- *   - lens vs lens        (Bangkok true-color | Bangkok surface-heat)
+ * Each pane has its own city + lens + date — so you can compare:
+ *   - city vs city         (BKK NDVI | SIN NDVI | CNX true-color)
+ *   - then vs now          (BKK aerosol today | BKK aerosol −30d)
+ *   - lens vs lens         (BKK true-color | BKK surface-heat | BKK CO)
+ *   - any combination of the above, 4-ways
  *
- * This is the thing Google Maps can't do: side-by-side Earth observation across
- * place, time, and spectrum. Reuses the Satellite Stack registry (getBasemapDef)
- * and the temporal tile machinery from MapView — no new tile code.
- *
- * Desktop: panes sit left|right, divider drags horizontally.
- * Mobile (<768px): panes stack top/bottom, divider drags vertically.
+ * Grid layouts:
+ *   2 panes → side by side (or stacked on mobile)
+ *   3 panes → 3 columns
+ *   4 panes → 2 × 2 grid
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
 import { Map as MapLibreMap } from 'maplibre-gl'
 import { CITIES, type CityConfig, type BasemapId } from '../config/cities'
 import { useCityStore } from '../store/cityStore'
@@ -24,13 +21,15 @@ import {
   getBasemapDef, BASEMAP_GROUPS, isTemporalBasemap, hasMapboxToken,
 } from './MapView'
 
-const MS_DAY = 86_400_000
-const MAX_BACK = 30
+const MS_DAY    = 86_400_000
+const MAX_BACK  = 30
+// MAX_PANES = 4 (enforced via button click handlers)
+const MIN_PANES = 2
 
 interface PaneState {
   cityId:  string
   basemap: BasemapId
-  date:    string   // YYYY-MM-DD
+  date:    string
 }
 
 function todayStr(): string {
@@ -48,16 +47,18 @@ function prettyDate(date: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// One self-contained map pane
+// Single map pane
 // ─────────────────────────────────────────────────────────────────────────────
 function CompareMapPane({
-  state, onChange, cities, tokenAvailable, align,
+  state, onChange, onRemove, cities, tokenAvailable, index, canRemove,
 }: {
   state:          PaneState
   onChange:       (next: PaneState) => void
+  onRemove:       () => void
   cities:         CityConfig[]
   tokenAvailable: boolean
-  align:          'left' | 'right'
+  index:          number
+  canRemove:      boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<MapLibreMap | null>(null)
@@ -67,7 +68,6 @@ function CompareMapPane({
 
   const city = cities.find((c) => c.id === state.cityId) ?? cities[0]
 
-  // Init once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     const def = getBasemapDef(state.basemap, state.date)
@@ -81,14 +81,12 @@ function CompareMapPane({
       attributionControl: { compact: true },
     })
     mapRef.current = map
-    // Keep the GL canvas correct as the divider resizes the pane.
     const ro = new ResizeObserver(() => map.resize())
     ro.observe(containerRef.current)
     return () => { ro.disconnect(); map.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Lens / date → restyle (temporal lenses re-key tiles to the new day)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -97,11 +95,10 @@ function CompareMapPane({
     const temporal  = isTemporalBasemap(state.basemap)
     if (!bmChanged && !(temporal && dtChanged)) return
     curBasemap.current = state.basemap
-    curDate.current = state.date
+    curDate.current    = state.date
     map.setStyle(getBasemapDef(state.basemap, state.date).style)
   }, [state.basemap, state.date])
 
-  // City → fly
   useEffect(() => {
     const map = mapRef.current
     if (!map || curCity.current === state.cityId) return
@@ -115,7 +112,20 @@ function CompareMapPane({
     <div className="split-pane">
       <div className="split-pane-map" ref={containerRef} />
 
-      <div className={`split-pane-controls split-pane-controls--${align}`}>
+      {/* Pane index badge */}
+      <div className="split-pane-badge">{index + 1}</div>
+
+      {/* Close button — only shown when canRemove */}
+      {canRemove && (
+        <button
+          className="split-pane-remove"
+          onClick={onRemove}
+          aria-label={`Remove pane ${index + 1}`}
+          title="Remove this pane"
+        >✕</button>
+      )}
+
+      <div className="split-pane-controls">
         <select
           className="split-select"
           value={state.cityId}
@@ -170,77 +180,110 @@ function CompareMapPane({
 // ─────────────────────────────────────────────────────────────────────────────
 // SplitCompare overlay
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Seeded lens presets so each new pane starts with something meaningfully different
+const DEFAULT_LENSES: BasemapId[] = [
+  'nasa-true-color', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-aerosol',
+]
+
 export function SplitCompare() {
-  const customCities  = useCityStore((s) => s.customCities)
-  const activeCity    = useCityStore((s) => s.activeCity)
-  const setSplitOpen  = useUIStore((s) => s.setSplitOpen)
-  const activeDate    = useUIStore((s) => s.activeDate)
+  const customCities = useCityStore((s) => s.customCities)
+  const activeCity   = useCityStore((s) => s.activeCity)
+  const setSplitOpen = useUIStore((s) => s.setSplitOpen)
+  const activeDate   = useUIStore((s) => s.activeDate)
 
-  const cities = [...CITIES, ...customCities]
+  const cities         = [...CITIES, ...customCities]
   const tokenAvailable = hasMapboxToken()
+  const today          = activeDate || todayStr()
 
-  // Seed a meaningful first comparison: current city, true-color | NDVI.
-  const [left, setLeft]   = useState<PaneState>({ cityId: activeCity.id, basemap: 'nasa-true-color', date: activeDate || todayStr() })
-  const [right, setRight] = useState<PaneState>({ cityId: activeCity.id, basemap: 'nasa-ndvi',       date: activeDate || todayStr() })
+  // Start with 2 panes, seeded with different lenses on the same city
+  const [panes, setPanes] = useState<PaneState[]>([
+    { cityId: activeCity.id, basemap: DEFAULT_LENSES[0], date: today },
+    { cityId: activeCity.id, basemap: DEFAULT_LENSES[1], date: today },
+  ])
 
-  const [ratio, setRatio] = useState(0.5)
-  const [stacked, setStacked] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+  const count = panes.length
 
-  useEffect(() => {
-    const onResize = () => setStacked(window.innerWidth < 768)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+  const updatePane = useCallback((i: number, next: PaneState) => {
+    setPanes((prev) => prev.map((p, idx) => idx === i ? next : p))
   }, [])
 
-  // Esc closes
+
+  const removePane = useCallback((i: number) => {
+    setPanes((prev) => {
+      if (prev.length <= MIN_PANES) return prev
+      return prev.filter((_, idx) => idx !== i)
+    })
+  }, [])
+
+  // Esc → close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSplitOpen(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [setSplitOpen])
 
-  const startDrag = useCallback((e: ReactPointerEvent) => {
-    e.preventDefault()
-    const move = (ev: PointerEvent) => {
-      const r = stacked
-        ? ev.clientY / window.innerHeight
-        : ev.clientX / window.innerWidth
-      setRatio(Math.min(0.8, Math.max(0.2, r)))
-    }
-    const up = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }, [stacked])
-
-  const swap = useCallback(() => { setLeft(right); setRight(left) }, [left, right])
+  // Grid class based on count
+  const gridClass = count === 4
+    ? 'split-grid split-grid--4'
+    : count === 3
+    ? 'split-grid split-grid--3'
+    : 'split-grid split-grid--2'
 
   return (
-    <div className={`split-compare ${stacked ? 'split-compare--stacked' : ''}`}>
-      <div className="split-pane-wrap" style={{ flex: ratio }}>
-        <CompareMapPane state={left} onChange={setLeft} cities={cities} tokenAvailable={tokenAvailable} align="left" />
-      </div>
-
-      <div
-        className="split-divider"
-        onPointerDown={startDrag}
-        role="separator"
-        aria-orientation={stacked ? 'horizontal' : 'vertical'}
-        aria-label="Resize comparison"
-      >
-        <span className="split-divider-grip" aria-hidden>⋮⋮</span>
-      </div>
-
-      <div className="split-pane-wrap" style={{ flex: 1 - ratio }}>
-        <CompareMapPane state={right} onChange={setRight} cities={cities} tokenAvailable={tokenAvailable} align="right" />
+    <div className="split-compare">
+      <div className={gridClass}>
+        {panes.map((pane, i) => (
+          <CompareMapPane
+            key={i}
+            state={pane}
+            onChange={(next) => updatePane(i, next)}
+            onRemove={() => removePane(i)}
+            cities={cities}
+            tokenAvailable={tokenAvailable}
+            index={i}
+            canRemove={count > MIN_PANES}
+          />
+        ))}
       </div>
 
       <div className="split-toolbar">
         <span className="split-toolbar-title">SPLIT COMPARE</span>
-        <button className="split-toolbar-btn" onClick={swap} title="Swap sides">⇄ SWAP</button>
-        <button className="split-toolbar-btn split-toolbar-btn--exit" onClick={() => setSplitOpen(false)} title="Exit split (Esc)">✕ EXIT</button>
+
+        <div className="split-panel-count" role="group" aria-label="Panel count">
+          {[2, 3, 4].map((n) => (
+            <button
+              key={n}
+              className={`split-count-btn ${count === n ? 'split-count-btn--active' : ''}`}
+              onClick={() => {
+                if (n > count) {
+                  // Add panes up to n
+                  setPanes((prev) => {
+                    let next = [...prev]
+                    while (next.length < n) {
+                      const lens = DEFAULT_LENSES[next.length % DEFAULT_LENSES.length]
+                      const lastCityId = next[next.length - 1].cityId
+                      const nextCity   = cities.find((c) => c.id !== lastCityId) ?? cities[0]
+                      next = [...next, { cityId: nextCity.id, basemap: lens, date: today }]
+                    }
+                    return next
+                  })
+                } else if (n < count) {
+                  setPanes((prev) => prev.slice(0, n))
+                }
+              }}
+              title={`${n} panels`}
+            >
+              {n}×
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="split-toolbar-btn split-toolbar-btn--exit"
+          onClick={() => setSplitOpen(false)}
+          title="Exit split (Esc)"
+        >✕ EXIT</button>
       </div>
     </div>
   )

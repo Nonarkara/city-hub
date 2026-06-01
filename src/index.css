@@ -577,6 +577,7 @@
 }
 
 /* ── Split Compare — any-vs-any satellite swipe ─────────────────────────── */
+/* ── SplitCompare — up to 4 independent panes ───────────────────────────── */
 .split-compare {
   position: fixed;
   top: 44px;
@@ -585,32 +586,93 @@
   bottom: 0;
   z-index: var(--z-frame);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   background: #04060b;
 }
-.split-compare--stacked { flex-direction: column; }
 
-.split-pane-wrap {
+/* CSS grid for the pane area — fills all space above the toolbar */
+.split-grid {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  background: rgba(245, 245, 240, 0.06);  /* gap colour */
+  min-height: 0;
+}
+
+.split-grid--2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr; }
+.split-grid--3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; }
+.split-grid--4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+
+/* Mobile: always stack in a single column */
+@media (max-width: 767px) {
+  .split-grid--2, .split-grid--3, .split-grid--4 {
+    grid-template-columns: 1fr;
+    grid-template-rows: unset;
+  }
+}
+
+/* Each pane is a grid cell */
+.split-pane {
   position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  background: #04060b;
 }
-.split-pane { position: absolute; inset: 0; }
 .split-pane-map { position: absolute; inset: 0; }
 
+/* Pane number badge (top-left corner) */
+.split-pane-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  background: rgba(4, 6, 11, 0.88);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 2px 6px;
+  pointer-events: none;
+}
+
+/* Close button (top-right corner) */
+.split-pane-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  background: rgba(4, 6, 11, 0.88);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.split-pane:hover .split-pane-remove { opacity: 1; }
+.split-pane-remove:hover { border-color: #e5484d; color: #e5484d; }
+
+/* Per-pane controls (bottom) */
 .split-pane-controls {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  max-width: calc(100% - 20px);
+  justify-content: flex-start;
 }
-.split-pane-controls--left  { left: 10px; justify-content: flex-start; }
-.split-pane-controls--right { right: 10px; justify-content: flex-end; }
+
 .split-select {
   appearance: none;
   -webkit-appearance: none;
@@ -627,7 +689,7 @@
   padding: 7px 24px 7px 10px;
   min-height: 36px;
   cursor: pointer;
-  max-width: 200px;
+  max-width: 180px;
 }
 .split-select:hover { border-color: var(--amber); color: var(--amber); }
 .split-select:focus-visible { outline: 1px solid var(--amber); outline-offset: 0; }
@@ -641,7 +703,7 @@
   padding: 6px 10px;
   min-height: 36px;
 }
-.split-date-range { width: 110px; accent-color: var(--amber); cursor: pointer; }
+.split-date-range { width: 90px; accent-color: var(--amber); cursor: pointer; }
 .split-date-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -650,52 +712,49 @@
   white-space: nowrap;
 }
 
-.split-divider {
-  position: relative;
-  flex: 0 0 6px;
-  background: var(--line);
-  cursor: col-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-}
-.split-compare--stacked .split-divider { cursor: row-resize; }
-.split-divider:hover { background: var(--amber); }
-.split-divider-grip {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 42px;
-  background: rgba(4, 6, 11, 0.95);
-  border: 1px solid var(--line);
-  color: var(--dim);
-  font-size: 11px;
-  letter-spacing: -2px;
-  pointer-events: none;
-}
-.split-compare--stacked .split-divider-grip { width: 42px; height: 22px; transform: rotate(90deg); }
-
+/* Bottom toolbar */
 .split-toolbar {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 3;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(4, 6, 11, 0.95);
-  border: 1px solid var(--line);
-  padding: 6px 12px;
+  background: rgba(4, 6, 11, 0.98);
+  border-top: 1px solid var(--line);
+  padding: 8px 16px;
+  z-index: 3;
 }
+
 .split-toolbar-title {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--amber);
+  margin-right: 4px;
 }
+
+/* Panel count switcher */
+.split-panel-count {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.split-count-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 9px;
+  min-height: 30px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.split-count-btn:hover             { border-color: var(--amber); color: var(--amber); }
+.split-count-btn--active           { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.08); }
+
 .split-toolbar-btn {
   background: transparent;
   border: 1px solid var(--line);
@@ -705,7 +764,7 @@
   font-size: 10px;
   letter-spacing: 0.1em;
   padding: 5px 9px;
-  min-height: 32px;
+  min-height: 30px;
   cursor: pointer;
 }
 .split-toolbar-btn:hover { border-color: var(--amber); color: var(--amber); }
@@ -6964,4 +7023,327 @@
 
 .topbar-sitrep-btn:hover {
   background: rgba(245, 158, 11, 0.1) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   20x INTELLIGENCE UPGRADE — New Components
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Counterpart Strip ──────────────────────────────────────────────────── */
+.counterpart-strip {
+  position: fixed;
+  left: 220px;
+  top: 66px;
+  right: 0;
+  height: 28px;
+  background: rgba(4, 6, 11, 0.85);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  z-index: var(--z-overlay);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.counterpart-label {
+  color: var(--amber);
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.counterpart-item,
+.counterpart-peer,
+.counterpart-aggregate {
+  color: rgba(245, 245, 240, 0.7);
+  flex-shrink: 0;
+}
+
+.counterpart-rank {
+  color: rgba(245, 245, 240, 0.4);
+  margin-right: 4px;
+}
+
+.counterpart-delta {
+  color: rgba(245, 245, 240, 0.45);
+  margin-left: 6px;
+  font-size: 10px;
+}
+
+@media (max-width: 767px) {
+  .counterpart-strip {
+    left: 0;
+    top: auto;
+    bottom: 56px;
+    height: 24px;
+    font-size: 10px;
+    gap: 10px;
+  }
+}
+
+/* ── Insight Cards Grid ─────────────────────────────────────────────────── */
+.insight-cards-grid {
+  position: fixed;
+  right: 12px;
+  bottom: 72px;
+  width: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: rgba(4, 6, 11, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  z-index: var(--z-overlay);
+  padding: 10px;
+  font-family: var(--font-mono);
+}
+
+.insight-cards-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.insight-cards-title {
+  font-size: 11px;
+  color: var(--amber);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.insight-cards-count {
+  font-size: 10px;
+  color: rgba(245, 245, 240, 0.45);
+  background: rgba(245, 245, 240, 0.06);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.insight-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Insight Card ───────────────────────────────────────────────────────── */
+.insight-card {
+  background: rgba(245, 245, 240, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.insight-card:hover {
+  background: rgba(245, 245, 240, 0.06);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.insight-card--critical { border-left: 2px solid #e53935; }
+.insight-card--high     { border-left: 2px solid #fb8c00; }
+.insight-card--medium   { border-left: 2px solid #fdd835; }
+.insight-card--low      { border-left: 2px solid #8bc34a; }
+
+.insight-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.insight-card-type {
+  font-size: 9px;
+  color: rgba(245, 245, 240, 0.4);
+  letter-spacing: 0.08em;
+}
+
+.insight-card-severity {
+  font-size: 8px;
+}
+
+.insight-card-headline {
+  font-size: 12px;
+  color: rgba(245, 245, 240, 0.9);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+.insight-card-detail {
+  font-size: 10px;
+  color: rgba(245, 245, 240, 0.5);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.insight-card-delta {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.insight-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(245, 245, 240, 0.3);
+}
+
+.insight-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.insight-card-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: rgba(245, 245, 240, 0.6);
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.insight-card-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.insight-card-btn--action {
+  border-color: rgba(229, 57, 53, 0.4);
+  color: #e53935;
+}
+
+.insight-card-btn--action:hover {
+  background: rgba(229, 57, 53, 0.1);
+}
+
+@media (max-width: 767px) {
+  .insight-cards-grid {
+    left: 8px;
+    right: 8px;
+    bottom: 84px;
+    width: auto;
+    max-height: 300px;
+  }
+}
+
+/* ── Expandable Insight Card ────────────────────────────────────────────── */
+.expandable-card {
+  background: rgba(245, 245, 240, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.expandable-card:hover {
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.expandable-card-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.expandable-card-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.expandable-card-title {
+  font-size: 10px;
+  color: rgba(245, 245, 240, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.expandable-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.expandable-card-unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(245, 245, 240, 0.4);
+  margin-left: 3px;
+}
+
+.expandable-card-delta {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.expandable-card-sparkline {
+  width: 80px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.mini-sparkline {
+  width: 100%;
+  height: 100%;
+}
+
+.expandable-card-chevron {
+  background: transparent;
+  border: none;
+  color: rgba(245, 245, 240, 0.35);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.expandable-card-chevron:hover {
+  color: var(--amber);
+}
+
+.expandable-card-detail {
+  padding: 0 10px 10px;
+  font-size: 11px;
+  color: rgba(245, 245, 240, 0.55);
+  line-height: 1.5;
+}
+
+.expandable-card-children {
+  padding: 0 10px 10px;
+}
+
+/* ── Selection-related map styles ───────────────────────────────────────── */
+.leaderboard-row.active {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+/* Scrollbar styling for insight grid */
+.insight-cards-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.insight-cards-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.insight-cards-grid::-webkit-scrollbar-thumb {
+  background: rgba(245, 245, 240, 0.15);
+  border-radius: 2px;
 }

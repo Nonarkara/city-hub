@@ -34,6 +34,8 @@ import { SLICPanel } from './SLICPanel'
 import { PatternsSection } from './PatternsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { PrepareCard } from './PrepareCard'
+import { InsightCardsGrid } from './InsightCardsGrid'
+import { useDistrictData } from '../hooks/useDistrictData'
 import { CITIES } from '../config/cities'
 
 // Bangkok city config — for SLIC lookup
@@ -655,6 +657,8 @@ export function AlertPanel() {
     return { total: traffyGeo.features.length, active, finished: traffyGeo.features.length - active, byType }
   })() : null
 
+  const { districts } = useDistrictData()
+
   const brief = generateMorningBrief(pm25, weather, floodCount, aqi, traffyStats, traffyFloods, news)
   const anomalies = detectAnomalies(pm25, weather, floodCount, aqi, traffyStats)
   const alerts = computeAlerts(pm25, weather, floodCount, aqi, traffyFloods.length)
@@ -742,9 +746,24 @@ export function AlertPanel() {
           <PatternsSection activeCity={BANGKOK_CITY} />
           <RankSection rank={pm25Rank} />
           <TMDSection tmd={tmd} />
-          {pm25 && <TimeFMSection history={pm25.history24h.map(([v]) => v)} />}
+          {pm25 && <TimeFMSection history={[]} />}
           <AnomalyBar anomalies={anomalies} />
           <CorrelationBar insights={correlations} />
+
+          <InsightCardsGrid
+            districts={districts}
+            alerts={alerts}
+            anomalies={anomalies}
+            pm25History={[]}
+            aqiHistory={[]}
+            traffyCounts={traffyGeo?.features?.map((f) => (f.properties as Record<string, unknown>)?.complaint_count as number ?? 0) ?? []}
+            currentPM25={pm25?.pm25 ?? 0}
+            currentAQI={aqi?.usAqi ?? 0}
+            weatherTemp={weather?.feelsLike ?? 0}
+            weatherWind={weather?.windSpeed ?? 0}
+            floodCount={floodCount}
+            onDraft={(d) => setDraft(d)}
+          />
 
           <div className="alert-list">
             {forecastAlert && <AlertCard key="forecast-aqi" alert={forecastAlert} onAction={handleAction} />}

@@ -24,14 +24,19 @@ function DistrictLeaderboard({
   selected: DistrictSummary | null
 }) {
   const { districts, loading } = useDistrictData()
+  const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
+  const setSelectedDistrictId = useSelectionStore((s) => s.setSelectedDistrictId)
   if (loading) return <div className="leaderboard-loading">LOADING…</div>
   return (
     <div className="leaderboard">
       {districts.slice(0, 10).map((d, i) => (
         <button
           key={d.name_th}
-          className={`leaderboard-row ${selected?.name_th === d.name_th ? 'active' : ''}`}
-          onClick={() => onSelect(d)}
+          className={`leaderboard-row ${selected?.name_th === d.name_th || selectedDistrictId === d.name_th ? 'active' : ''}`}
+          onClick={() => {
+            setSelectedDistrictId(d.name_th)
+            onSelect(d)
+          }}
         >
           <span className="leaderboard-rank">{i + 1}</span>
           <span className="leaderboard-name">{formatDistrictName(d.name_en)}</span>
