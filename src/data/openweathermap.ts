@@ -27,9 +27,14 @@ export interface OWMWeather {
 }
 
 export async function fetchOWMWeather(): Promise<OWMWeather | null> {
-  // API key injected server-side by the Worker — never expose in the SPA bundle.
+  // API key injected server-side by the Worker (OWM_KEY secret).
+  // Returns null gracefully if the key isn't set — callers already handle null.
   const url = `${PROXY}/owm/onecall?lat=${BKK_LAT}&lon=${BKK_LON}&exclude=minutely,hourly,daily&units=metric`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`OWM error: ${res.status}`)
-  return await res.json() as OWMWeather
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null   // 401 (no key), 429, etc. — silently skip
+    return await res.json() as OWMWeather
+  } catch {
+    return null
+  }
 }

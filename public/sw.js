@@ -10,18 +10,30 @@
  *
  * The cache name is versioned — bumping it on each deploy forces a fresh
  * shell on the next visit.
+ *
+ * Race-condition fix (was causing "SYSTEM ERROR" on first deploy load):
+ *   skipWaiting() is now chained AFTER cache.addAll() succeeds, not fired
+ *   unconditionally alongside it. This prevents the SW from activating and
+ *   calling clients.claim() while the cache is still empty — which caused
+ *   in-flight lazy-chunk requests to be intercepted mid-React-boot and
+ *   returned from an empty cache as opaque errors.
  */
-const VERSION = 'v22-2026-06-01'
+const VERSION = 'v23-2026-06-01'
 const SHELL_CACHE = `shell-${VERSION}`
 const RUNTIME_CACHE = `runtime-${VERSION}`
 
 const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
+  // Wait until shell is cached, THEN skip waiting.
+  // If caching fails (e.g. offline install), still skip — the network fallback
+  // in fetch handler covers the miss.
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_URLS)).catch(() => {}),
+    caches.open(SHELL_CACHE)
+      .then((cache) => cache.addAll(SHELL_URLS))
+      .catch(() => {})
+      .then(() => self.skipWaiting()),
   )
-  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
