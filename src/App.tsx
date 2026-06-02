@@ -35,7 +35,8 @@ import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
 import { NewsTicker } from './components/NewsTicker'
 import { useCityRisk } from './hooks/useCityRisk'
-import { RISK_COLOR } from './lib/risk'
+import { useCityStress, STRESS_COLOR } from './hooks/useCityStress'
+// RISK_COLOR removed (replaced by STRESS_COLOR)
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { CounterpartStrip } from './components/CounterpartStrip'
 import { MultiCityChart } from './components/MultiCityChart'
@@ -179,7 +180,8 @@ export default function App() {
   }, [setActiveCity, setSelectedDistrict, clearSelection])
 
   const tokenAvailable = hasMapboxToken()
-  const cityRisk = useCityRisk()
+  const cityRisk   = useCityRisk()
+  const cityStress = useCityStress()
   useEscalationAlerts(cityRisk, allCities)   // fires toasts via toastStore on escalation
 
   useKeyboardShortcuts({
@@ -285,8 +287,10 @@ export default function App() {
 
       <header className="topbar">
         <span className="topbar-wordmark" title="Dr Non's City Hub — Open Civic Intelligence">
-          <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB<span className="topbar-version">v6</span>
+          <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB<span className="topbar-version">v3.0</span>
         </span>
+
+        <div className="topbar-zone-sep" aria-hidden />
 
         {/* Desktop tab strip — all cities + pin toggle */}
         <nav className="topbar-tabs" aria-label="Switch city">
@@ -313,12 +317,14 @@ export default function App() {
                   {pinned ? '📌' : '·'}
                 </span>
                 {city.hudClockLabel}
-                {cityRisk[city.id] && cityRisk[city.id] !== 'good' && (
+                {cityStress[city.id] && (
                   <span
-                    className="topbar-tab-risk"
-                    style={{ background: RISK_COLOR[cityRisk[city.id]] }}
-                    title={`Air quality: ${cityRisk[city.id]}`}
-                  />
+                    className={`topbar-tab-stress topbar-tab-stress--${cityStress[city.id].level}`}
+                    style={{ color: STRESS_COLOR[cityStress[city.id].level] }}
+                    title={`City stress: ${cityStress[city.id].score}/100 · ${cityStress[city.id].level.toUpperCase()}`}
+                  >
+                    {cityStress[city.id].score}
+                  </span>
                 )}
               </button>
             )

@@ -26,6 +26,7 @@ import { cachedFetch } from '../lib/cached-fetch'
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { narrate } from '../lib/narrate'
 import { generateText, ollamaReachable } from '../lib/ollama'
+import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
 
 const REFRESH_MS = 30 * 60_000
 
@@ -76,12 +77,14 @@ function templateBrief(snaps: CitySnapshot[], patterns: string[]): string {
 export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
   const cities = useMemo(() => allCities ?? CITIES, [allCities])
 
-  const [brief, setBrief]           = useState<string>('')
-  const [model, setModel]           = useState<string>('')
-  const [loading, setLoading]       = useState(false)
+  const [brief, setBrief]             = useState<string>('')
+  const [model, setModel]             = useState<string>('')
+  const [loading, setLoading]         = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [collapsed, setCollapsed]   = useState(false)
-  const [dismissed, setDismissed]   = useState(false)
+  const [collapsed, setCollapsed]     = useState(false)
+  const [dismissed, setDismissed]     = useState(false)
+  const [history, setHistory]         = useState<AQIHistory | null>(null)
+  const [copied, setCopied]           = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -186,6 +189,15 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
       setBrief(text || fallback)
       setModel(modelLabel)
       setLastUpdated(new Date())
+
+      // Historical context — first city's AQI trend (non-blocking)
+      const firstCity = snaps[0]?.city
+      if (firstCity) {
+        const [lng, lat] = firstCity.center
+        fetchAQIHistory(lat, lng, firstCity.timezone)
+          .then((h) => setHistory(h))
+          .catch(() => {})
+      }
     } catch {
       setBrief('Brief unavailable — data sources offline.')
       setModel('ERROR')
@@ -211,6 +223,10 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
 
   return (
     <div className={`sit-brief ${collapsed ? 'sit-brief--collapsed' : ''}`}>
+      <div className="panel-zone" aria-hidden>
+        <span className="panel-zone-dot" style={{ background: 'var(--amber)' }} />
+        INTELLIGENCE · SITUATION
+      </div>
       <div className="sit-brief-header" onClick={() => setCollapsed((c) => !c)}>
         <span className="sit-brief-pulse" style={{ background: accentColor }} />
         <span className="sit-brief-title">SITUATION BRIEF</span>
@@ -242,10 +258,47 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
           ) : (
             <p className="sit-brief-text">{brief}</p>
           )}
+
+          {/* Historical context strip */}
+          {history && (
+            <div className="sit-brief-hist">
+              <span className="sit-brief-hist-label">7-DAY AVG</span>
+              <span className="sit-brief-hist-val">AQI {history.weekAvg}</span>
+              <span className="sit-brief-hist-sep">·</span>
+              <span className={`sit-brief-hist-trend sit-brief-hist-trend--${history.trend}`}>
+                {history.vsYesterday > 0 ? '↑' : history.vsYesterday < 0 ? '↓' : '→'}
+                {' '}{Math.abs(history.vsYesterday)}% vs yesterday
+              </span>
+            </div>
+          )}
+
           <div className="sit-brief-footer">
             <span className="sit-brief-model">{model}</span>
             <span className="sit-brief-sep">·</span>
-            <span className="sit-brief-hint">Updates every 30 min</span>
+            <span className="sit-brief-hint">30 min</span>
+            <button
+              className={`sit-brief-export ${copied ? 'sit-brief-export--done' : ''}`}
+              onClick={() => {
+                const ts = lastUpdated?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? ''
+                const msg = [
+                  `📍 City Hub · Intelligence Brief`,
+                  `🕐 ${ts} ICT`,
+                  ``,
+                  brief,
+                  history ? `📊 7-day avg AQI: ${history.weekAvg} (${history.vsYesterday > 0 ? '+' : ''}${history.vsYesterday}% vs yesterday)` : '',
+                  ``,
+                  `🔗 hub.nonarkara.org`,
+                ].filter(Boolean).join('\n')
+                navigator.clipboard.writeText(msg).then(() => {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }).catch(() => {})
+              }}
+              title="Copy for LINE / Telegram"
+              aria-label="Export brief to clipboard"
+            >
+              {copied ? '✓ COPIED' : '↗ LINE'}
+            </button>
           </div>
         </div>
       )}
