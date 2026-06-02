@@ -12,7 +12,9 @@ import { bangkokPm25Live, centralFloods, type Pm25Live } from '../data/gistda'
 import { bangkokWeather, fetchWeather, type CityWeather } from '../data/openmeteo'
 import { bangkokAQI, fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
+import { fetchThaiwaterLevels, type WaterLevelStation } from '../data/thaiwater'
 import { computeVitals, pm25ToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
+import { getSeasonalHazards } from '../lib/seasonal-context'
 
 function RiskDot({ level }: { level: RiskLevel }) {
   return <span className="vital-dot" style={{ background: RISK_COLOR[level] }} title={level} />
@@ -46,21 +48,24 @@ export function VitalsBar({ activeCity }: Props) {
 }
 
 function BangkokVitals() {
-  const [pm25, setPm25] = useState<Pm25Live | null>(null)
+  const [pm25, setPm25]       = useState<Pm25Live | null>(null)
   const [weather, setWeather] = useState<CityWeather | null>(null)
   const [floodCount, setFloodCount] = useState(0)
-  const [aqi, setAqi] = useState<CityAQI | null>(null)
-  const [traffy, setTraffy] = useState<TraffyStats | null>(null)
+  const [aqi, setAqi]         = useState<CityAQI | null>(null)
+  const [traffy, setTraffy]   = useState<TraffyStats | null>(null)
+  const [worstWater, setWorstWater] = useState<WaterLevelStation | null>(null)
+  const seasonalHazards = getSeasonalHazards('bangkok')
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const [p, w, f, a, t] = await Promise.all([
+      const [p, w, f, a, t, wl] = await Promise.all([
         bangkokPm25Live().catch((): null => null),
         bangkokWeather().catch((): null => null),
         centralFloods().catch((): null => null),
         bangkokAQI().catch((): null => null),
         fetchTraffyStats().catch((): null => null),
+        fetchThaiwaterLevels().catch((): WaterLevelStation[] => []),
       ])
       if (cancelled) return
       if (p) setPm25(p)
@@ -68,6 +73,15 @@ function BangkokVitals() {
       if (f) setFloodCount(Array.isArray(f.features) ? f.features.length : 0)
       if (a) setAqi(a)
       if (t) setTraffy(t)
+      // Worst water level station (highest % of bank level)
+      if (wl.length > 0) {
+        const sorted = [...wl].sort((a, b) => {
+          const pctA = a.bankLevelM > 0 ? a.waterLevelM / a.bankLevelM : 0
+          const pctB = b.bankLevelM > 0 ? b.waterLevelM / b.bankLevelM : 0
+          return pctB - pctA
+        })
+        setWorstWater(sorted[0])
+      }
     }
     load()
     const t = setInterval(load, 5 * 60_000)
@@ -77,8 +91,22 @@ function BangkokVitals() {
   const vitals = computeVitals(pm25, weather, floodCount, aqi, traffy)
   const airTrend = computeAirTrend(pm25)
 
+  const waterPct = worstWater && worstWater.bankLevelM > 0
+    ? Math.round((worstWater.waterLevelM / worstWater.bankLevelM) * 100)
+    : null
+  const waterLevel: RiskLevel = waterPct !== null
+    ? (waterPct >= 90 ? 'critical' : waterPct >= 75 ? 'high' : waterPct >= 55 ? 'moderate' : 'good')
+    : 'good'
+
+  const primaryHazard = seasonalHazards[0] ?? null
+
   return (
     <div className="vitals-bar">
+      <div className="panel-zone" aria-hidden>
+        <span className="panel-zone-dot" style={{ background: 'var(--cyan)' }} />
+        DATA · VITALS
+      </div>
+
       {vitals.map((v) => (
         <div key={v.id} className="vital-row">
           <RiskDot level={v.level} />
@@ -93,6 +121,29 @@ function BangkokVitals() {
           {v.sub && <span className="vital-sub">{v.sub}</span>}
         </div>
       ))}
+
+      {/* Canal / water level vital */}
+      {worstWater && waterPct !== null && (
+        <div className="vital-row">
+          <RiskDot level={waterLevel} />
+          <div className="vital-main">
+            <span className="vital-label">WATER LEVEL</span>
+            <span className="vital-value" style={{ color: RISK_COLOR[waterLevel] }}>
+              {worstWater.waterLevelM.toFixed(2)}m
+              <span className="vital-unit"> / {worstWater.bankLevelM.toFixed(2)}m bank</span>
+            </span>
+          </div>
+          <span className="vital-sub">{worstWater.name} · {waterPct}%</span>
+        </div>
+      )}
+
+      {/* Seasonal hazard context */}
+      {primaryHazard && primaryHazard.urgency !== 'clear' && (
+        <div className={`vital-seasonal vital-seasonal--${primaryHazard.urgency}`}>
+          <span className="vital-seasonal-label">{primaryHazard.label}</span>
+          <span className="vital-seasonal-detail">{primaryHazard.detail.slice(0, 80)}…</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -47,6 +47,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { useToastStore } from './store/toastStore'
 import { useEscalationAlerts } from './hooks/useEscalationAlerts'
 import { SituationBrief } from './components/SituationBrief'
+import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -342,6 +343,7 @@ export default function App() {
         <div className="topbar-spacer" />
 
         <div className="topbar-right">
+          <DataStatusChip onClick={() => setSettingsOpen((v) => !v)} />
           <button
             className="topbar-chat-btn"
             onClick={() => setAboutOpen(true)}
@@ -349,6 +351,8 @@ export default function App() {
             aria-label="About"
           >· ABOUT</button>
         </div>
+
+        {settingsOpen && <DataSourceStatus onClose={() => setSettingsOpen(false)} />}
 
         {/* Action Center (Governor SitRep) */}
         {actionCenterOpen && (
