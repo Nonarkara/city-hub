@@ -206,7 +206,7 @@ export function ComparisonPanel() {
         <span className="compare-panel-count">
           {cities.length} {cities.length === 1 ? 'CITY' : 'CITIES'}
         </span>
-        <button className="compare-panel-clear" onClick={clearCompareSet}>CLEAR ALL</button>
+        <button className="compare-panel-clear" onClick={clearCompareSet} title="Clear all cities from comparison" aria-label="Clear all cities from comparison">CLEAR ALL</button>
       </div>
 
       <div className="cmp-body">

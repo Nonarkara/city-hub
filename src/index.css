@@ -9,7 +9,7 @@
   background: rgba(0, 0, 0, 0.6) !important;
   color: rgba(245, 245, 240, 0.5) !important;
   font-size: 10px;
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 .mapboxgl-ctrl-attrib a {
@@ -17,14 +17,14 @@
 }
 
 .mapboxgl-ctrl-group {
-  border-radius: 0 !important;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.85) !important;
   border: 1px solid var(--line) !important;
   box-shadow: none !important;
 }
 
 .mapboxgl-ctrl-group button {
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 .mapboxgl-ctrl button .mapboxgl-ctrl-icon {
@@ -1614,7 +1614,7 @@
   border: 1px solid var(--dim);
   background: transparent;
   flex-shrink: 0;
-  border-radius: var(--radius-circle);
+  border-radius: 0;
 }
 
 .layer-item--active .layer-dot {
@@ -1839,7 +1839,7 @@
 .mapboxgl-popup.city-popup .mapboxgl-popup-content {
   background: #0a0a0a !important;
   border: var(--border);
-  border-radius: 0 !important;
+  border-radius: 0;
   padding: 0 !important;
   box-shadow: none !important;
   color: var(--fg);
@@ -5781,7 +5781,7 @@
   width: 320px;
   background: rgba(4, 6, 11, 0.95);
   border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 12px 16px;
   z-index: var(--z-overlay);
   display: flex;
@@ -5823,14 +5823,14 @@
   width: 100%;
   height: 4px;
   background: rgba(245, 158, 11, 0.2);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .timeline-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   height: 16px;
   width: 8px;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--amber);
   margin-top: -6px;
   cursor: ew-resize;
@@ -5876,7 +5876,7 @@
   width: 100%;
   height: 40px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .district-sparkline-reasoning {
@@ -6116,7 +6116,7 @@
 .onboarding-nutrition-bar {
   height: 4px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -6856,7 +6856,7 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 0;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -6946,7 +6946,7 @@
 .action-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 12px;
 }
 
@@ -6963,7 +6963,7 @@
   color: var(--fg);
   background: rgba(255, 255, 255, 0.1);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .action-card-time {
@@ -6996,7 +6996,7 @@
   font-size: 11px;
   font-weight: 600;
   padding: 6px 0;
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.05em;
@@ -7104,7 +7104,7 @@
   overflow-y: auto;
   background: rgba(4, 6, 11, 0.92);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   backdrop-filter: blur(10px);
   z-index: var(--z-overlay);
   padding: 10px;
@@ -7132,7 +7132,7 @@
   color: rgba(245, 245, 240, 0.45);
   background: rgba(245, 245, 240, 0.06);
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .insight-cards-list {
@@ -7145,7 +7145,7 @@
 .insight-card {
   background: rgba(245, 245, 240, 0.03);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 8px 10px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -7219,7 +7219,7 @@
   color: rgba(245, 245, 240, 0.6);
   font-size: 9px;
   padding: 3px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   font-family: var(--font-mono);
   letter-spacing: 0.04em;
@@ -7253,7 +7253,7 @@
 .expandable-card {
   background: rgba(245, 245, 240, 0.03);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
   transition: border-color 0.15s;
 }
@@ -7352,14 +7352,14 @@
 }
 .insight-cards-grid::-webkit-scrollbar-thumb {
   background: rgba(245, 245, 240, 0.15);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 /* ── Multi-City Chart ───────────────────────────────────────────────────── */
 .multicity-chart {
   background: rgba(4, 6, 11, 0.85);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 10px;
   margin: 8px 0;
   font-family: var(--font-mono);
@@ -7416,7 +7416,7 @@
   position: absolute;
   background: rgba(4, 6, 11, 0.95);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 6px 8px;
   font-size: 10px;
   pointer-events: none;
@@ -7459,7 +7459,7 @@
 .small-multiples-grid {
   background: rgba(4, 6, 11, 0.9);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 10px;
   margin: 8px 0;
   font-family: var(--font-mono);
@@ -7497,7 +7497,7 @@
 .small-multiple {
   background: rgba(245, 245, 240, 0.03);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 6px 8px;
   cursor: pointer;
   text-align: left;
@@ -7561,7 +7561,7 @@
 .district-compare-panel {
   background: rgba(4, 6, 11, 0.92);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 12px;
   font-family: var(--font-mono);
 }
@@ -7687,7 +7687,7 @@
 
 .district-compare-bar {
   height: 8px;
-  border-radius: 2px;
+  border-radius: 0;
   min-width: 4px;
   transition: width 0.3s ease;
 }
@@ -7776,7 +7776,7 @@
   gap: 8px;
   padding: 8px 10px;
   border: 1px solid;
-  border-radius: 4px;
+  border-radius: 0;
   backdrop-filter: blur(8px);
   animation: toastIn 0.25s ease-out;
   font-family: var(--font-mono);
@@ -7813,7 +7813,7 @@
   color: var(--amber);
   font-size: 9px;
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   margin-top: 2px;
   align-self: flex-start;
@@ -7852,7 +7852,7 @@
 .settings-panel {
   background: rgba(4, 6, 11, 0.95);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   width: 320px;
   max-width: 90vw;
   padding: 14px;
@@ -7913,7 +7913,7 @@
   color: rgba(245, 245, 240, 0.5);
   font-size: 10px;
   padding: 5px 0;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   font-family: var(--font-mono);
 }
@@ -7964,7 +7964,7 @@
 .reality-check-engine {
   background: rgba(4, 6, 11, 0.85);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 10px;
   margin: 8px 0;
   font-family: var(--font-mono);
@@ -8007,7 +8007,7 @@
   color: rgba(245, 245, 240, 0.5);
   font-size: 9px;
   padding: 4px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   font-family: var(--font-mono);
   display: flex;
@@ -8032,7 +8032,7 @@
 .verdict-card {
   background: rgba(245, 245, 240, 0.02);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 8px 10px;
 }
 

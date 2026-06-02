@@ -21,7 +21,7 @@ export function AboutModal() {
   return (
     <div className="about-overlay" onClick={() => setAboutOpen(false)}>
       <div className="about-card" onClick={(e) => e.stopPropagation()}>
-        <button className="about-close" onClick={() => setAboutOpen(false)} aria-label="Close">✕</button>
+        <button className="about-close" onClick={() => setAboutOpen(false)} aria-label="Close" title="Close About Modal">✕</button>
 
         <div className="about-eyebrow">OPEN CIVIC INTELLIGENCE</div>
         <div className="about-name">DR NON'S CITY HUB</div>

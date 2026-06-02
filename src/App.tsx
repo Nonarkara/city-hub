@@ -300,6 +300,7 @@ export default function App() {
                 onMouseEnter={() => prefetchCity(city)}
                 onFocus={() => prefetchCity(city)}
                 title={city.name}
+                aria-label={`Select city: ${city.name}`}
               >
                 <span
                   className="topbar-tab-pin"
@@ -326,6 +327,7 @@ export default function App() {
             className="topbar-tab topbar-tab--add"
             onClick={() => setOnboardingOpen(true)}
             title="Add a new city"
+            aria-label="Add a new city"
           >
             + ADD
           </button>
@@ -366,6 +368,7 @@ export default function App() {
               useCityStore.getState().clearCompareSet()
             }}
             title="Exit comparison mode"
+            aria-label="Exit comparison mode"
           >
             · COMPARE ({compareSet.length})
           </button>
@@ -377,6 +380,7 @@ export default function App() {
               className="topbar-mode-btn"
               onClick={() => toggleGovernorMode()}
               title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
+              aria-label={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
             >
               · {governorMode ? 'SIT ROOM' : 'ANALYST'}
             </button>
@@ -384,6 +388,7 @@ export default function App() {
               className="topbar-mode-btn topbar-sitrep-btn"
               onClick={() => setActionCenterOpen(!actionCenterOpen)}
               title="Review Global SitRep Actions"
+              aria-label="Review Global SitRep Actions"
             >
               · ACTION CENTER
             </button>
