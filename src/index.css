@@ -147,11 +147,12 @@
 @media (max-width: 767px) { .sit-brief { bottom: 120px; } }
 
 /* ── Copernicus CEMS alert panel ─────────────────────────────────────────── */
+/* CEMS is an emergency alert — anchored top-right, high z-index, never overlaps the Brief */
 .cems-panel {
   position: fixed;
-  bottom: 80px;
-  left: 16px;
-  z-index: var(--z-frame);
+  top: 68px;   /* below topbar (44px) + ticker (24px) */
+  right: 16px;
+  z-index: calc(var(--z-frame) + 1);  /* above Brief in all cases */
   width: min(340px, calc(100vw - 32px));
   background: rgba(4, 6, 11, 0.97);
   border: 1px solid var(--line);
@@ -231,7 +232,7 @@
   opacity: 0.4;
   border-top: 1px solid var(--line);
 }
-@media (max-width: 767px) { .cems-panel { bottom: 160px; } }
+@media (max-width: 767px) { .cems-panel { top: 68px; right: 8px; left: 8px; width: auto; } }
 
 /* ── Alert toasts ────────────────────────────────────────────────────────── */
 .alert-toasts {
@@ -2198,6 +2199,11 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+}
+
+/* Full-width vital row — no sub-label column, label + value span full width */
+.vital-main--full {
+  flex: 1;
 }
 
 .vital-label {

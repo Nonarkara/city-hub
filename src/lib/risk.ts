@@ -100,7 +100,7 @@ export function computeVitals(
       label: 'HEAT',
       value: weather ? `${weather.feelsLike}°` : '—',
       level: weather ? heatToRisk(weather.feelsLike) : 'good',
-      sub: weather ? `${weather.windCardinal} · ${weather.windSpeed} KM/H` : 'NO DATA',
+      sub: weather ? `${weather.windCardinal} · ${weather.windSpeed} KM/H` : 'LOADING…',
     },
     {
       id: 'traffic',
@@ -110,13 +110,16 @@ export function computeVitals(
       level: traffy ? civicToRisk(traffy.active) : 'good',
       sub: trafficSub.length > 60 ? trafficSub.slice(0, 60) + '…' : trafficSub,
     },
-    {
-      id: 'disease',
-      label: 'DISEASE',
-      value: '—',
-      level: 'good',
-      sub: 'WAVE 2',
-    },
+    // DISEASE vital — placeholder until DDC Thailand API is integrated.
+    // Research: DDC publishes dengue data weekly but has no live JSON endpoint.
+    // See tasks backlog for DDC integration notes.
+    // {
+    //   id: 'disease',
+    //   label: 'DENGUE',
+    //   value: '—',
+    //   level: 'good',
+    //   sub: 'DDC data · pending',
+    // },
   ]
 }
 

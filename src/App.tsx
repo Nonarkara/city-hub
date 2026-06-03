@@ -118,7 +118,8 @@ export default function App() {
   const [onboardingOpen, setOnboardingOpen] = useState(false)
 
   // ── Settings panel ──────────────────────────────────────────────────────────
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen]       = useState(false)
+  const [dataStatusOpen, setDataStatusOpen] = useState(false)
 
   // ── Insight application ─────────────────────────────────────────────────────
   const applyInsight = useCallback((t: InsightTemplate) => {
@@ -345,7 +346,7 @@ export default function App() {
         <div className="topbar-spacer" />
 
         <div className="topbar-right">
-          <DataStatusChip onClick={() => setSettingsOpen((v) => !v)} />
+          <DataStatusChip onClick={() => setDataStatusOpen((v) => !v)} />
           <button
             className="topbar-chat-btn"
             onClick={() => setAboutOpen(true)}
@@ -354,7 +355,7 @@ export default function App() {
           >· ABOUT</button>
         </div>
 
-        {settingsOpen && <DataSourceStatus onClose={() => setSettingsOpen(false)} />}
+        {dataStatusOpen && <DataSourceStatus onClose={() => setDataStatusOpen(false)} />}
 
         {/* Action Center (Governor SitRep) */}
         {actionCenterOpen && (
