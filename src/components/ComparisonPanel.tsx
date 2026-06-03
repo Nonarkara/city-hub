@@ -26,13 +26,32 @@ import {
   SLIC_VERSION, type CityScore, type PillarId,
 } from '../lib/slic'
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
+import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
+import { fetchCityNews } from '../data/gdelt'
 
-const POLL_MS = 5 * 60_000
+const POLL_MS   = 5 * 60_000
+const HIST_TTL  = 60 * 60_000
+const NEWS_TTL  = 15 * 60_000
+
+/** WHO PM2.5 daily guideline: 15 µg/m³ (2021 revision) */
+const WHO_PM25 = 15
 
 interface LiveSnapshot {
   aqi:      CityAQI     | null
   weather:  CityWeather | null
   forecast: AQIForecast | null
+}
+
+interface HistSnapshot {
+  history:     AQIHistory | null
+  whoViolDays: number      | null  // days in past 7 above WHO guideline
+  weekVsPrev:  number      | null  // % change vs previous week
+}
+
+interface NewsSnapshot {
+  articles:    number | null
+  avgTone:     number | null
+  sentimentPct: number | null  // 0–100 positivity score
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,8 +156,10 @@ export function ComparisonPanel() {
     [allCities, compareSet],
   )
 
-  const [live, setLive]         = useState<Record<string, LiveSnapshot>>({})
-  const [liveLoading, setLive2] = useState(false)
+  const [live, setLive]           = useState<Record<string, LiveSnapshot>>({})
+  const [liveLoading, setLive2]   = useState(false)
+  const [hist, setHist]           = useState<Record<string, HistSnapshot>>({})
+  const [news, setNews]           = useState<Record<string, NewsSnapshot>>({})
 
   const compareKey = compareSet.join(',')
   useEffect(() => {
@@ -167,6 +188,51 @@ export function ComparisonPanel() {
 
     fetchAll()
     const timer = setInterval(fetchAll, POLL_MS)
+
+    // Historical AQI + WHO compliance — slower, cached 1h
+    Promise.allSettled(
+      cities.map(async (city) => {
+        const [lng, lat] = city.center
+        const h = await cachedFetch(
+          `cmp/hist/${city.id}`,
+          () => fetchAQIHistory(lat, lng, city.timezone),
+          HIST_TTL,
+        ).catch(() => null)
+        if (!h || cancelled) return
+        // WHO violation days: hours above 15 µg/m³, grouped by day
+        const days = Math.min(7, Math.floor(h.hours.length / 24))
+        let violDays = 0
+        for (let d = 0; d < days; d++) {
+          const dayHours = h.hours.slice(d * 24, (d + 1) * 24)
+          const dayAvg = dayHours.reduce((s, v) => s + v, 0) / dayHours.length
+          if (dayAvg > WHO_PM25) violDays++
+        }
+        // Week-vs-prior-week comparison
+        const thisWeek = h.hours.slice(-168).reduce((s, v) => s + v, 0) / Math.min(168, h.hours.length)
+        const prevWeek = h.hours.slice(-336, -168)
+        const prevAvg  = prevWeek.length > 0 ? prevWeek.reduce((s, v) => s + v, 0) / prevWeek.length : thisWeek
+        const weekVsPrev = prevAvg > 0 ? Math.round(((thisWeek - prevAvg) / prevAvg) * 100) : 0
+        setHist((prev) => ({ ...prev, [city.id]: { history: h, whoViolDays: violDays, weekVsPrev } }))
+      })
+    )
+
+    // GDELT news intensity + sentiment — per city
+    Promise.allSettled(
+      cities.map(async (city) => {
+        const n = await cachedFetch(
+          `cmp/news/${city.id}`,
+          () => fetchCityNews(city.gdeltQuery, 12),
+          NEWS_TTL,
+        ).catch(() => null)
+        if (!n || cancelled) return
+        const count = n.articles.length
+        const tone  = n.avgTone
+        // Sentiment: remap GDELT tone (typically -20..+20) to 0-100
+        const sentimentPct = Math.round(Math.min(100, Math.max(0, 50 + tone * 2.5)))
+        setNews((prev) => ({ ...prev, [city.id]: { articles: count, avgTone: tone, sentimentPct } }))
+      })
+    )
+
     return () => { cancelled = true; clearInterval(timer) }
   }, [compareKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -493,6 +559,131 @@ export function ComparisonPanel() {
             }}
           />
         </section>
+
+        {/* ── Air Quality Intelligence ────────────────────────────────────── */}
+        {Object.keys(hist).length > 0 && (
+          <section className="cmp-section">
+            <div className="cmp-section-label">
+              AIR QUALITY INTELLIGENCE
+              <span className="cmp-section-sub"> · WHO guideline: {WHO_PM25} µg/m³</span>
+            </div>
+
+            {/* 7-day average vs WHO */}
+            <MetricRows
+              label="7-DAY AVG PM2.5"
+              unit="µg/m³ · WHO = 15"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => hist[c.id]?.history?.weekAvg ?? null}
+              barColor={(v) => v <= WHO_PM25 ? 'var(--emerald)' : v <= 35 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v) => `${v} µg/m³`}
+            />
+
+            {/* WHO violation days */}
+            <MetricRows
+              label="WHO VIOLATIONS"
+              unit="days above 15 µg/m³ (7d)"
+              cities={cities}
+              lowerIsBetter
+              maxOverride={7}
+              getValue={(c) => hist[c.id]?.whoViolDays ?? null}
+              barColor={(v) => v === 0 ? 'var(--emerald)' : v <= 2 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v) => v === 0 ? '0 days ✓' : `${v} / 7 days`}
+            />
+
+            {/* Week trend */}
+            <MetricRows
+              label="WEEK-ON-WEEK TREND"
+              unit="% vs previous 7 days"
+              cities={cities}
+              lowerIsBetter
+              maxOverride={100}
+              noWinner
+              getValue={(c) => {
+                const pct = hist[c.id]?.weekVsPrev
+                return pct !== null && pct !== undefined ? Math.abs(pct) : null
+              }}
+              barColor={(_, c) => {
+                const pct = hist[c.id]?.weekVsPrev ?? 0
+                return pct > 10 ? '#ef4444' : pct < -10 ? 'var(--emerald)' : 'var(--amber)'
+              }}
+              fmt={(_, c) => {
+                const pct = hist[c.id]?.weekVsPrev ?? 0
+                return pct > 0 ? `+${pct}% worse` : pct < 0 ? `${pct}% better` : '→ stable'
+              }}
+            />
+
+            {/* GDP productivity cost at current PM2.5 — WHO formula: 1% of GDP per 10 µg/m³ above guideline */}
+            <MetricRows
+              label="EST. PRODUCTIVITY COST"
+              unit="$M/day at current PM2.5"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => {
+                const aqi = live[c.id]?.aqi?.pm25 ?? hist[c.id]?.history?.yesterday
+                const gdp = c.demographics?.gdpBillionUsd
+                const pop = c.populationMillions
+                if (!aqi || !gdp || !pop || aqi <= WHO_PM25) return 0
+                // Simplified WHO/World Bank formula: $1.5/person/day per µg/m³ above guideline
+                const excess = aqi - WHO_PM25
+                return Math.round(excess * pop * 1.5 / 1000) // in $M
+              }}
+              barColor={(v) => v === 0 ? 'var(--emerald)' : v < 5 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v) => v === 0 ? '< $1M (clean air)' : `$${v}M/day`}
+            />
+          </section>
+        )}
+
+        {/* ── News Intelligence ───────────────────────────────────────────── */}
+        {Object.keys(news).length > 0 && (
+          <section className="cmp-section">
+            <div className="cmp-section-label">
+              NEWS INTELLIGENCE
+              <span className="cmp-section-sub"> · GDELT · 15 min refresh</span>
+            </div>
+
+            {/* News volume */}
+            <MetricRows
+              label="NEWS COVERAGE"
+              unit="recent articles"
+              cities={cities}
+              noWinner
+              getValue={(c) => news[c.id]?.articles ?? null}
+              barColor={() => 'var(--cyan)'}
+              fmt={(v) => `${v} articles`}
+            />
+
+            {/* Sentiment score */}
+            <MetricRows
+              label="SENTIMENT SCORE"
+              unit="0=negative · 100=positive"
+              cities={cities}
+              maxOverride={100}
+              getValue={(c) => news[c.id]?.sentimentPct ?? null}
+              barColor={(v) => v >= 55 ? 'var(--emerald)' : v >= 45 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v, c) => {
+                const tone = news[c.id]?.avgTone?.toFixed(1) ?? '—'
+                return `${v}/100 (${Number(tone) > 0 ? '+' : ''}${tone})`
+              }}
+            />
+
+            {/* Civic stress proxy: high volume × negative sentiment */}
+            <MetricRows
+              label="MEDIA STRESS INDEX"
+              unit="volume × negativity"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => {
+                const n = news[c.id]
+                if (!n?.articles || n.sentimentPct === null) return null
+                const neg = 100 - (n.sentimentPct ?? 50)
+                return Math.round((n.articles * neg) / 100)
+              }}
+              barColor={(v) => v < 5 ? 'var(--emerald)' : v < 15 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v) => `${v} pts`}
+            />
+          </section>
+        )}
 
       </div>
     </aside>

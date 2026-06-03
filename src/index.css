@@ -6845,6 +6845,14 @@
   color: var(--amber);
   margin-bottom: 14px;
 }
+.cmp-section-sub {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  opacity: 0.6;
+  font-weight: 400;
+}
 
 .cmp-loading {
   color: var(--dim);
