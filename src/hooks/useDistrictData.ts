@@ -10,6 +10,7 @@ import { loadBangkokKhet } from '../data/bma'
 import { fetchTraffyGeoJSON } from '../data/traffy'
 import { bangkokPm25Live } from '../data/gistda'
 import { pm25ToRisk, civicToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
+import { getDistrictPop } from '../data/district-populations'
 
 export interface DistrictSummary {
   name_th: string
@@ -19,6 +20,20 @@ export interface DistrictSummary {
   civic_risk: RiskLevel
   vulnerability_score: number
   vulnerability_level: RiskLevel
+  population: number     // NSO 2020 census, registered residents
+}
+
+/** Districts at or above a given risk level — sorted worst-first. */
+export function districtsAtRisk(districts: DistrictSummary[], level: RiskLevel): DistrictSummary[] {
+  const RANK: Record<RiskLevel, number> = { good: 0, moderate: 1, high: 2, critical: 3 }
+  return districts
+    .filter((d) => RANK[d.risk_level] >= RANK[level])
+    .sort((a, b) => RANK[b.risk_level] - RANK[a.risk_level])
+}
+
+/** Total population across a list of districts. */
+export function populationAtRisk(districts: DistrictSummary[]): number {
+  return districts.reduce((s, d) => s + d.population, 0)
 }
 
 const LEVELS: readonly RiskLevel[] = ['good', 'moderate', 'high', 'critical']
@@ -78,6 +93,7 @@ export function useDistrictData(): { districts: DistrictSummary[]; loading: bool
           civic_risk: civicToRisk(count),
           vulnerability_score: vulnScore,
           vulnerability_level: vulnScore >= 70 ? 'critical' : vulnScore >= 50 ? 'high' : vulnScore >= 30 ? 'moderate' : 'good',
+          population: getDistrictPop(name_en) || getDistrictPop(name_th),
         }
       })
 

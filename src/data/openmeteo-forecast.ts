@@ -74,27 +74,46 @@ export async function bangkokAQIForecast(): Promise<AQIForecast> {
   return fetchAQIForecast(100.5018, 13.7563, 'Asia/Bangkok')
 }
 
-export interface TempForecastHour { time: string; temp: number }
+export interface TempForecastHour {
+  time:       string
+  temp:       number
+  rainChance: number   // 0–100 precipitation probability (ECMWF)
+}
 
-/** Hourly 2m air-temperature forecast for any [lng, lat]. */
-export async function fetchTempForecast(lng: number, lat: number, timezone = 'Asia/Bangkok', hoursAhead = 48): Promise<TempForecastHour[]> {
-  const cacheKey = `openmeteo/temp-forecast/${lat.toFixed(3)},${lng.toFixed(3)}/${hoursAhead}`
+/**
+ * Hourly 2m temperature forecast — uses ECMWF IFS 0.4° model (free since
+ * October 2025, fully open data). 10-day window at 1h resolution.
+ * Falls back to Open-Meteo's default multi-model blend if ECMWF is unavailable.
+ */
+export async function fetchTempForecast(lng: number, lat: number, timezone = 'Asia/Bangkok', hoursAhead = 240): Promise<TempForecastHour[]> {
+  const cacheKey = `openmeteo/ecmwf-temp/${lat.toFixed(3)},${lng.toFixed(3)}/${hoursAhead}`
   return cachedFetch(cacheKey, async () => {
-    const days = Math.min(7, Math.max(2, Math.ceil((hoursAhead + 12) / 24)))
+    const days = Math.min(10, Math.max(2, Math.ceil((hoursAhead + 12) / 24)))
     const url =
       'https://api.open-meteo.com/v1/forecast' +
       `?latitude=${lat}&longitude=${lng}` +
-      '&hourly=temperature_2m' +
+      '&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code' +
       `&forecast_days=${days}` +
+      '&models=ecmwf_ifs04' +
       `&timezone=${encodeURIComponent(timezone)}`
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Open-Meteo temp ${res.status}`)
+    let res = await fetch(url)
+    // Fallback: ECMWF may not cover all lat/lng — retry without model spec
+    if (!res.ok) {
+      const fallbackUrl = url.replace('&models=ecmwf_ifs04', '')
+      res = await fetch(fallbackUrl)
+      if (!res.ok) throw new Error(`Open-Meteo temp ${res.status}`)
+    }
     const d = await res.json()
-    const times = d.hourly.time as string[]
-    const temps = (d.hourly.temperature_2m as (number | null)[]).map((v) => Math.round((v ?? 0) * 10) / 10)
+    const times   = d.hourly.time as string[]
+    const temps   = (d.hourly.temperature_2m as (number | null)[]).map((v) => Math.round((v ?? 0) * 10) / 10)
+    const rainPct = (d.hourly.precipitation_probability as (number | null)[] | undefined) ?? []
     const cur = new Date().toISOString().slice(0, 13)
     const found = times.findIndex((t) => t.startsWith(cur))
     const from = found >= 0 ? found : 0
-    return times.slice(from, from + hoursAhead).map((time, i) => ({ time, temp: temps[from + i] ?? 0 }))
+    return times.slice(from, from + hoursAhead).map((time, i) => ({
+      time,
+      temp:        temps[from + i] ?? 0,
+      rainChance:  Math.round(rainPct[from + i] ?? 0),
+    }))
   }, TTL)
 }

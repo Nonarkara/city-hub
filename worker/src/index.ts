@@ -77,6 +77,7 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'thaiwater':     { origin: 'https://www.thaiwater.net',           cacheSeconds: 600 },
   'openaq':        { origin: 'https://api.openaq.org/v3',           cacheSeconds: 300 },
   'owm':           { origin: 'https://api.openweathermap.org/data/3.0', cacheSeconds: 300 },
+  'cems':          { origin: 'https://emergency.copernicus.eu',     cacheSeconds: 3600 },
 }
 
 export default {
@@ -112,6 +113,12 @@ export default {
     // Earth Engine getMapId — POST /ee/mapid
     if (url.pathname === '/ee/mapid' && request.method === 'POST') {
       return handleEEMapId(request, env, cors)
+    }
+
+    // Copernicus CEMS — GET /cems/activations
+    // Fetches and parses the public activation list, filters for SE Asia + Thailand
+    if (url.pathname === '/cems/activations' && request.method === 'GET') {
+      return handleCEMS(cors)
     }
 
     if (request.method !== 'GET') {
@@ -405,6 +412,79 @@ function holtWintersWorker(
     upper.push(yhat + 1.28 * sigma)
   }
   return { forecast, lower, upper }
+}
+
+// ── Copernicus CEMS activation monitor ───────────────────────────────────
+//
+// Fetches the Copernicus EMS Rapid Mapping activation list and filters for
+// Southeast Asia / Pacific activations. Returns JSON array of activations.
+// Cached at the CF edge for 1 hour — activations are declared infrequently.
+
+const SEA_KEYWORDS = ['thailand', 'myanmar', 'laos', 'cambodia', 'vietnam', 'malaysia',
+  'indonesia', 'philippines', 'singapore', 'mekong', 'asean', 'southeast asia']
+
+interface CEMSActivation {
+  id:       string
+  title:    string
+  country:  string
+  type:     string    // FLOOD, WILDFIRE, EARTHQUAKE, etc.
+  date:     string
+  status:   string    // COMPLETED, ONGOING, PRODUCTION
+  url:      string
+}
+
+async function handleCEMS(cors: Record<string, string>): Promise<Response> {
+  try {
+    const res = await fetch(
+      'https://emergency.copernicus.eu/mapping/ems-rapid-mapping-activations.json',
+      {
+        headers: { 'User-Agent': 'CityhubProxy/2.0', 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      }
+    )
+
+    if (!res.ok) {
+      // Fallback: return empty list if CEMS JSON endpoint unavailable
+      return new Response(JSON.stringify({ activations: [], source: 'cems', cached: false }), {
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' },
+      })
+    }
+
+    const data = await res.json() as Record<string, unknown>[]
+
+    // Filter for SE Asia relevance
+    const seaActivations: CEMSActivation[] = (data ?? [])
+      .filter((item: Record<string, unknown>) => {
+        const text = JSON.stringify(item).toLowerCase()
+        return SEA_KEYWORDS.some((kw) => text.includes(kw))
+      })
+      .map((item: Record<string, unknown>): CEMSActivation => ({
+        id:      String(item.activationCode ?? item.id ?? ''),
+        title:   String(item.title ?? item.name ?? ''),
+        country: String(item.country ?? ''),
+        type:    String(item.eventType ?? item.type ?? ''),
+        date:    String(item.activationDate ?? item.date ?? ''),
+        status:  String(item.status ?? 'UNKNOWN'),
+        url:     `https://emergency.copernicus.eu/mapping/list-of-activations-rapid#${String(item.activationCode ?? '')}`,
+      }))
+      .slice(0, 10)
+
+    return new Response(
+      JSON.stringify({ activations: seaActivations, source: 'cems', total: data.length }),
+      {
+        headers: {
+          ...cors,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      }
+    )
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ activations: [], source: 'cems', error: String(err) }),
+      { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
+    )
+  }
 }
 
 // ── Narrate ──────────────────────────────────────────────────────────────

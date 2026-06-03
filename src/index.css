@@ -146,6 +146,93 @@
 .sit-brief-hint { font-family: var(--font-mono); font-size: 8px; color: var(--dim); opacity: 0.4; }
 @media (max-width: 767px) { .sit-brief { bottom: 120px; } }
 
+/* ── Copernicus CEMS alert panel ─────────────────────────────────────────── */
+.cems-panel {
+  position: fixed;
+  bottom: 80px;
+  left: 16px;
+  z-index: var(--z-frame);
+  width: min(340px, calc(100vw - 32px));
+  background: rgba(4, 6, 11, 0.97);
+  border: 1px solid var(--line);
+  border-left: 2px solid #ef4444;
+}
+.cems-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.cems-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: #ef4444;
+}
+.cems-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.4);
+  padding: 1px 6px;
+}
+.cems-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(245,245,240,0.04);
+}
+.cems-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.cems-body { flex: 1; min-width: 0; }
+.cems-title-link {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--fg);
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cems-title-link:hover { color: var(--amber); }
+.cems-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.cems-date {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--dim);
+}
+.cems-status {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.10em;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+}
+.cems-status--ongoing    { color: #ef4444; border-color: rgba(239,68,68,0.4); }
+.cems-status--production { color: var(--amber); border-color: rgba(245,158,11,0.4); }
+.cems-status--completed  { color: var(--dim); }
+.cems-dismiss {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.cems-dismiss:hover { color: var(--fg); }
+.cems-footer {
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  opacity: 0.4;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 767px) { .cems-panel { bottom: 160px; } }
+
 /* ── Alert toasts ────────────────────────────────────────────────────────── */
 .alert-toasts {
   position: fixed;

@@ -15,6 +15,7 @@ import { Popup } from 'maplibre-gl'
 import { bangkokAQIStations, bangkokPm25Live, thailandFires24h, centralFloods, bangkokHistoricalFloods } from '../../data/gistda'
 import { pm25ToRisk, civicToRisk, RISK_FILL, RISK_BORDER, RISK_COLOR, type RiskLevel } from '../../lib/risk'
 import { type DistrictSummary } from '../../hooks/useDistrictData'
+import { getDistrictPop } from '../../data/district-populations'
 import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
 import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles, esriWorldImageryTiles, sentinel2CloudlessTiles } from '../../data/nasa-gibs'
 import { bangkokWAQIStations } from '../../data/waqi'
@@ -797,6 +798,7 @@ async function addDistricts(map: MapLibre) {
         complaint_count: count,
         vulnerability_score: vulnScore,
         vulnerability_level: vulnScore >= 70 ? 'critical' : vulnScore >= 50 ? 'high' : vulnScore >= 30 ? 'moderate' : 'good',
+        population: 0,
       },
     }
   })
@@ -1433,6 +1435,7 @@ function wireDistrictPopup(
       civic_risk: civicToRisk(count),
       vulnerability_score: vulnScore,
       vulnerability_level: vulnLevel,
+      population: getDistrictPop(nameEn) || getDistrictPop(nameTh),
     })
   })
   map.on('mouseenter', 'ly-districts-fill', () => { map.getCanvas().style.cursor = 'pointer' })
