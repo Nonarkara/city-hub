@@ -14,6 +14,7 @@ import { bangkokAQI, fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
 import { fetchThaiwaterLevels, type WaterLevelStation } from '../data/thaiwater'
 import { fetchAir4ThaiBangkok } from '../data/air4thai'
+import { FloodCascadePanel } from './FloodCascadePanel'
 import { fetchAllASEAN, type CityAQI as ASEANCityAQI } from '../data/asean-aqi'
 import { computeVitals, pm25ToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { getSeasonalHazards } from '../lib/seasonal-context'
@@ -195,6 +196,9 @@ function BangkokVitals() {
           <span className="vital-sub">{worstWater.name} · {waterPct}%</span>
         </div>
       )}
+
+      {/* GloFAS flood cascade — compact chip, only when risk > low */}
+      <FloodCascadePanel compact />
 
       {/* Seasonal hazard context */}
       {primaryHazard && primaryHazard.urgency !== 'clear' && (

@@ -613,23 +613,29 @@ export function ComparisonPanel() {
               }}
             />
 
-            {/* GDP productivity cost at current PM2.5 — WHO formula: 1% of GDP per 10 µg/m³ above guideline */}
+            {/* Productivity cost — WHO/World Bank formula:
+                26.6 lost working hours/person/year per 1 µg/m³ above guideline
+                × local daily wage ÷ 365 days = daily cost per person
+                Source: PMC8657613 (China panel), WHO Global Health Cost 2016 */}
             <MetricRows
               label="EST. PRODUCTIVITY COST"
-              unit="$M/day at current PM2.5"
+              unit="$M/day · WHO formula"
               cities={cities}
               lowerIsBetter
               getValue={(c) => {
-                const aqi = live[c.id]?.aqi?.pm25 ?? hist[c.id]?.history?.yesterday
-                const gdp = c.demographics?.gdpBillionUsd
-                const pop = c.populationMillions
-                if (!aqi || !gdp || !pop || aqi <= WHO_PM25) return 0
-                // Simplified WHO/World Bank formula: $1.5/person/day per µg/m³ above guideline
-                const excess = aqi - WHO_PM25
-                return Math.round(excess * pop * 1.5 / 1000) // in $M
+                const pm25 = live[c.id]?.aqi?.pm25 ?? hist[c.id]?.history?.yesterday
+                const pop  = c.populationMillions
+                if (!pm25 || !pop || pm25 <= WHO_PM25) return 0
+                const excess = pm25 - WHO_PM25
+                // Daily wage proxy from GDP per capita: $gdpPerCapita / 250 working days
+                const wage = (c.demographics?.gdpPerCapitaUsd ?? 10_000) / 250
+                // 26.6 hrs/year/µg/m³ × (wage/$perHr) / 365 days × population
+                const hoursPerDay = (26.6 * excess) / 365
+                const costPerPerson = hoursPerDay * (wage / 8)  // 8-hour workday
+                return Math.round(costPerPerson * pop * 1_000_000 / 1_000_000)  // in $M
               }}
-              barColor={(v) => v === 0 ? 'var(--emerald)' : v < 5 ? 'var(--amber)' : '#ef4444'}
-              fmt={(v) => v === 0 ? '< $1M (clean air)' : `$${v}M/day`}
+              barColor={(v) => v === 0 ? 'var(--emerald)' : v < 3 ? 'var(--amber)' : '#ef4444'}
+              fmt={(v) => v === 0 ? 'clean air' : `$${v}M/day`}
             />
           </section>
         )}

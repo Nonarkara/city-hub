@@ -146,6 +146,148 @@
 .sit-brief-hint { font-family: var(--font-mono); font-size: 8px; color: var(--dim); opacity: 0.4; }
 @media (max-width: 767px) { .sit-brief { bottom: 120px; } }
 
+/* ── Flood Cascade Panel (GloFAS Chao Phraya forecast) ───────────────────── */
+.flood-panel {
+  background: rgba(4, 6, 11, 0.97);
+  border: 1px solid var(--line);
+  width: min(340px, calc(100vw - 32px));
+}
+.flood-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.flood-panel-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+.flood-panel-source {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  opacity: 0.5;
+}
+.flood-panel-close {
+  background: none; border: none; color: var(--dim); font-size: 10px;
+  cursor: pointer; padding: 2px 4px;
+}
+.flood-panel-loading {
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  animation: briefPulse 1.5s ease-in-out infinite;
+}
+.flood-cascade-chain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+.flood-chain-step {
+  flex: 1;
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: center;
+}
+.flood-chain-step--watch     { border-color: rgba(245,158,11,0.4); }
+.flood-chain-step--warning   { border-color: rgba(249,115,22,0.4); }
+.flood-chain-step--emergency { border-color: rgba(239,68,68,0.4); }
+.flood-chain-metric {
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--fg);
+  margin-bottom: 3px;
+}
+.flood-chain-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+.flood-chain-sub {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  opacity: 0.6;
+}
+.flood-chain-arrow {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+.flood-trend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.flood-trend-label { font-family: var(--font-mono); font-size: 8px; color: var(--dim); }
+.flood-trend-val   { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; }
+.flood-trend--rising  { color: #ef4444; }
+.flood-trend--falling { color: var(--emerald); }
+.flood-trend--stable  { color: var(--dim); }
+.flood-trend-peak {
+  font-family: var(--font-mono); font-size: 8px; color: var(--dim); opacity: 0.6;
+  margin-left: auto;
+}
+.flood-timeline {
+  display: flex;
+  align-items: flex-end;
+  height: 56px;
+  gap: 1px;
+  padding: 8px 12px 0;
+}
+.flood-bar {
+  flex: 1;
+  min-height: 2px;
+}
+.flood-bar--low       { background: rgba(52,211,153,0.5); }
+.flood-bar--watch     { background: rgba(245,158,11,0.7); }
+.flood-bar--warning   { background: rgba(249,115,22,0.8); }
+.flood-bar--emergency { background: rgba(239,68,68,0.9); }
+.flood-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 12px 6px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--dim);
+  opacity: 0.5;
+}
+.flood-legend {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+.flood-legend-row { display: flex; align-items: center; gap: 4px; }
+.flood-legend-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.flood-legend-val { font-family: var(--font-mono); font-size: 7px; color: var(--dim); }
+.flood-legend-label { font-family: var(--font-mono); font-size: 7px; color: var(--dim); opacity: 0.6; }
+
+/* Compact chip version (in VitalsBar) */
+.flood-cascade-chip {
+  padding: 6px 12px;
+  border-left: 2px solid var(--amber);
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.flood-cascade-chip-label { font-family: var(--font-mono); font-size: 8px; color: var(--dim); flex-shrink: 0; }
+.flood-cascade-chip-val   { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; flex: 1; }
+.flood-cascade-chip-q     { font-family: var(--font-data); font-size: 9px; color: var(--dim); flex-shrink: 0; }
+
 /* ── Copernicus CEMS alert panel ─────────────────────────────────────────── */
 /* CEMS is an emergency alert — anchored top-right, high z-index, never overlaps the Brief */
 .cems-panel {
