@@ -13,6 +13,8 @@ import { bangkokWeather, fetchWeather, type CityWeather } from '../data/openmete
 import { bangkokAQI, fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
 import { fetchThaiwaterLevels, type WaterLevelStation } from '../data/thaiwater'
+import { fetchAir4ThaiBangkok } from '../data/air4thai'
+import { fetchAllASEAN, type CityAQI as ASEANCityAQI } from '../data/asean-aqi'
 import { computeVitals, pm25ToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { getSeasonalHazards } from '../lib/seasonal-context'
 
@@ -53,19 +55,23 @@ function BangkokVitals() {
   const [floodCount, setFloodCount] = useState(0)
   const [aqi, setAqi]         = useState<CityAQI | null>(null)
   const [traffy, setTraffy]   = useState<TraffyStats | null>(null)
-  const [worstWater, setWorstWater] = useState<WaterLevelStation | null>(null)
+  const [worstWater, setWorstWater]   = useState<WaterLevelStation | null>(null)
+  const [pcdPm25, setPcdPm25]         = useState<{ avg: number; stations: number; worst: string } | null>(null)
+  const [aseanRank, setAseanRank]     = useState<{ rank: number; total: number; best: string; worst: string } | null>(null)
   const seasonalHazards = getSeasonalHazards('bangkok')
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const [p, w, f, a, t, wl] = await Promise.all([
+      const [p, w, f, a, t, wl, air4, asean] = await Promise.all([
         bangkokPm25Live().catch((): null => null),
         bangkokWeather().catch((): null => null),
         centralFloods().catch((): null => null),
         bangkokAQI().catch((): null => null),
         fetchTraffyStats().catch((): null => null),
         fetchThaiwaterLevels().catch((): WaterLevelStation[] => []),
+        fetchAir4ThaiBangkok().catch((): null => null),
+        fetchAllASEAN().catch((): ASEANCityAQI[] => []),
       ])
       if (cancelled) return
       if (p) setPm25(p)
@@ -73,6 +79,30 @@ function BangkokVitals() {
       if (f) setFloodCount(Array.isArray(f.features) ? f.features.length : 0)
       if (a) setAqi(a)
       if (t) setTraffy(t)
+
+      // PCD Air4Thai — official Thai government station average
+      if (air4 && air4.stations.length > 0) {
+        const valid = air4.stations.filter((s) => s.pm25 > 0)
+        if (valid.length > 0) {
+          const avg = Math.round(valid.reduce((s, x) => s + x.pm25, 0) / valid.length)
+          const worst = [...valid].sort((a, b) => b.pm25 - a.pm25)[0]
+          setPcdPm25({ avg, stations: valid.length, worst: worst.areaEN || worst.nameTH })
+        }
+      }
+
+      // ASEAN peer rank
+      if (asean.length >= 2) {
+        const sorted = [...asean].sort((a, b) => a.usAqi - b.usAqi)
+        const bkkIdx = sorted.findIndex((c) => c.city.id === 'bangkok')
+        if (bkkIdx >= 0) {
+          setAseanRank({
+            rank: bkkIdx + 1,
+            total: sorted.length,
+            best:  sorted[0].city.name,
+            worst: sorted[sorted.length - 1].city.name,
+          })
+        }
+      }
       // Worst water level station (highest % of bank level)
       if (wl.length > 0) {
         const sorted = [...wl].sort((a, b) => {
@@ -121,6 +151,35 @@ function BangkokVitals() {
           {v.sub && <span className="vital-sub">{v.sub}</span>}
         </div>
       ))}
+
+      {/* PCD official PM2.5 — government authoritative source */}
+      {pcdPm25 && (
+        <div className="vital-row vital-row--pcd">
+          <RiskDot level={pm25ToRisk(pcdPm25.avg)} />
+          <div className="vital-main">
+            <span className="vital-label">PCD OFFICIAL</span>
+            <span className="vital-value" style={{ color: RISK_COLOR[pm25ToRisk(pcdPm25.avg)] }}>
+              {pcdPm25.avg} µg/m³
+              <span className="vital-unit"> PM2.5</span>
+            </span>
+          </div>
+          <span className="vital-sub">{pcdPm25.stations} stations</span>
+        </div>
+      )}
+
+      {/* ASEAN peer rank */}
+      {aseanRank && (
+        <div className="vital-row">
+          <div className="vital-main vital-main--full">
+            <span className="vital-label">ASEAN RANK</span>
+            <span className="vital-value">
+              #{aseanRank.rank}
+              <span className="vital-unit"> of {aseanRank.total} capitals</span>
+            </span>
+          </div>
+          <span className="vital-sub">{aseanRank.rank === 1 ? '★ CLEANEST' : `best: ${aseanRank.best}`}</span>
+        </div>
+      )}
 
       {/* Canal / water level vital */}
       {worstWater && waterPct !== null && (

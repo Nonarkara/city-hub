@@ -27,6 +27,8 @@ import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { narrate } from '../lib/narrate'
 import { generateText, ollamaReachable } from '../lib/ollama'
 import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
+import { fetchAllASEAN } from '../data/asean-aqi'
+import { getPrimaryHazard } from '../lib/seasonal-context'
 
 const REFRESH_MS = 30 * 60_000
 
@@ -71,7 +73,15 @@ function templateBrief(snaps: CitySnapshot[], patterns: string[]): string {
   // Cross-city pattern
   const patternText = patterns[0] ?? ''
 
-  return [aqiText, wxText, newsText, patternText].filter(Boolean).join(' ')
+  // Population exposure summary
+  const exposed = snaps
+    .filter((s) => s.risk && s.risk !== 'good')
+    .map((s) => `${s.city.populationMillions.toFixed(1)}M in ${s.city.hudClockLabel}`)
+  const exposureText = exposed.length
+    ? `${exposed.join(', ')} breathing polluted air.`
+    : ''
+
+  return [aqiText, wxText, newsText, patternText, exposureText].filter(Boolean).join(' ')
 }
 
 export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
@@ -90,7 +100,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
     setLoading(true)
     try {
       // Gather snapshots in parallel
-      const [snapshotResults, patterns] = await Promise.all([
+      const [snapshotResults, patterns, aseanData] = await Promise.all([
         Promise.allSettled(cities.map(async (city): Promise<CitySnapshot> => {
           const [lng, lat] = city.center
           const [aqiData, wxData, newsData] = await Promise.allSettled([
@@ -116,6 +126,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
           }
         })),
         detectCrossCityPatterns(cities[0]).catch(() => []),
+        fetchAllASEAN().catch(() => []),
       ])
 
       const snaps = snapshotResults
@@ -123,6 +134,21 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
         .map((r) => r.value)
 
       const patternTexts = patterns.map((p) => p.message + ' ' + p.prediction)
+
+      // ASEAN peer rank for first city (Bangkok)
+      const firstCity = snaps[0]?.city
+      const aseanRanked = [...aseanData].sort((a, b) => a.usAqi - b.usAqi)
+      const aseanRankBkk = aseanRanked.findIndex((c) => c.city.id === 'bangkok') + 1
+
+      // Seasonal hazard for first city
+      const primaryHazard = firstCity ? getPrimaryHazard(firstCity.id) : null
+
+      // Population exposure estimate
+      const exposedPop = snaps.map((s) => {
+        const risk = s.risk
+        if (!risk || risk === 'good') return null
+        return `${s.city.populationMillions.toFixed(1)}M residents in ${s.city.name} breathing ${risk} air`
+      }).filter(Boolean)
 
       // Build structured context for Gemini
       const context = {
@@ -139,6 +165,11 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
           newsAvgTone: s.newsAvgTone,
         })),
         crossCityPatterns: patternTexts,
+        aseanContext: aseanData.length >= 2
+          ? { bangkokRank: aseanRankBkk, totalCities: aseanRanked.length, cleanest: aseanRanked[0]?.city.name, mostPolluted: aseanRanked[aseanRanked.length - 1]?.city.name }
+          : null,
+        seasonalHazard: primaryHazard ? { label: primaryHazard.label, urgency: primaryHazard.urgency, detail: primaryHazard.detail.slice(0, 100) } : null,
+        populationExposure: exposedPop,
       }
 
       const fallback = templateBrief(snaps, patternTexts)
@@ -191,10 +222,10 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
       setLastUpdated(new Date())
 
       // Historical context — first city's AQI trend (non-blocking)
-      const firstCity = snaps[0]?.city
-      if (firstCity) {
-        const [lng, lat] = firstCity.center
-        fetchAQIHistory(lat, lng, firstCity.timezone)
+      const histCity = snaps[0]?.city
+      if (histCity) {
+        const [lng, lat] = histCity.center
+        fetchAQIHistory(lat, lng, histCity.timezone)
           .then((h) => setHistory(h))
           .catch(() => {})
       }
