@@ -5,11 +5,18 @@ export interface KpiItem {
 }
 
 export interface SocioEconomics {
-  gdpBillionUsd: number
-  gdpPerCapitaUsd: number
-  birthRatePer1k: number
-  lifeExpectancyYears: number
-  greenSpacePct: number
+  gdpBillionUsd:        number
+  gdpPerCapitaUsd:      number
+  birthRatePer1k:       number
+  lifeExpectancyYears:  number
+  greenSpacePct:        number   // % city area covered by parks/green
+
+  // Extended comparison dimensions
+  greenSpaceM2PerPerson?: number  // m² of green space per resident
+  giniCoefficient?:       number  // 0–1 wealth inequality (0=equal, 1=extreme)
+  trafficCongestionPct?:  number  // TomTom index: % longer than free-flow
+  walkabilityScore?:      number  // 0–100 (Walk Score methodology)
+  urbanPlanningYear?:     number  // year of major urban plan (e.g. 1960 for Brasilia)
 }
 
 /**
@@ -108,7 +115,11 @@ export const CITIES: CityConfig[] = [
       gdpPerCapitaUsd: 16000,
       birthRatePer1k: 9.0,
       lifeExpectancyYears: 77,
-      greenSpacePct: 6.0
+      greenSpacePct: 6.0,
+      greenSpaceM2PerPerson: 4.2,
+      giniCoefficient: 0.45,
+      trafficCongestionPct: 47,
+      walkabilityScore: 52,
     }
   },
   {
@@ -140,7 +151,11 @@ export const CITIES: CityConfig[] = [
       gdpPerCapitaUsd: 6000,
       birthRatePer1k: 10.0,
       lifeExpectancyYears: 75,
-      greenSpacePct: 15.0
+      greenSpacePct: 15.0,
+      greenSpaceM2PerPerson: 18,
+      giniCoefficient: 0.40,
+      trafficCongestionPct: 22,
+      walkabilityScore: 38,
     }
   },
   {
@@ -172,7 +187,11 @@ export const CITIES: CityConfig[] = [
       gdpPerCapitaUsd: 9000,
       birthRatePer1k: 11.0,
       lifeExpectancyYears: 76,
-      greenSpacePct: 25.0
+      greenSpacePct: 25.0,
+      greenSpaceM2PerPerson: 32,
+      giniCoefficient: 0.40,
+      trafficCongestionPct: 15,
+      walkabilityScore: 42,
     }
   },
   {
@@ -203,7 +222,11 @@ export const CITIES: CityConfig[] = [
       gdpPerCapitaUsd: 82800,
       birthRatePer1k: 8.5,
       lifeExpectancyYears: 83,
-      greenSpacePct: 46.0
+      greenSpacePct: 46.0,
+      greenSpaceM2PerPerson: 66,
+      giniCoefficient: 0.45,
+      trafficCongestionPct: 37,
+      walkabilityScore: 55,
     }
   },
   {
@@ -234,7 +257,159 @@ export const CITIES: CityConfig[] = [
       gdpPerCapitaUsd: 7000,
       birthRatePer1k: 14.0,
       lifeExpectancyYears: 75,
-      greenSpacePct: 35.0
+      greenSpacePct: 35.0,
+      greenSpaceM2PerPerson: 850,
+      giniCoefficient: 0.38,
+      trafficCongestionPct: 8,
+      walkabilityScore: 30,
+    }
+  },
+
+  // ── Global expansion cities ─────────────────────────────────────────────
+  {
+    id: 'barcelona',
+    name: 'Barcelona',
+    nameLocal: 'Barcelona',
+    country: 'ES',
+    center: [2.1734, 41.3851],
+    zoom: 12,
+    bbox: [-2.5, 41.0, 2.5, 41.8],
+    timezone: 'Europe/Madrid',
+    hudClockLabel: 'BCN',
+    countryName: 'Spain',
+    gdeltQuery: 'barcelona spain',
+    tier: 'lite',
+    availableLayers: LITE_LAYERS,
+    area_km2: 101,
+    populationMillions: 1.62,
+    founded: '15 BC',
+    climate: 'Mediterranean · dry summers, mild winters',
+    distinctiveness: 'The densest livable city in Europe. Cerda\'s revolutionary Eixample grid. Superilles urban innovation. Gaudí. 4.8M metro but only 6.5 m²/person green space — the urban paradox.',
+    kpis: [
+      { label: 'POPULATION', value: '1.62', unit: 'M' },
+      { label: 'WALKABILITY', value: '98', unit: '/100' },
+      { label: 'GREEN', value: '6.5', unit: 'm²/p' },
+    ],
+    demographics: {
+      gdpBillionUsd: 75,
+      gdpPerCapitaUsd: 46_000,
+      birthRatePer1k: 9.1,
+      lifeExpectancyYears: 83.5,
+      greenSpacePct: 6.5,
+      greenSpaceM2PerPerson: 6.5,
+      giniCoefficient: 0.31,
+      trafficCongestionPct: 21,
+      walkabilityScore: 98,
+      urbanPlanningYear: 1859,
+    }
+  },
+  {
+    id: 'canberra',
+    name: 'Canberra',
+    country: 'AU',
+    center: [149.1300, -35.2809],
+    zoom: 11,
+    bbox: [148.5, -35.8, 149.8, -34.8],
+    timezone: 'Australia/Sydney',
+    hudClockLabel: 'CBR',
+    countryName: 'Australia',
+    gdeltQuery: 'canberra australia',
+    tier: 'lite',
+    availableLayers: LITE_LAYERS,
+    area_km2: 814,
+    populationMillions: 0.46,
+    founded: '1913',
+    climate: 'Oceanic · four seasons, cold winters, dry summers',
+    distinctiveness: 'World\'s most deliberate capital — designed by Walter Burley Griffin. 58% open space. Lowest congestion of any world capital. What happens when a city is planned from scratch and funded properly.',
+    kpis: [
+      { label: 'POPULATION', value: '460K' },
+      { label: 'GREEN', value: '2,000', unit: 'm²/p' },
+      { label: 'CONGESTION', value: '8', unit: '%' },
+    ],
+    demographics: {
+      gdpBillionUsd: 25,
+      gdpPerCapitaUsd: 55_000,
+      birthRatePer1k: 12.0,
+      lifeExpectancyYears: 83.0,
+      greenSpacePct: 58.0,
+      greenSpaceM2PerPerson: 2_000,
+      giniCoefficient: 0.33,
+      trafficCongestionPct: 8,
+      walkabilityScore: 43,
+      urbanPlanningYear: 1912,
+    }
+  },
+  {
+    id: 'brasilia',
+    name: 'Brasília',
+    nameLocal: 'Brasília',
+    country: 'BR',
+    center: [-47.9292, -15.7801],
+    zoom: 11,
+    bbox: [-48.5, -16.5, -47.0, -14.5],
+    timezone: 'America/Sao_Paulo',
+    hudClockLabel: 'BSB',
+    countryName: 'Brazil',
+    gdeltQuery: 'brasilia brazil federal district',
+    tier: 'lite',
+    availableLayers: LITE_LAYERS,
+    area_km2: 5760,
+    populationMillions: 3.1,
+    founded: '1960',
+    climate: 'Tropical savanna · dry season May–Sep, wet season Oct–Apr',
+    distinctiveness: 'UNESCO World Heritage modernist masterplan — with the highest Gini of Brazil\'s major cities (0.60). Designed for cars, built for inequality. The most beautiful city that failed its social brief.',
+    kpis: [
+      { label: 'POPULATION', value: '3.1', unit: 'M' },
+      { label: 'GINI', value: '0.60' },
+      { label: 'UNESCO', value: 'WH 1987' },
+    ],
+    demographics: {
+      gdpBillionUsd: 77,
+      gdpPerCapitaUsd: 25_000,
+      birthRatePer1k: 12.0,
+      lifeExpectancyYears: 76.0,
+      greenSpacePct: 30.0,
+      greenSpaceM2PerPerson: 30,
+      giniCoefficient: 0.60,
+      trafficCongestionPct: 28,
+      walkabilityScore: 28,
+      urbanPlanningYear: 1960,
+    }
+  },
+  {
+    id: 'yala',
+    name: 'Yala',
+    nameLocal: 'ยะลา',
+    country: 'TH',
+    center: [101.2847, 6.5359],
+    zoom: 12,
+    bbox: [100.8, 6.2, 101.7, 6.9],
+    timezone: 'Asia/Bangkok',
+    hudClockLabel: 'YAL',
+    countryName: 'Thailand',
+    gdeltQuery: 'yala thailand deep south',
+    tier: 'lite',
+    availableLayers: LITE_LAYERS,
+    area_km2: 23,
+    populationMillions: 0.07,
+    founded: 'Ancient — Malay sultanate era',
+    climate: 'Tropical rainforest · equatorial, high rainfall year-round',
+    distinctiveness: 'Thailand\'s southernmost major city, 30 km from Malaysia. Predominantly Muslim Malay culture in a Buddhist-majority nation. Ongoing low-level conflict since 2004. A city that occupies two worlds.',
+    kpis: [
+      { label: 'POPULATION', value: '70K' },
+      { label: 'TO MALAYSIA', value: '30 km' },
+      { label: 'REGION', value: 'DEEP SOUTH' },
+    ],
+    demographics: {
+      gdpBillionUsd: 2,
+      gdpPerCapitaUsd: 3_500,
+      birthRatePer1k: 16.0,
+      lifeExpectancyYears: 74.0,
+      greenSpacePct: 15.0,
+      greenSpaceM2PerPerson: 15,
+      giniCoefficient: 0.42,
+      trafficCongestionPct: 12,
+      walkabilityScore: 35,
     }
   },
 ]

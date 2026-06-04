@@ -561,6 +561,125 @@ export function ComparisonPanel() {
           />
         </section>
 
+        {/* ── Green Space — the access gap ───────────────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">
+            GREEN SPACE
+            <span className="cmp-section-sub"> · WHO recommends 9 m²/person minimum</span>
+          </div>
+
+          <MetricRows
+            label="GREEN SPACE PER PERSON"
+            unit="m² per resident"
+            cities={cities}
+            getValue={(c) => c.demographics?.greenSpaceM2PerPerson ?? null}
+            maxOverride={2100}
+            barColor={(v) => v >= 50 ? 'var(--emerald)' : v >= 9 ? 'var(--amber)' : '#ef4444'}
+            fmt={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}K m²` : `${v} m²`}
+          />
+
+          <MetricRows
+            label="GREEN COVERAGE"
+            unit="% city area"
+            cities={cities}
+            maxOverride={100}
+            getValue={(c) => c.demographics?.greenSpacePct ?? null}
+            barColor={(v) => v >= 40 ? 'var(--emerald)' : v >= 15 ? 'var(--amber)' : '#ef4444'}
+            fmt={(v) => `${v}%`}
+          />
+
+          <MetricRows
+            label="WALKABILITY"
+            unit="0–100 (Walk Score)"
+            cities={cities}
+            maxOverride={100}
+            getValue={(c) => c.demographics?.walkabilityScore ?? null}
+            barColor={(v) => v >= 70 ? 'var(--emerald)' : v >= 50 ? 'var(--amber)' : 'var(--dim)'}
+            fmt={(v) => `${v}/100`}
+          />
+        </section>
+
+        {/* ── Wealth Concentration — the equity gap ──────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">
+            WEALTH CONCENTRATION
+            <span className="cmp-section-sub"> · Gini 0=equal · 1=extreme inequality</span>
+          </div>
+
+          <MetricRows
+            label="GINI COEFFICIENT"
+            unit="income inequality index"
+            cities={cities}
+            lowerIsBetter
+            maxOverride={0.7}
+            getValue={(c) => c.demographics?.giniCoefficient ?? null}
+            barColor={(v) => v <= 0.32 ? 'var(--emerald)' : v <= 0.42 ? 'var(--amber)' : '#ef4444'}
+            fmt={(v) => {
+              const label = v <= 0.32 ? 'EQUAL' : v <= 0.42 ? 'MODERATE' : v <= 0.52 ? 'HIGH' : 'EXTREME'
+              return `${v.toFixed(2)} · ${label}`
+            }}
+          />
+
+          <MetricRows
+            label="GDP PER CAPITA"
+            unit="USD/year"
+            cities={cities}
+            getValue={(c) => c.demographics?.gdpPerCapitaUsd ?? null}
+            fmt={(v) => `$${(v/1000).toFixed(0)}K`}
+          />
+
+          {/* Wealth×Inequality tension: high GDP but high Gini = unequal prosperity */}
+          <MetricRows
+            label="PROSPERITY EQUITY INDEX"
+            unit="GDP per capita ÷ Gini × 100"
+            cities={cities}
+            getValue={(c) => {
+              const gdp  = c.demographics?.gdpPerCapitaUsd
+              const gini = c.demographics?.giniCoefficient
+              if (!gdp || !gini || gini === 0) return null
+              return Math.round((gdp / 1000) / gini)
+            }}
+            fmt={(v) => `${v} pts`}
+          />
+        </section>
+
+        {/* ── Traffic Congestion — mobility quality ──────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">
+            TRAFFIC CONGESTION
+            <span className="cmp-section-sub"> · TomTom Traffic Index · % longer than free-flow</span>
+          </div>
+
+          <MetricRows
+            label="CONGESTION LEVEL"
+            unit="% extra travel time vs free flow"
+            cities={cities}
+            lowerIsBetter
+            maxOverride={65}
+            getValue={(c) => c.demographics?.trafficCongestionPct ?? null}
+            barColor={(v) => v <= 15 ? 'var(--emerald)' : v <= 30 ? 'var(--amber)' : '#ef4444'}
+            fmt={(v) => `${v}% · ${v <= 15 ? 'FLOWING' : v <= 30 ? 'MODERATE' : v <= 45 ? 'CONGESTED' : 'SEVERE'}`}
+          />
+
+          {/* Congestion vs density ratio — Bangkok is dense AND congested */}
+          <MetricRows
+            label="CONGESTION DENSITY"
+            unit="congestion % per 1000 residents/km²"
+            cities={cities}
+            noWinner
+            lowerIsBetter
+            getValue={(c) => {
+              const cong  = c.demographics?.trafficCongestionPct
+              const pop   = c.populationMillions
+              const area  = c.area_km2
+              if (!cong || !pop || !area) return null
+              const density = (pop * 1_000_000) / area / 1000  // per 1000/km²
+              return density > 0 ? Math.round(cong / density) : null
+            }}
+            fmt={(v) => `${v} pts`}
+          />
+        </section>
+
         {/* ── Night Lights Economic Index ────────────────────────────────── */}
         <section className="cmp-section">
           <div className="cmp-section-label">
