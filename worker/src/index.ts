@@ -78,6 +78,7 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'openaq':        { origin: 'https://api.openaq.org/v3',           cacheSeconds: 300 },
   'owm':           { origin: 'https://api.openweathermap.org/data/3.0', cacheSeconds: 300 },
   'cems':          { origin: 'https://emergency.copernicus.eu',     cacheSeconds: 3600 },
+  'gdacs':         { origin: 'https://www.gdacs.org',              cacheSeconds: 1800 },
 }
 
 export default {

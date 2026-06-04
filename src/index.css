@@ -288,6 +288,99 @@
 .flood-cascade-chip-val   { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; flex: 1; }
 .flood-cascade-chip-q     { font-family: var(--font-data); font-size: 9px; color: var(--dim); flex-shrink: 0; }
 
+/* ── GDACS Disaster Alerts (top-right, below CEMS when stacked) ─────────── */
+.disaster-panel {
+  position: fixed;
+  top: 68px;
+  right: 372px;   /* to the left of CEMS; collapses to overlap if CEMS absent */
+  z-index: calc(var(--z-frame) + 1);
+  width: min(320px, calc(100vw - 32px));
+  background: rgba(4, 6, 11, 0.97);
+  border: 1px solid var(--line);
+  border-top: 2px solid #f97316;
+}
+.disaster-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.disaster-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: #f97316;
+}
+.disaster-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  border: 1px solid;
+  padding: 1px 6px;
+}
+.disaster-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(245,245,240,0.04);
+}
+.disaster-row--red    { background: rgba(239,68,68,0.04); }
+.disaster-row--orange { background: rgba(249,115,22,0.03); }
+.disaster-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.disaster-body { flex: 1; min-width: 0; }
+.disaster-row-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+.disaster-event-title {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 500;
+}
+.disaster-event-title:hover { color: var(--amber); }
+.disaster-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.10em;
+  border: 1px solid;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+.disaster-desc {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.disaster-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.disaster-meta span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  opacity: 0.6;
+}
+.disaster-stat { color: #f97316 !important; opacity: 0.8 !important; }
+.disaster-dismiss {
+  background: none; border: none; color: var(--dim); font-size: 10px;
+  cursor: pointer; padding: 2px 4px; flex-shrink: 0;
+}
+.disaster-dismiss:hover { color: var(--fg); }
+.disaster-footer {
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--dim);
+  opacity: 0.35;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 1023px) {
+  .disaster-panel { right: 16px; top: 108px; }  /* below CEMS on narrow screens */
+}
+@media (max-width: 767px) { .disaster-panel { display: none; } }
+
 /* ── Copernicus CEMS alert panel ─────────────────────────────────────────── */
 /* CEMS is an emergency alert — anchored top-right, high z-index, never overlaps the Brief */
 .cems-panel {

@@ -48,6 +48,7 @@ import { useToastStore } from './store/toastStore'
 import { useEscalationAlerts } from './hooks/useEscalationAlerts'
 import { SituationBrief } from './components/SituationBrief'
 import { CopernicusAlert } from './components/CopernicusAlert'
+import { DisasterAlerts } from './components/DisasterAlerts'
 import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
@@ -230,6 +231,8 @@ export default function App() {
 
       <SituationBrief allCities={allCities} />
       <CopernicusAlert />
+      <DisasterAlerts />
+
 
       <HUD
         map={map}

@@ -39,7 +39,8 @@ import { bangkokHistoricalEventsGeoJSON } from '../../data/historical-events'
 interface LayerLoadState {
   loaded: Set<string>
   loading: Set<string>
-  popup?: MapLibrePopup
+  wiredPopups: Set<string>
+  popups: MapLibrePopup[]
 }
 
 export function useBangkokLayers(
@@ -50,7 +51,12 @@ export function useBangkokLayers(
   onDistrictClick?: (d: DistrictSummary) => void,
   selectedDistrictId?: string | null,
 ) {
-  const stateRef = useRef<LayerLoadState>({ loaded: new Set(), loading: new Set() })
+  const stateRef = useRef<LayerLoadState>({
+    loaded: new Set(),
+    loading: new Set(),
+    wiredPopups: new Set(),
+    popups: [],
+  })
   const lastDateRef = useRef(activeDate)
   // Keep callback ref current so the once-wired listener always calls the latest handler
   const onDistrictClickRef = useRef<((d: DistrictSummary) => void) | undefined>(onDistrictClick)
@@ -72,8 +78,9 @@ export function useBangkokLayers(
       if (srcId && map.getSource(srcId)) map.removeSource(srcId)
     })
     state.loaded.clear()
-    state.popup?.remove()
-    state.popup = undefined
+    state.popups.forEach((p) => p.remove())
+    state.popups = []
+    state.wiredPopups.clear()
   }, [bangkokMode, map])
 
   useEffect(() => {
@@ -126,14 +133,25 @@ export function useBangkokLayers(
             state.loading.delete(id)
             state.loaded.add(id)
             setVisibility(map, id, activeIds.has(id))
-            if (id === 'pm25-stations' && !state.popup) {
-              state.popup = wirePm25Popup(map)
+            if (id === 'pm25-stations' && !state.wiredPopups.has('pm25')) {
+              state.popups.push(wirePm25Popup(map))
+              state.wiredPopups.add('pm25')
             }
-            if (id === 'traffy-issues' && !state.popup) {
-              state.popup = wireTraffyPopup(map)
+            if (id === 'traffy-issues' && !state.wiredPopups.has('traffy')) {
+              state.popups.push(wireTraffyPopup(map))
+              state.wiredPopups.add('traffy')
             }
-            if (id === 'districts' && !state.popup) {
-              state.popup = wireDistrictPopup(map, onDistrictClickRef)
+            if (id === 'districts' && !state.wiredPopups.has('districts')) {
+              state.popups.push(wireDistrictPopup(map, onDistrictClickRef))
+              state.wiredPopups.add('districts')
+            }
+            if (id === 'airbnb-density' && !state.wiredPopups.has('airbnb')) {
+              state.popups.push(wireAirbnbPopup(map))
+              state.wiredPopups.add('airbnb')
+            }
+            if (id === 'historical-events' && !state.wiredPopups.has('historical-events')) {
+              state.popups.push(wireHistoricalEventsPopup(map))
+              state.wiredPopups.add('historical-events')
             }
           }).catch((err) => {
             state.loading.delete(id)
@@ -149,7 +167,10 @@ export function useBangkokLayers(
 
     // Re-reconcile after setStyle swaps (basemap switching via insights).
     // 'style.load' fires when MapLibre finishes applying a new style.
-    const onStyleLoad = () => reconcile()
+    const onStyleLoad = () => {
+      stateRef.current.wiredPopups.clear()
+      reconcile()
+    }
     map.on('style.load', onStyleLoad)
     return () => { map.off('style.load', onStyleLoad) }
   }, [map, activeIds, bangkokMode, activeDate])
@@ -251,7 +272,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sentinel1-sar':    ['ly-sentinel1'],
   'landsat-thermal':  ['ly-landsat-thermal'],
   'longdo-basemap':   ['ly-longdo'],
-  'traffy-issues':    ['ly-traffy-issues'],
+  'traffy-issues':    ['ly-traffy-issues', 'ly-traffy-clusters', 'ly-traffy-cluster-count'],
   'traffy-heatmap':   ['ly-traffy-heatmap'],
   'buildings-3d':     ['ly-buildings-3d'],
   'osm-emergency':    ['ly-osm-emergency'],
@@ -261,7 +282,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'earthquake-tmd':   ['ly-earthquake-tmd', 'ly-earthquake-tmd-pulse'],
   'tomtom-traffic':   ['ly-tomtom-traffic'],
   'tomtom-incidents': ['ly-tomtom-incidents'],
-  'airbnb-density':   ['ly-airbnb-density'],
+  'airbnb-density':   ['ly-airbnb-density', 'ly-airbnb-clusters', 'ly-airbnb-cluster-count'],
   'historical-events':['ly-historical-events-halo', 'ly-historical-events-core'],
 }
 
@@ -506,7 +527,7 @@ async function addLongdoBasemap(map: MapLibre) {
 
 async function addPm25Stations(map: MapLibre) {
   const data = await bangkokAQIStations()
-  map.addSource('src-pm25', { type: 'geojson', data })
+  map.addSource('src-pm25', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-pm25',
     type: 'circle',
@@ -535,7 +556,7 @@ async function addPm25Heatmap(map: MapLibre) {
   // MapLibre's heatmap kernel does Gaussian density weighting; we feed pm25
   // values as the intensity so high-PM2.5 stations radiate stronger.
   const data = await bangkokAQIStations()
-  map.addSource('src-pm25-heatmap', { type: 'geojson', data })
+  map.addSource('src-pm25-heatmap', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-pm25-heatmap',
     type: 'heatmap',
@@ -588,7 +609,7 @@ async function addWAQIStations(map: MapLibre) {
   // markers (square rotated) and AQI bands (US scale), not Thai PM2.5 bands.
   // Returns empty FC silently if VITE_WAQI_TOKEN not set; layer stays mounted.
   const data = await bangkokWAQIStations()
-  map.addSource('src-waqi', { type: 'geojson', data })
+  map.addSource('src-waqi', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-waqi-fill',
     type: 'circle',
@@ -651,7 +672,7 @@ async function addAQILive(map: MapLibre) {
       },
     }],
   }
-  map.addSource('src-aqi', { type: 'geojson', data: fc })
+  map.addSource('src-aqi', { type: 'geojson', data: fc, generateId: true })
   map.addLayer({
     id: 'ly-aqi',
     type: 'circle',
@@ -686,7 +707,7 @@ async function addAQILive(map: MapLibre) {
 
 async function addGistdaFires(map: MapLibre) {
   const data = await thailandFires24h()
-  map.addSource('src-fires-gistda', { type: 'geojson', data })
+  map.addSource('src-fires-gistda', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-fires-gistda',
     type: 'circle',
@@ -704,7 +725,7 @@ async function addGistdaFires(map: MapLibre) {
 
 async function addFirmsFires(map: MapLibre) {
   const data = await firmsThailand24h()
-  map.addSource('src-fires-firms', { type: 'geojson', data })
+  map.addSource('src-fires-firms', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-fires-firms',
     type: 'circle',
@@ -722,7 +743,7 @@ async function addFirmsFires(map: MapLibre) {
 
 async function addHistoricalFloods(map: MapLibre) {
   const data = await bangkokHistoricalFloods()
-  map.addSource('src-floods-historical', { type: 'geojson', data })
+  map.addSource('src-floods-historical', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-floods-historical',
     type: 'fill',
@@ -737,7 +758,7 @@ async function addHistoricalFloods(map: MapLibre) {
 
 async function addFloods(map: MapLibre) {
   const data = await centralFloods()
-  map.addSource('src-floods', { type: 'geojson', data })
+  map.addSource('src-floods', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-floods',
     type: 'fill',
@@ -804,7 +825,7 @@ async function addDistricts(map: MapLibre) {
   })
 
   const data = { type: 'FeatureCollection' as const, features }
-  map.addSource('src-districts', { type: 'geojson', data })
+  map.addSource('src-districts', { type: 'geojson', data, generateId: true })
 
   // Data-driven fill — each khet shows its own status colour
   map.addLayer({
@@ -872,7 +893,7 @@ async function addDistricts(map: MapLibre) {
 
 async function addRail(map: MapLibre) {
   const data = await loadBangkokRail()
-  map.addSource('src-rail', { type: 'geojson', data })
+  map.addSource('src-rail', { type: 'geojson', data, generateId: true })
   // Lines (filter to LineString features)
   map.addLayer({
     id: 'ly-rail-line',
@@ -924,17 +945,72 @@ async function addRail(map: MapLibre) {
 
 async function addTraffyIssues(map: MapLibre) {
   const data = await fetchTraffyGeoJSON(500)
-  map.addSource('src-traffy', { type: 'geojson', data })
+  // Clustering dramatically reduces GPU geometry count when zoomed out.
+  // At z<14 the map shows aggregated bubbles; at z>=14 it unpacks to points.
+  map.addSource('src-traffy', {
+    type: 'geojson',
+    data,
+    generateId: true,
+    cluster: true,
+    clusterMaxZoom: 13,
+    clusterRadius: 45,
+  })
+
+  // Cluster bubble — size and colour scale with feature count
+  map.addLayer({
+    id: 'ly-traffy-clusters',
+    type: 'circle',
+    source: 'src-traffy',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-radius': [
+        'step', ['get', 'point_count'],
+        14,   // default radius
+        10,  18,
+        50,  24,
+        200, 30,
+      ],
+      'circle-color': [
+        'step', ['get', 'point_count'],
+        '#6b7280',  // < 10
+        10,  '#d97706',  // < 50
+        50,  '#ef4444',  // < 200
+        200, '#7c3aed',  // 200+
+      ],
+      'circle-opacity': 0.85,
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+    },
+  })
+
+  // Cluster count label
+  map.addLayer({
+    id: 'ly-traffy-cluster-count',
+    type: 'symbol',
+    source: 'src-traffy',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-size': 11,
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+    },
+    paint: {
+      'text-color': '#ffffff',
+    },
+  })
+
+  // Individual points at high zoom (unclustered)
   map.addLayer({
     id: 'ly-traffy-issues',
     type: 'circle',
     source: 'src-traffy',
+    filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 7],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 8],
       'circle-color': ['coalesce', ['get', 'color'], '#9e9e9e'],
       'circle-stroke-color': '#0a0a0a',
       'circle-stroke-width': 1,
-      'circle-opacity': 0.88,
+      'circle-opacity': 0.9,
     },
   })
 }
@@ -943,13 +1019,15 @@ async function addBuildings3D(map: MapLibre) {
   // Re-uses Mapbox Streets `composite` vector source — no new fetch. The
   // `building` source-layer always exposes `height` and `min_height` fields,
   // so the prior height-coalesce fallback chain is no longer needed.
+  // minzoom 15.5 — only compute 3D extrusions at true street level, preventing
+  // GPU geometry overload when zoomed out to neighbourhood/city scale.
   if (!map.getSource('composite')) return  // belt + suspenders
   map.addLayer({
     id: 'ly-buildings-3d',
     type: 'fill-extrusion',
     source: 'composite',
     'source-layer': 'building',
-    minzoom: 14,
+    minzoom: 15.5,
     paint: {
       'fill-extrusion-height': ['coalesce', ['get', 'height'], 6],
       'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
@@ -975,7 +1053,7 @@ async function addTraffyHeatmap(map: MapLibre) {
   // air-quality green→red ramp. Active tickets weight stronger than
   // resolved ones (state==='เสร็จสิ้น' is "completed" in Thai).
   const data = await fetchTraffyGeoJSON(500)
-  map.addSource('src-traffy-heatmap', { type: 'geojson', data })
+  map.addSource('src-traffy-heatmap', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-traffy-heatmap',
     type: 'heatmap',
@@ -1020,7 +1098,7 @@ async function addTraffyHeatmap(map: MapLibre) {
 
 async function addAir4ThaiStations(map: MapLibre) {
   const data = await fetchAir4ThaiGeoJSON()
-  map.addSource('src-air4thai', { type: 'geojson', data })
+  map.addSource('src-air4thai', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-air4thai',
     type: 'circle',
@@ -1045,7 +1123,7 @@ async function addAir4ThaiStations(map: MapLibre) {
 
 async function addOsmEmergency(map: MapLibre) {
   const data = await fetchOsmEmergency()
-  map.addSource('src-osm-emergency', { type: 'geojson', data })
+  map.addSource('src-osm-emergency', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-osm-emergency',
     type: 'circle',
@@ -1080,7 +1158,7 @@ async function addOsmEmergency(map: MapLibre) {
 
 async function addOsmEducation(map: MapLibre) {
   const data = await fetchOsmEducation()
-  map.addSource('src-osm-education', { type: 'geojson', data })
+  map.addSource('src-osm-education', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-osm-education',
     type: 'circle',
@@ -1097,7 +1175,7 @@ async function addOsmEducation(map: MapLibre) {
 
 async function addWaterQuality(map: MapLibre) {
   const data = await fetchWaterQualityGeoJSON()
-  map.addSource('src-water-quality', { type: 'geojson', data })
+  map.addSource('src-water-quality', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-water-quality',
     type: 'circle',
@@ -1114,7 +1192,7 @@ async function addWaterQuality(map: MapLibre) {
 
 async function addWaterLevel(map: MapLibre) {
   const data = await fetchWaterLevelGeoJSON()
-  map.addSource('src-water-level', { type: 'geojson', data })
+  map.addSource('src-water-level', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-water-level',
     type: 'circle',
@@ -1131,7 +1209,7 @@ async function addWaterLevel(map: MapLibre) {
 
 async function addEarthquakeTmd(map: MapLibre) {
   const data = await fetchEarthquakeGeoJSON()
-  map.addSource('src-earthquake-tmd', { type: 'geojson', data })
+  map.addSource('src-earthquake-tmd', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-earthquake-tmd',
     type: 'circle',
@@ -1199,7 +1277,7 @@ async function addTomtomTraffic(map: MapLibre) {
       },
     })),
   }
-  map.addSource('src-tomtom-traffic', { type: 'geojson', data: fc })
+  map.addSource('src-tomtom-traffic', { type: 'geojson', data: fc, generateId: true })
   map.addLayer({
     id: 'ly-tomtom-traffic',
     type: 'circle',
@@ -1216,7 +1294,7 @@ async function addTomtomTraffic(map: MapLibre) {
 
 async function addTomtomIncidents(map: MapLibre) {
   const data = await fetchTrafficIncidentGeoJSON()
-  map.addSource('src-tomtom-incidents', { type: 'geojson', data })
+  map.addSource('src-tomtom-incidents', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-tomtom-incidents',
     type: 'circle',
@@ -1233,45 +1311,70 @@ async function addTomtomIncidents(map: MapLibre) {
 
 async function addAirbnbDensity(map: MapLibre) {
   const data = await fetchAirbnbGeoJSON()
-  map.addSource('src-airbnb', { type: 'geojson', data })
+  map.addSource('src-airbnb', {
+    type: 'geojson',
+    data,
+    generateId: true,
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+  })
+
+  // Cluster bubble — size and colour scale with feature count (Airbnb pink/coral branding)
+  map.addLayer({
+    id: 'ly-airbnb-clusters',
+    type: 'circle',
+    source: 'src-airbnb',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-radius': [
+        'step', ['get', 'point_count'],
+        14,   // default radius
+        20,  18,
+        100, 24,
+        500, 30,
+      ],
+      'circle-color': [
+        'step', ['get', 'point_count'],
+        '#ffccd0',  // <20
+        20,  '#ff99a0',  // <100
+        100, '#ff5a5f',  // <500
+        500, '#bd1e24',  // 500+
+      ],
+      'circle-opacity': 0.8,
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1.5,
+    },
+  })
+
+  // Cluster count label
+  map.addLayer({
+    id: 'ly-airbnb-cluster-count',
+    type: 'symbol',
+    source: 'src-airbnb',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-size': 11,
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+    },
+    paint: {
+      'text-color': '#111827',
+    },
+  })
+
+  // Individual points at high zoom (unclustered)
   map.addLayer({
     id: 'ly-airbnb-density',
-    type: 'heatmap',
+    type: 'circle',
     source: 'src-airbnb',
+    filter: ['!', ['has', 'point_count']],
     paint: {
-      'heatmap-weight': [
-        'interpolate', ['linear'], ['get', 'pressure'],
-        0, 0.1,
-        100, 0.3,
-        300, 0.6,
-        600, 1,
-      ],
-      'heatmap-intensity': [
-        'interpolate', ['linear'], ['zoom'],
-        10, 0.8,
-        13, 1.5,
-        16, 3,
-      ],
-      // Red → orange → amber — tourism heat
-      'heatmap-color': [
-        'interpolate', ['linear'], ['heatmap-density'],
-        0,    'rgba(0,0,0,0)',
-        0.15, 'rgba(253,216,53,0.4)',
-        0.4,  'rgba(251,140,0,0.55)',
-        0.65, 'rgba(229,57,53,0.7)',
-        0.9,  'rgba(126,0,35,0.85)',
-      ],
-      'heatmap-radius': [
-        'interpolate', ['linear'], ['zoom'],
-        10, 12,
-        13, 30,
-        16, 60,
-      ],
-      'heatmap-opacity': [
-        'interpolate', ['linear'], ['zoom'],
-        10, 0.7,
-        16, 0.5,
-      ],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 3, 18, 8],
+      'circle-color': ['coalesce', ['get', 'color'], '#ff5a5f'],
+      'circle-stroke-color': '#0a0a0a',
+      'circle-stroke-width': 1,
+      'circle-opacity': 0.85,
     },
   })
 }
@@ -1313,34 +1416,6 @@ async function addHistoricalEvents(map: MapLibre) {
     },
   })
 
-  // Wire popup
-  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
-  map.on('click', 'ly-historical-events-core', (e) => {
-    const f = e.features?.[0]
-    if (!f || f.geometry.type !== 'Point') return
-    const props = f.properties ?? {}
-    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
-    const safe = (s: unknown) => String(s ?? '—').replace(/[<>&"]/g, (c) => `&#${c.charCodeAt(0)};`)
-    const typeLabel: Record<string, string> = {
-      'wwii-bombing': 'WWII BOMBING',
-      'industrial-fire': 'INDUSTRIAL FIRE',
-      'chemical-spill': 'CHEMICAL SPILL',
-      'flood-major': 'MAJOR FLOOD',
-      'civil-unrest': 'CIVIL UNREST',
-    }
-    const html = `
-      <div class="popup-historical">
-        <div class="popup-historical-type">${safe(typeLabel[String(props.type)] ?? props.type)}</div>
-        <div class="popup-historical-name">${safe(props.name)}</div>
-        ${props.nameLocal ? `<div class="popup-historical-name-th">${safe(props.nameLocal)}</div>` : ''}
-        <div class="popup-historical-date">${safe(props.date)}</div>
-        <div class="popup-historical-impact">${safe(props.impactDescription)}</div>
-        <div class="popup-historical-source">SOURCE · ${safe(props.source)}</div>
-      </div>`
-    popup.setLngLat(coords).setHTML(html).addTo(map)
-  })
-  map.on('mouseenter', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = 'pointer' })
-  map.on('mouseleave', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = '' })
 }
 
 // ── Popup wiring ──────────────────────────────────────────────────────────
@@ -1390,6 +1465,26 @@ function wireTraffyPopup(map: MapLibre): MapLibrePopup {
   })
   map.on('mouseenter', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = 'pointer' })
   map.on('mouseleave', 'ly-traffy-issues', () => { map.getCanvas().style.cursor = '' })
+
+  // Click on clusters to zoom in
+  map.on('click', 'ly-traffy-clusters', (e) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ['ly-traffy-clusters'] })
+    const f = features[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const clusterId = f.properties.cluster_id
+    const src = map.getSource('src-traffy') as any
+    if (src && typeof src.getClusterExpansionZoom === 'function') {
+      src.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+        if (!err && typeof zoom === 'number') {
+          const coords = (f.geometry as any).coordinates as [number, number]
+          map.easeTo({ center: coords, zoom: zoom + 0.5 })
+        }
+      })
+    }
+  })
+  map.on('mouseenter', 'ly-traffy-clusters', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-traffy-clusters', () => { map.getCanvas().style.cursor = '' })
+
   return popup
 }
 
@@ -1449,7 +1544,7 @@ function escape(s: string): string {
 
 async function addOpenAQStations(map: MapLibre) {
   const data = await fetchOpenAQLatest()
-  map.addSource('src-openaq', { type: 'geojson', data })
+  map.addSource('src-openaq', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-openaq-fill',
     type: 'circle',
@@ -1491,7 +1586,7 @@ async function addOWMWeather(map: MapLibre) {
       },
     }],
   }
-  map.addSource('src-owm-weather', { type: 'geojson', data: fc })
+  map.addSource('src-owm-weather', { type: 'geojson', data: fc, generateId: true })
   map.addLayer({
     id: 'ly-owm-weather',
     type: 'symbol',
@@ -1511,7 +1606,7 @@ async function addOWMWeather(map: MapLibre) {
 
 async function addGTFSTransit(map: MapLibre) {
   const data = await fetchMockGTFSRealtime()
-  map.addSource('src-gtfs', { type: 'geojson', data })
+  map.addSource('src-gtfs', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-gtfs-dots',
     type: 'circle',
@@ -1576,3 +1671,88 @@ async function addLandsatThermal(map: MapLibre, activeDate?: string) {
     opacity:  0.7,
   })
 }
+
+// ── Additional Popup Wire Helpers ──────────────────────────────────────────
+
+function wireAirbnbPopup(map: MapLibre): MapLibrePopup {
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
+
+  // Click on unclustered listings
+  map.on('click', 'ly-airbnb-density', (e) => {
+    const f = e.features?.[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const p = f.properties ?? {}
+    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
+    const price = typeof p.price === 'number' ? p.price.toLocaleString() : p.price ?? '—'
+    const reviews = typeof p.numberOfReviews === 'number' ? p.numberOfReviews : p.numberOfReviews ?? '0'
+    const name = p.name ?? 'Airbnb Listing'
+    const roomType = p.roomType ?? 'Private Room'
+    const neighbourhood = p.neighbourhood ?? 'Bangkok'
+    const availability = typeof p.availability365 === 'number' ? `${p.availability365} days/yr` : '—'
+
+    const html = `
+      <div class="popup-airbnb">
+        <div class="popup-airbnb-title">${escape(name)}</div>
+        <div class="popup-airbnb-room-type">${escape(roomType)}</div>
+        <div class="popup-row"><span class="popup-label">PRICE</span><span class="popup-val">฿${escape(String(price))}</span></div>
+        <div class="popup-row"><span class="popup-label">NEIGHBOURHOOD</span><span class="popup-val">${escape(neighbourhood)}</span></div>
+        <div class="popup-row"><span class="popup-label">REVIEWS</span><span class="popup-val">${escape(String(reviews))}</span></div>
+        <div class="popup-row"><span class="popup-label">AVAILABILITY</span><span class="popup-val">${escape(availability)}</span></div>
+      </div>`
+    popup.setLngLat(coords).setHTML(html).addTo(map)
+  })
+  map.on('mouseenter', 'ly-airbnb-density', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-airbnb-density', () => { map.getCanvas().style.cursor = '' })
+
+  // Click on clusters to zoom in
+  map.on('click', 'ly-airbnb-clusters', (e) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ['ly-airbnb-clusters'] })
+    const f = features[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const clusterId = f.properties.cluster_id
+    const src = map.getSource('src-airbnb') as any
+    if (src && typeof src.getClusterExpansionZoom === 'function') {
+      src.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+        if (!err && typeof zoom === 'number') {
+          const coords = (f.geometry as any).coordinates as [number, number]
+          map.easeTo({ center: coords, zoom: zoom + 0.5 })
+        }
+      })
+    }
+  })
+  map.on('mouseenter', 'ly-airbnb-clusters', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-airbnb-clusters', () => { map.getCanvas().style.cursor = '' })
+
+  return popup
+}
+
+function wireHistoricalEventsPopup(map: MapLibre): MapLibrePopup {
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
+  map.on('click', 'ly-historical-events-core', (e) => {
+    const f = e.features?.[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const props = f.properties ?? {}
+    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
+    const typeLabel: Record<string, string> = {
+      'wwii-bombing': 'WWII BOMBING',
+      'industrial-fire': 'INDUSTRIAL FIRE',
+      'chemical-spill': 'CHEMICAL SPILL',
+      'flood-major': 'MAJOR FLOOD',
+      'civil-unrest': 'CIVIL UNREST',
+    }
+    const html = `
+      <div class="popup-historical">
+        <div class="popup-historical-type">${escape(typeLabel[String(props.type)] ?? props.type)}</div>
+        <div class="popup-historical-name">${escape(props.name)}</div>
+        ${props.nameLocal ? `<div class="popup-historical-name-th">${escape(props.nameLocal)}</div>` : ''}
+        <div class="popup-historical-date">${escape(props.date)}</div>
+        <div class="popup-historical-impact">${escape(props.impactDescription)}</div>
+        <div class="popup-historical-source">SOURCE · ${escape(props.source)}</div>
+      </div>`
+    popup.setLngLat(coords).setHTML(html).addTo(map)
+  })
+  map.on('mouseenter', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-historical-events-core', () => { map.getCanvas().style.cursor = '' })
+  return popup
+}
+

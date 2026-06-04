@@ -76,7 +76,7 @@ export function useGlobalOverlays(map: MapLibre | null, active: Set<string>) {
 async function addQuakes(map: MapLibre) {
   const data = await fetchEarthquakes24h().catch(() => null)
   if (!data || map.getSource('src-quakes')) return
-  map.addSource('src-quakes', { type: 'geojson', data })
+  map.addSource('src-quakes', { type: 'geojson', data, generateId: true })
 
   // Soft halo sized by magnitude
   map.addLayer({
