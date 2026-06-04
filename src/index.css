@@ -288,6 +288,59 @@
 .flood-cascade-chip-val   { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; flex: 1; }
 .flood-cascade-chip-q     { font-family: var(--font-data); font-size: 9px; color: var(--dim); flex-shrink: 0; }
 
+/* ── Smoke cone overlay legend ───────────────────────────────────────────── */
+.smoke-overlay-legend {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  background: rgba(4, 6, 11, 0.92);
+  border: 1px solid rgba(249,115,22,0.4);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.smoke-legend-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: #f97316;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.smoke-impact {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 5px;
+  border: 1px solid;
+}
+.smoke-impact--none     { color: var(--emerald); border-color: rgba(52,211,153,0.4); }
+.smoke-impact--low      { color: var(--amber);   border-color: rgba(245,158,11,0.4); }
+.smoke-impact--moderate { color: #f97316;        border-color: rgba(249,115,22,0.4); }
+.smoke-impact--high     { color: #ef4444;        border-color: rgba(239,68,68,0.4); }
+.smoke-legend-note {
+  font-family: var(--font-body);
+  font-size: 9px;
+  color: var(--dim);
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.smoke-legend-hours { display: flex; gap: 4px; }
+.smoke-hour-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #f97316;
+  border: 1px solid rgba(249,115,22,0.3);
+  padding: 1px 5px;
+}
+@media (max-width: 767px) { .smoke-overlay-legend { bottom: 88px; } }
+
 /* ── GDACS Disaster Alerts (top-right, below CEMS when stacked) ─────────── */
 .disaster-panel {
   position: fixed;

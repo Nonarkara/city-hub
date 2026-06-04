@@ -49,6 +49,7 @@ import { useEscalationAlerts } from './hooks/useEscalationAlerts'
 import { SituationBrief } from './components/SituationBrief'
 import { CopernicusAlert } from './components/CopernicusAlert'
 import { DisasterAlerts } from './components/DisasterAlerts'
+import { SmokeConeOverlay } from './components/SmokeConeOverlay'
 import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
@@ -121,6 +122,7 @@ export default function App() {
   // ── Settings panel ──────────────────────────────────────────────────────────
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [dataStatusOpen, setDataStatusOpen] = useState(false)
+  const [smokeVisible, setSmokeVisible]       = useState(false)
 
   // ── Insight application ─────────────────────────────────────────────────────
   const applyInsight = useCallback((t: InsightTemplate) => {
@@ -232,6 +234,7 @@ export default function App() {
       <SituationBrief allCities={allCities} />
       <CopernicusAlert />
       <DisasterAlerts />
+      {bangkokMode && <SmokeConeOverlay map={map} activeCity={activeCity} visible={smokeVisible} />}
 
 
       <HUD
@@ -508,6 +511,20 @@ export default function App() {
             </>
           )}
         </div>
+
+        {/* SMOKE — fire smoke trajectory forecast */}
+        {bangkokMode && (
+          <button
+            className={`topbar-insight-btn ${smokeVisible ? 'topbar-insight-btn--active' : ''}`}
+            onClick={() => setSmokeVisible((v) => !v)}
+            title="Show fire smoke trajectory forecast (FIRMS + wind)"
+            aria-label="Toggle smoke trajectory"
+            aria-pressed={smokeVisible}
+          >
+            <span className="topbar-insight-icon" aria-hidden>🔥</span>
+            <span className="topbar-insight-label">SMOKE</span>
+          </button>
+        )}
 
         {/* SPLIT — side-by-side satellite compare */}
         <button
