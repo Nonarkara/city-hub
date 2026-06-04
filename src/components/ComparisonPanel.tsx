@@ -28,6 +28,7 @@ import {
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
 import { fetchCityNews } from '../data/gdelt'
+import { CITY_NIGHT_LIGHTS, adjustedBrightness } from '../lib/night-lights-index'
 
 const POLL_MS   = 5 * 60_000
 const HIST_TTL  = 60 * 60_000
@@ -557,6 +558,49 @@ export function ComparisonPanel() {
               const dir = live[city.id]?.weather?.windCardinal
               return dir ? `${v} ${dir}` : `${v}`
             }}
+          />
+        </section>
+
+        {/* ── Night Lights Economic Index ────────────────────────────────── */}
+        <section className="cmp-section">
+          <div className="cmp-section-label">
+            NIGHT LIGHTS INDEX
+            <span className="cmp-section-sub"> · NASA VIIRS 2022–24 · ESTIMATE</span>
+          </div>
+          <MetricRows
+            label="URBAN BRIGHTNESS"
+            unit="relative index · 100 = brightest"
+            cities={cities}
+            maxOverride={100}
+            getValue={(c) => CITY_NIGHT_LIGHTS[c.id]?.baseIndex ?? null}
+            barColor={(v) => v >= 80 ? 'var(--amber)' : v >= 55 ? 'var(--cyan)' : 'var(--dim)'}
+            fmt={(v) => `${v}/100`}
+          />
+          <MetricRows
+            label="POLICY-ADJUSTED BRIGHTNESS"
+            unit="corrected for dark-sky regulations"
+            cities={cities}
+            maxOverride={100}
+            getValue={(c) => CITY_NIGHT_LIGHTS[c.id] ? adjustedBrightness(c.id) : null}
+            barColor={(v) => v >= 80 ? 'var(--amber)' : 'var(--cyan)'}
+            fmt={(v, c) => {
+              const trend = CITY_NIGHT_LIGHTS[c.id]?.trend
+              const arrow = trend === 'growing' ? ' ↑' : trend === 'declining' ? ' ↓' : ''
+              return `${v}/100${arrow}`
+            }}
+          />
+          {/* GDP per km² — economic density */}
+          <MetricRows
+            label="ECONOMIC DENSITY"
+            unit="$M GDP per km²"
+            cities={cities}
+            getValue={(c) => {
+              const gdp  = c.demographics?.gdpBillionUsd
+              const area = c.area_km2
+              if (!gdp || !area) return null
+              return Math.round((gdp * 1000) / area)  // $M per km²
+            }}
+            fmt={(v) => `$${v}M/km²`}
           />
         </section>
 

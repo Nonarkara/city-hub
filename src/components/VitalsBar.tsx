@@ -15,6 +15,7 @@ import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
 import { fetchThaiwaterLevels, type WaterLevelStation } from '../data/thaiwater'
 import { fetchAir4ThaiBangkok } from '../data/air4thai'
 import { FloodCascadePanel } from './FloodCascadePanel'
+import { useFloodComplaintCorrelation } from '../hooks/useFloodComplaintCorrelation'
 import { fetchAllASEAN, type CityAQI as ASEANCityAQI } from '../data/asean-aqi'
 import { computeVitals, pm25ToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { getSeasonalHazards } from '../lib/seasonal-context'
@@ -59,7 +60,8 @@ function BangkokVitals() {
   const [worstWater, setWorstWater]   = useState<WaterLevelStation | null>(null)
   const [pcdPm25, setPcdPm25]         = useState<{ avg: number; stations: number; worst: string } | null>(null)
   const [aseanRank, setAseanRank]     = useState<{ rank: number; total: number; best: string; worst: string } | null>(null)
-  const seasonalHazards = getSeasonalHazards('bangkok')
+  const seasonalHazards     = getSeasonalHazards('bangkok')
+  const floodCorrelation    = useFloodComplaintCorrelation()
 
   useEffect(() => {
     let cancelled = false
@@ -199,6 +201,14 @@ function BangkokVitals() {
 
       {/* GloFAS flood cascade — compact chip, only when risk > low */}
       <FloodCascadePanel compact />
+
+      {/* Traffy × canal level correlation — shows when elevated */}
+      {floodCorrelation?.isElevated && (
+        <div className={`vital-seasonal vital-seasonal--active`}>
+          <span className="vital-seasonal-label">FLOOD COMPLAINT FORECAST</span>
+          <span className="vital-seasonal-detail">{floodCorrelation.insight}</span>
+        </div>
+      )}
 
       {/* Seasonal hazard context */}
       {primaryHazard && primaryHazard.urgency !== 'clear' && (
