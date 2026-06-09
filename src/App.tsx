@@ -51,6 +51,7 @@ import { CopernicusAlert } from './components/CopernicusAlert'
 import { DisasterAlerts } from './components/DisasterAlerts'
 import { SmokeConeOverlay } from './components/SmokeConeOverlay'
 import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
+import { sourceCountForCity } from './data/source-registry'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -188,6 +189,7 @@ export default function App() {
   const tokenAvailable = hasMapboxToken()
   const cityRisk   = useCityRisk()
   const cityStress = useCityStress()
+  const sourceCount = sourceCountForCity(activeCity)
   useEscalationAlerts(cityRisk, allCities)   // fires toasts via toastStore on escalation
 
   useKeyboardShortcuts({
@@ -241,7 +243,7 @@ export default function App() {
         map={map}
         activeCity={activeCity}
         activeLayerCount={bangkokMode ? activeLayers.size : 0}
-        sourceCount={bangkokMode ? 7 : 3}
+        sourceCount={sourceCount}
       />
 
       <CommandPalette
@@ -401,7 +403,7 @@ export default function App() {
               title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
               aria-label={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
             >
-              · {governorMode ? 'SIT ROOM' : 'ANALYST'}
+              ·<span className="topbar-btn-label"> {governorMode ? 'SIT ROOM' : 'ANALYST'}</span>
             </button>
             <button
               className="topbar-mode-btn topbar-sitrep-btn"
@@ -409,7 +411,7 @@ export default function App() {
               title="Review Global SitRep Actions"
               aria-label="Review Global SitRep Actions"
             >
-              · ACTION CENTER
+              ·<span className="topbar-btn-label"> ACTION CENTER</span>
             </button>
           </>
         )}
@@ -603,6 +605,9 @@ export default function App() {
 
       <MobileStrip
         activeCity={activeCity}
+        onAddCity={() => setOnboardingOpen(true)}
+        open={mobileSheetOpen}
+        onOpenChange={setMobileSheetOpen}
         onSelect={(city) => {
           setActiveCity(city)
           setSelectedDistrict(null)

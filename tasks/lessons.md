@@ -1,5 +1,17 @@
 # Lessons — UNL City Hub
 
+## 2026-06-10 · Grid snap system — floating panels obstructing map
+
+- **What went wrong:** `.small-multiples-wrap` and `.multicity-chart-wrap` were positioned at `right: 340px` with `width: 340px`. At 1456px viewport the SmallMultiplesGrid was covering x:776–1116 — deep inside the map center zone. Map visible area shrank to ~245px wide. The `.counterpart-strip` bled from `left:220px` all the way to `right:0`, running under the right panel instead of stopping at its left edge. `.compare-panel` had a hard-coded `z-index: 20` outside the design system z-scale. Topbar mode buttons ("SIT ROOM", "ACTION CENTER") wrapped at 1280–1400px viewport widths.
+- **Correct behavior:**
+  - Every floating panel must snap to a zone boundary — never float freely inside the map zone.
+  - `--snap-right: 320px` is the right panel left edge. Use `right: 320px` for panels that should abut the right column.
+  - SmallMultiplesGrid defaults to `collapsed: true` — shows only a 44px toggle strip. User opts in to expand it. Map stays clear by default.
+  - CounterpartStrip: `right: 320px` (not `right: 0`) to stop at the right panel boundary.
+  - z-index values must use CSS variables (`var(--z-modal)`, `var(--z-overlay)`, etc.) — never raw numbers.
+  - Topbar labels wrapped inside `<span className="topbar-btn-label">` — hidden via `@media (max-width: 1400px)` so `·` dots remain as affordances, aria-labels preserve accessibility.
+- **How to recognize:** If any fixed-position element uses `right: N px` where N ≠ 0 and N ≠ 320 (right panel width), verify the element is actually snapped to a zone boundary and not floating in the map zone. If a panel is always-visible by default and wider than ~120px, it should have a collapse toggle.
+
 ## 2026-05-25 · GISTDA AirQuality_hourly endpoint is intermittently empty
 - **What went wrong:** Built PM2.5 STATIONS layer expecting the GISTDA `FR_Fire/AirQuality_hourly` service to be populated. At PoC time the entire service returned 0 features across all provinces, leaving the layer empty.
 - **Correct behavior:** The KPI panel's live PM2.5 uses a different endpoint (`pm25.gistda.or.th/rest/getPm25byLocation`) which always has data. The stations layer is wired correctly — just upstream-dry.

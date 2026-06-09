@@ -4,8 +4,11 @@
  * For Bangkok: 50 district sparklines (AQI/complaints) in a scrollable grid.
  * For ASEAN: all hub city mini-KPI cards.
  * Click any multiple to drill into full view.
+ *
+ * Collapsed by default — header strip snaps to right panel edge (right: 320px).
+ * Tap the header to expand. Map stays clear until the user requests this panel.
  */
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useSelectionStore } from '../store/selectionStore'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { useCityStore } from '../store/cityStore'
@@ -72,10 +75,12 @@ function CityMini({ city, color }: { city: CityConfig; color: string }) {
 }
 
 export function SmallMultiplesGrid({ activeCity }: SmallMultiplesGridProps) {
+  const [collapsed, setCollapsed] = useState(true)   // default: collapsed — map stays clear
+
   const { districts } = useDistrictData()
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
   const setSelectedDistrictId = useSelectionStore((s) => s.setSelectedDistrictId)
-    const customCities = useCityStore((s) => s.customCities)
+  const customCities = useCityStore((s) => s.customCities)
   const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
   const compareSet = useCityStore((s) => s.compareSet)
 
@@ -83,21 +88,31 @@ export function SmallMultiplesGrid({ activeCity }: SmallMultiplesGridProps) {
 
   if (isBkk) {
     return (
-      <div className="small-multiples-grid">
-        <div className="small-multiples-header">
+      <div className={`small-multiples-grid${collapsed ? ' small-multiples-grid--collapsed' : ''}`}>
+        <button
+          className="small-multiples-toggle"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand 50 Districts panel' : 'Collapse 50 Districts panel'}
+        >
           <span className="small-multiples-title">50 DISTRICTS</span>
-          <span className="small-multiples-sub">Click to select · Scroll to scan</span>
-        </div>
-        <div className="small-multiples-list">
-          {districts.map((d) => (
-            <DistrictMini
-              key={d.name_th}
-              district={d}
-              selected={selectedDistrictId === d.name_th}
-              onClick={() => setSelectedDistrictId(selectedDistrictId === d.name_th ? null : d.name_th)}
-            />
-          ))}
-        </div>
+          <span className="small-multiples-sub">
+            {collapsed ? 'Bangkok · tap to expand' : 'Click to select · Scroll to scan'}
+          </span>
+          <span className="small-multiples-caret" aria-hidden>{collapsed ? '▸' : '▾'}</span>
+        </button>
+        {!collapsed && (
+          <div className="small-multiples-list">
+            {districts.map((d) => (
+              <DistrictMini
+                key={d.name_th}
+                district={d}
+                selected={selectedDistrictId === d.name_th}
+                onClick={() => setSelectedDistrictId(selectedDistrictId === d.name_th ? null : d.name_th)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -108,15 +123,26 @@ export function SmallMultiplesGrid({ activeCity }: SmallMultiplesGridProps) {
     : allCities.slice(0, 5)
 
   return (
-    <div className="small-multiples-grid">
-      <div className="small-multiples-header">
+    <div className={`small-multiples-grid${collapsed ? ' small-multiples-grid--collapsed' : ''}`}>
+      <button
+        className="small-multiples-toggle"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand Hub Cities panel' : 'Collapse Hub Cities panel'}
+      >
         <span className="small-multiples-title">HUB CITIES</span>
-      </div>
-      <div className="small-multiples-list">
-        {cities.map((c, i) => (
-          <CityMini key={c.id} city={c} color={CITY_COLORS[i % CITY_COLORS.length]} />
-        ))}
-      </div>
+        <span className="small-multiples-sub">
+          {collapsed ? `${cities.length} cities · tap to expand` : 'Compare active cities'}
+        </span>
+        <span className="small-multiples-caret" aria-hidden>{collapsed ? '▸' : '▾'}</span>
+      </button>
+      {!collapsed && (
+        <div className="small-multiples-list">
+          {cities.map((c, i) => (
+            <CityMini key={c.id} city={c} color={CITY_COLORS[i % CITY_COLORS.length]} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
