@@ -164,13 +164,18 @@ export function CityRail({ activeCity, onDistrictSelect, selectedDistrict }: Cit
 export function MobileStrip({
   activeCity,
   onSelect,
+  onAddCity,
+  open,
+  onOpenChange,
 }: {
   activeCity: CityConfig
   onSelect: (city: CityConfig) => void
+  onAddCity: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }) {
   const customCities = useCityStore((s) => s.customCities)
   const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [pm25, setPm25] = useState<Pm25Live | null>(null)
   const [aqi, setAqi] = useState<BangkokAQI | null>(null)
   const isBkk = activeCity.id === 'bangkok'
@@ -191,27 +196,48 @@ export function MobileStrip({
 
   return (
     <>
-      {sheetOpen && (
+      {open && (
         <>
-          <div className="sheet-backdrop" onClick={() => setSheetOpen(false)} />
+          <div className="sheet-backdrop" onClick={() => onOpenChange(false)} />
           <div className="sheet">
             <div className="sheet-header">
               <span className="sheet-title">Select City</span>
-              <button className="sheet-close" onClick={() => setSheetOpen(false)}>
+              <button className="sheet-close" onClick={() => onOpenChange(false)}>
                 ✕
               </button>
             </div>
             <CityList
               activeCity={activeCity}
               onSelect={onSelect}
-              onClose={() => setSheetOpen(false)}
+              onClose={() => onOpenChange(false)}
               cities={allCities}
             />
+            <button
+              className="sheet-add-city"
+              onClick={() => {
+                onOpenChange(false)
+                onAddCity()
+              }}
+            >
+              + ADD CITY
+            </button>
           </div>
         </>
       )}
 
-      <div className="bottom-strip">
+      <div
+        className="bottom-strip"
+        role="button"
+        tabIndex={0}
+        aria-label="Open city selector"
+        onClick={() => onOpenChange(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onOpenChange(true)
+          }
+        }}
+      >
         {isBkk ? (
           <>
             <div className="strip-kpi">

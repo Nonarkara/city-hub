@@ -1,14 +1,14 @@
 /**
  * SLIC Index integration — proprietary 5-pillar AMPI scoring for 163 cities.
  *
- * Data source: src/data/slic-rankings.json (copied from slic-index v3.4.0,
- * published 2026-05-26). Re-runs offline; no fetch required.
+ * Data source: src/data/slic-cityhub.ts, a compact publishable snapshot copied
+ * from slic-index v3.4.0 on 2026-05-26. Re-runs offline; no fetch required.
  *
  * The AMPI formula is Dr Non Arkaraprasertkul's proprietary methodology.
  * UNL has no equivalent. This is the structural intelligence layer that
  * makes City Hub a brain, not a dashboard.
  */
-import rankings from '../data/slic-rankings.json'
+import { CITY_HUB_SLIC, type CityHubSlicScore } from '../data/slic-cityhub'
 
 export type PillarId = 'pressure' | 'viability' | 'capability' | 'community' | 'creative'
 
@@ -41,31 +41,9 @@ export const PILLAR_DESCRIPTIONS: Record<PillarId, string> = {
   creative: 'Culture, diversity, meaning. Why be here at all?',
 }
 
-export interface CityScore {
-  cityId: string
-  displayName: string
-  country: string
-  region: string
-  pressureScore: number
-  viabilityScore: number
-  capabilityScore: number
-  communityScore: number
-  creativeScore: number
-  slicScore: number
-  coverageGrade?: string
-  overallWeightedCoverage?: number
-  metrics?: Record<string, unknown>
-}
+export type CityScore = CityHubSlicScore
 
-interface RankingsBundle {
-  publishable: boolean
-  status: string
-  updatedAt: string
-  canonicalWeights: Record<PillarId, number>
-  cities: CityScore[]
-}
-
-const data = rankings as unknown as RankingsBundle
+const data = CITY_HUB_SLIC
 
 // City ID mapping from our cities.ts to SLIC's cityId
 const CITY_ID_MAP: Record<string, string> = {
@@ -109,17 +87,12 @@ export function strongestPillar(score: CityScore): { pillar: PillarId; label: st
 
 /** Global rank — 1 = highest SLIC score in the dataset. */
 export function globalRank(cityScore: CityScore): { rank: number; total: number } {
-  const sorted = [...data.cities].sort((a, b) => b.slicScore - a.slicScore)
-  const rank = sorted.findIndex((c) => c.cityId === cityScore.cityId) + 1
-  return { rank, total: sorted.length }
+  return { rank: cityScore.globalRank, total: data.globalTotal }
 }
 
 /** Regional rank — 1 = highest SLIC score within the same region. */
 export function regionalRank(cityScore: CityScore): { rank: number; total: number; region: string } {
-  const peers = data.cities.filter((c) => c.region === cityScore.region)
-  const sorted = [...peers].sort((a, b) => b.slicScore - a.slicScore)
-  const rank = sorted.findIndex((c) => c.cityId === cityScore.cityId) + 1
-  return { rank, total: peers.length, region: cityScore.region }
+  return { rank: cityScore.regionalRank, total: cityScore.regionalTotal, region: cityScore.region }
 }
 
 /** Peer comparison — return the 4 other City Hub cities for cross-comparison. */
@@ -138,5 +111,5 @@ export function scoreColor(value: number): string {
   return '#e53935'                    // red — weak
 }
 
-export const SLIC_VERSION = 'v3.4.0'
+export const SLIC_VERSION = data.version
 export const SLIC_UPDATED = data.updatedAt

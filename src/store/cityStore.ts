@@ -44,8 +44,12 @@ export const useCityStore = create<CityStore>()(
 
       addCustomCity: (city) => {
         const { customCities } = get()
-        if (customCities.find((c) => c.id === city.id)) return
-        set({ customCities: [...customCities, city] })
+        const existing = CITIES.find((c) => c.id === city.id) ?? customCities.find((c) => c.id === city.id)
+        if (existing) {
+          set({ activeCity: existing })
+          return
+        }
+        set({ customCities: [...customCities, city], activeCity: city })
       },
 
       removeCustomCity: (cityId) => {

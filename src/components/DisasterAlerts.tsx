@@ -31,8 +31,9 @@ function fmtDate(s: string): string {
 }
 
 export function DisasterAlerts() {
-  const [events, setEvents]   = useState<GDACSEvent[]>([])
+  const [events, setEvents]     = useState<GDACSEvent[]>([])
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [open, setOpen]         = useState(false)
 
   useEffect(() => {
     const load = () => {
@@ -43,7 +44,6 @@ export function DisasterAlerts() {
     return () => clearInterval(t)
   }, [])
 
-  // Only show Orange/Red events that haven't been dismissed
   const visible = events.filter((e) =>
     e.alertLevel !== 'Green' && !dismissed.has(e.eventId)
   )
@@ -52,64 +52,79 @@ export function DisasterAlerts() {
   const topLevel = visible.some((e) => e.alertLevel === 'Red') ? 'Red' : 'Orange'
 
   return (
-    <div className="disaster-panel" style={{ borderTopColor: ALERT_COLOR[topLevel] }}>
-      <div className="panel-zone" aria-hidden>
-        <span className="panel-zone-dot" style={{ background: ALERT_COLOR[topLevel] }} />
-        REGIONAL · GDACS ALERTS
+    <div
+      className="disaster-panel"
+      style={{ borderTopColor: ALERT_COLOR[topLevel] }}
+    >
+      {/* Scrollable content — slides up above the toggle tab */}
+      <div className={`disaster-scroll${open ? '' : ' disaster-scroll--hidden'}`}>
+        <div className="panel-zone" aria-hidden>
+          <span className="panel-zone-dot" style={{ background: ALERT_COLOR[topLevel] }} />
+          REGIONAL · GDACS ALERTS
+        </div>
+
+        {visible.map((ev) => (
+          <div key={ev.eventId} className={`disaster-row disaster-row--${ev.alertLevel.toLowerCase()}`}>
+            <span className="disaster-icon">{HAZARD_ICON[ev.hazardType] ?? '⚠'}</span>
+            <div className="disaster-body">
+              <div className="disaster-row-header">
+                <a
+                  className="disaster-event-title"
+                  href={ev.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {ev.hazardLabel}
+                  {ev.country ? ` · ${ev.country}` : ''}
+                </a>
+                <span
+                  className="disaster-badge"
+                  style={{ color: ALERT_COLOR[ev.alertLevel], borderColor: `${ALERT_COLOR[ev.alertLevel]}44` }}
+                >
+                  {ev.alertLevel.toUpperCase()}
+                </span>
+              </div>
+              {ev.title && <div className="disaster-desc">{ev.title}</div>}
+              <div className="disaster-meta">
+                {ev.date && <span>{fmtDate(ev.date)}</span>}
+                {ev.deaths != null && ev.deaths > 0 && (
+                  <span className="disaster-stat">{ev.deaths.toLocaleString()} deaths</span>
+                )}
+                {ev.affectedPop != null && ev.affectedPop > 0 && (
+                  <span className="disaster-stat">{(ev.affectedPop/1000).toFixed(0)}K affected</span>
+                )}
+              </div>
+            </div>
+            <button
+              className="disaster-dismiss"
+              onClick={() => setDismissed((s) => new Set([...s, ev.eventId]))}
+              aria-label="Dismiss"
+            >✕</button>
+          </div>
+        ))}
+
+        <div className="disaster-footer">
+          GDACS · Orange/Red only · 30 min refresh · {events.length} SEA events total
+        </div>
       </div>
 
-      <div className="disaster-header">
-        <span className="disaster-title">
-          SEA DISASTER ALERTS
-        </span>
-        <span className="disaster-count"
-          style={{ color: ALERT_COLOR[topLevel], borderColor: `${ALERT_COLOR[topLevel]}44` }}>
+      {/* Toggle tab — always visible at bottom, anchored by column-reverse */}
+      <div
+        className="disaster-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => e.key === 'Enter' && setOpen((v) => !v)}
+      >
+        <span className="disaster-title">SEA DISASTER ALERTS</span>
+        <span
+          className="disaster-count"
+          style={{ color: ALERT_COLOR[topLevel], borderColor: `${ALERT_COLOR[topLevel]}44` }}
+        >
           {visible.length}
         </span>
-      </div>
-
-      {visible.map((ev) => (
-        <div key={ev.eventId} className={`disaster-row disaster-row--${ev.alertLevel.toLowerCase()}`}>
-          <span className="disaster-icon">{HAZARD_ICON[ev.hazardType] ?? '⚠'}</span>
-          <div className="disaster-body">
-            <div className="disaster-row-header">
-              <a
-                className="disaster-event-title"
-                href={ev.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {ev.hazardLabel}
-                {ev.country ? ` · ${ev.country}` : ''}
-              </a>
-              <span
-                className="disaster-badge"
-                style={{ color: ALERT_COLOR[ev.alertLevel], borderColor: `${ALERT_COLOR[ev.alertLevel]}44` }}
-              >
-                {ev.alertLevel.toUpperCase()}
-              </span>
-            </div>
-            {ev.title && <div className="disaster-desc">{ev.title}</div>}
-            <div className="disaster-meta">
-              {ev.date && <span>{fmtDate(ev.date)}</span>}
-              {ev.deaths != null && ev.deaths > 0 && (
-                <span className="disaster-stat">{ev.deaths.toLocaleString()} deaths</span>
-              )}
-              {ev.affectedPop != null && ev.affectedPop > 0 && (
-                <span className="disaster-stat">{(ev.affectedPop/1000).toFixed(0)}K affected</span>
-              )}
-            </div>
-          </div>
-          <button
-            className="disaster-dismiss"
-            onClick={() => setDismissed((s) => new Set([...s, ev.eventId]))}
-            aria-label="Dismiss"
-          >✕</button>
-        </div>
-      ))}
-
-      <div className="disaster-footer">
-        GDACS · Orange/Red only · 30 min refresh · {events.length} SEA events total
+        <span className="disaster-caret">{open ? '▼' : '▲'}</span>
       </div>
     </div>
   )

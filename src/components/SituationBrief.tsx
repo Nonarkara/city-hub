@@ -91,7 +91,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
   const [model, setModel]             = useState<string>('')
   const [loading, setLoading]         = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [collapsed, setCollapsed]     = useState(false)
+  const [collapsed, setCollapsed]     = useState(true)
   const [dismissed, setDismissed]     = useState(false)
   const [history, setHistory]         = useState<AQIHistory | null>(null)
   const [copied, setCopied]           = useState(false)

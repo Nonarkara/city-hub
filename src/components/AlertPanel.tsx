@@ -35,6 +35,7 @@ import { PatternsSection } from './PatternsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { PrepareCard } from './PrepareCard'
 import { InsightCardsGrid } from './InsightCardsGrid'
+import { PopulationRealityPanel } from './PopulationRealityPanel'
 import { RealityCheckEngine } from './RealityCheckEngine'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { CITIES } from '../config/cities'
@@ -728,6 +729,8 @@ export function AlertPanel() {
               headlines={news?.articles.map((a) => a.title) ?? []}
             />
           </div>
+
+          <PopulationRealityPanel />
 
           {forecast && <ForecastStrip forecast={forecast} />}
 

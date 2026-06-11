@@ -13,105 +13,17 @@
 import { useEffect, useState, useMemo } from 'react'
 import { CITIES } from '../config/cities'
 import { useCityStore } from '../store/cityStore'
-import { fetchAQI } from '../data/openmeteo-aq'
-import { fetchWeather } from '../data/openmeteo'
-import { fetchCityNews } from '../data/gdelt'
-import { bangkokWAQIStations } from '../data/waqi'
-import { cachedFetch } from '../lib/cached-fetch'
-
-interface SourceCheck {
-  id:      string
-  label:   string
-  zone:    'DATA' | 'INTEL' | 'SATELLITE' | 'CIVIC'
-  check:   () => Promise<boolean>
-}
-
-const SOURCES: SourceCheck[] = [
-  {
-    id: 'openmeteo-aq',
-    label: 'Open-Meteo AQI',
-    zone: 'DATA',
-    check: async () => {
-      const r = await fetchAQI(100.5018, 13.7563, 'Asia/Bangkok')
-      return r.usAqi > 0
-    },
-  },
-  {
-    id: 'openmeteo-wx',
-    label: 'Open-Meteo Weather',
-    zone: 'DATA',
-    check: async () => {
-      const r = await fetchWeather(100.5018, 13.7563, 'Asia/Bangkok')
-      return typeof r.temp === 'number'
-    },
-  },
-  {
-    id: 'waqi',
-    label: 'WAQI Stations',
-    zone: 'DATA',
-    check: async () => {
-      const r = await cachedFetch('health/waqi', () => bangkokWAQIStations(), 10 * 60_000)
-      return r.features.length > 0
-    },
-  },
-  {
-    id: 'gdelt',
-    label: 'GDELT News',
-    zone: 'INTEL',
-    check: async () => {
-      const r = await fetchCityNews('bangkok thailand', 3)
-      return r.articles.length > 0
-    },
-  },
-  {
-    id: 'usgs',
-    label: 'USGS Earthquakes',
-    zone: 'DATA',
-    check: async () => {
-      const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson', { signal: AbortSignal.timeout(5000) })
-      return res.ok
-    },
-  },
-  {
-    id: 'rainviewer',
-    label: 'RainViewer Radar',
-    zone: 'DATA',
-    check: async () => {
-      const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', { signal: AbortSignal.timeout(5000) })
-      if (!res.ok) return false
-      const data = await res.json() as { radar?: { past?: unknown[] } }
-      return (data.radar?.past?.length ?? 0) > 0
-    },
-  },
-  {
-    id: 'nasa-gibs',
-    label: 'NASA GIBS',
-    zone: 'SATELLITE',
-    check: async () => {
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const date = yesterday.toISOString().split('T')[0]
-      const url = `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${date}/250m/6/36/56.jpg`
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-      return res.ok
-    },
-  },
-  {
-    id: 'traffy',
-    label: 'Traffy Fondue',
-    zone: 'CIVIC',
-    check: async () => {
-      const res = await fetch('https://publicapi.traffy.in.th/share/teamchadchart/getTicket?type=json&limit=1', { signal: AbortSignal.timeout(6000) })
-      return res.ok
-    },
-  },
-]
-
-type SourceStatus = 'checking' | 'live' | 'stale' | 'offline'
+import {
+  CORE_SOURCE_IDS,
+  SOURCE_REGISTRY,
+  runSourceCheck,
+  type SourceStatus,
+} from '../data/source-registry'
 
 interface StatusEntry {
   status:    SourceStatus
   checkedAt: Date | null
+  note?:      string
 }
 
 const ZONE_COLOR: Record<string, string> = {
@@ -134,10 +46,10 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
   const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
 
   const [statuses, setStatuses] = useState<Record<string, StatusEntry>>(() =>
-    Object.fromEntries(SOURCES.map((s) => [s.id, { status: 'checking' as const, checkedAt: null }]))
+    Object.fromEntries(SOURCE_REGISTRY.map((s) => [s.id, { status: 'checking' as const, checkedAt: null }]))
   )
   const [running, setRunning] = useState(false)
-  // tick removed — age updates with checkedAt timestamp
+  const [, setTick] = useState(0)
 
   const runChecks = async () => {
     if (running) return
@@ -147,31 +59,33 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
       Object.entries(prev).map(([k]) => [k, { status: 'checking' as const, checkedAt: null }])
     ))
 
-    await Promise.allSettled(
-      SOURCES.map(async (src) => {
-        try {
-          const ok = await Promise.race([
-            src.check(),
-            new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10_000)),
-          ])
-          setStatuses((prev) => ({
-            ...prev,
-            [src.id]: { status: ok ? 'live' : 'stale', checkedAt: new Date() },
-          }))
-        } catch {
-          setStatuses((prev) => ({
-            ...prev,
-            [src.id]: { status: 'offline', checkedAt: new Date() },
-          }))
-        }
-      })
-    )
+    for (const src of SOURCE_REGISTRY) {
+      try {
+        const result = await runSourceCheck(src)
+        setStatuses((prev) => ({
+          ...prev,
+          [src.id]: { status: result.status, checkedAt: new Date(), note: result.note },
+        }))
+      } catch (err) {
+        const note = err instanceof Error ? err.message : 'Check failed'
+        const status: SourceStatus = /429|rate|too many/i.test(note) ? 'stale' : 'offline'
+        setStatuses((prev) => ({
+          ...prev,
+          [src.id]: { status, checkedAt: new Date(), note },
+        }))
+      }
+    }
     setRunning(false)
   }
 
   useEffect(() => { runChecks() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   const liveCount   = Object.values(statuses).filter((s) => s.status === 'live').length
+  const staleCount  = Object.values(statuses).filter((s) => s.status === 'stale').length
   const offlineCount = Object.values(statuses).filter((s) => s.status === 'offline').length
   const totalCities = allCities.length
 
@@ -185,6 +99,7 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
       <div className="dss-header">
         <div className="dss-summary">
           <span className="dss-count dss-count--live">{liveCount} LIVE</span>
+          {staleCount > 0 && <span className="dss-count dss-count--stale">{staleCount} STALE</span>}
           {offlineCount > 0 && <span className="dss-count dss-count--offline">{offlineCount} OFFLINE</span>}
           <span className="dss-count dss-count--cities">{totalCities} CITIES</span>
         </div>
@@ -200,14 +115,18 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="dss-list">
-        {SOURCES.map((src) => {
+        {SOURCE_REGISTRY.map((src) => {
           const entry = statuses[src.id]
           const s = entry?.status ?? 'checking'
           return (
-            <div key={src.id} className={`dss-row dss-row--${s}`}>
+            <div key={src.id} className={`dss-row dss-row--${s}`} title={entry?.note}>
               <span className="dss-dot" style={{ background: s === 'live' ? 'var(--emerald)' : s === 'offline' ? '#ef4444' : s === 'checking' ? 'var(--dim)' : 'var(--amber)' }} />
-              <span className="dss-source-label">{src.label}</span>
+              <span className="dss-source-main">
+                <span className="dss-source-label">{src.label}</span>
+                {entry?.note && <span className="dss-source-note">{entry.note}</span>}
+              </span>
               <span className="dss-source-zone" style={{ color: ZONE_COLOR[src.zone] }}>{src.zone}</span>
+              <span className="dss-source-age">{src.refreshLabel}</span>
               <span className="dss-source-age">{fmtAge(entry?.checkedAt ?? null)}</span>
               <span className={`dss-badge dss-badge--${s}`}>
                 {s === 'checking' ? '…' : s.toUpperCase()}
@@ -218,7 +137,7 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="dss-footer">
-        Checks run on open · 10min refresh
+        Checks run on open · ages update every 30s · stale means reachable but degraded
       </div>
     </div>
   )
@@ -229,32 +148,33 @@ export function DataSourceStatus({ onClose }: { onClose: () => void }) {
  * Green when all sources live, amber when some stale, red when offline.
  */
 export function DataStatusChip({ onClick }: { onClick: () => void }) {
-  const [allLive, setAllLive] = useState(true)
-  const [hasOffline, setHasOffline] = useState(false)
+  const [status, setStatus] = useState<SourceStatus>('checking')
 
   useEffect(() => {
     const check = async () => {
-      let live = 0, offline = 0
-      await Promise.allSettled(SOURCES.slice(0, 4).map(async (src) => {  // quick probe on 4 core sources
-        try { const ok = await src.check(); ok ? live++ : offline++ }
-        catch { offline++ }
-      }))
-      setAllLive(offline === 0)
-      setHasOffline(offline > 0)
+      const coreSources = SOURCE_REGISTRY.filter((source) => CORE_SOURCE_IDS.includes(source.id as typeof CORE_SOURCE_IDS[number]))
+      const results = await Promise.allSettled(coreSources.map((source) => runSourceCheck(source)))
+      if (results.some((r) => r.status === 'rejected' || r.value.status === 'offline')) {
+        setStatus('offline')
+      } else if (results.some((r) => r.status === 'fulfilled' && r.value.status === 'stale')) {
+        setStatus('stale')
+      } else {
+        setStatus('live')
+      }
     }
     check()
     const t = setInterval(check, 5 * 60_000)
     return () => clearInterval(t)
   }, [])
 
-  const color = hasOffline ? '#ef4444' : allLive ? 'var(--emerald)' : 'var(--amber)'
+  const color = status === 'offline' ? '#ef4444' : status === 'live' ? 'var(--emerald)' : 'var(--amber)'
 
   return (
     <button
       className="data-chip"
       onClick={onClick}
-      title="Data source health"
-      aria-label="Data source status"
+      title={`Data source health: ${status}`}
+      aria-label={`Data source status: ${status}`}
     >
       <span className="data-chip-dot" style={{ background: color }} />
       <span className="data-chip-label">FEEDS</span>

@@ -21,6 +21,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
   const [selected, setSelected] = useState<NominatimResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const addCustomCity = useCityStore((s) => s.addCustomCity)
+  const toggleCompareCity = useCityStore((s) => s.toggleCompareCity)
   const debounceRef = useRef<number>(0)
 
   const handleSearch = useCallback(async (q: string) => {
@@ -59,6 +60,33 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     setSelected(null)
   }
 
+  const handleAddAndPin = () => {
+    if (!selected) return
+    const config = nominatimToCityConfig(selected)
+    addCustomCity(config)
+    toggleCompareCity(config.id)
+    onClose()
+    setQuery('')
+    setResults([])
+    setSelected(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && selected) {
+      e.preventDefault()
+      handleAdd()
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (results.length === 0) return
+      const current = Math.max(0, results.findIndex((r) => r.place_id === selected?.place_id))
+      const next = e.key === 'ArrowDown'
+        ? Math.min(results.length - 1, current + 1)
+        : Math.max(0, current - 1)
+      setSelected(results[next])
+    }
+  }
+
   if (!open) return null
 
   const preview = selected ? nominatimToCityConfig(selected) : null
@@ -81,6 +109,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
             type="text"
             placeholder="e.g. Jakarta, Nairobi, Mexico City..."
             value={query}
+            onKeyDown={handleKeyDown}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
           />
@@ -96,8 +125,10 @@ export function CityOnboardingModal({ open, onClose }: Props) {
                   className={`onboarding-result ${selected?.place_id === r.place_id ? 'onboarding-result--active' : ''}`}
                   onClick={() => setSelected(r)}
                 >
-                  <span className="onboarding-result-name">{r.display_name.split(',')[0]}</span>
-                  <span className="onboarding-result-meta">{r.type} · {r.display_name.split(',').pop()?.trim()}</span>
+                  <span className="onboarding-result-name">{nominatimToCityConfig(r).name}</span>
+                  <span className="onboarding-result-meta">
+                    {r.type} · {r.address?.state ?? r.display_name.split(',').slice(1, -1).pop()?.trim() ?? 'global'} · {r.address?.country ?? r.display_name.split(',').pop()?.trim()}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -116,6 +147,10 @@ export function CityOnboardingModal({ open, onClose }: Props) {
               <div className="onboarding-preview-row">
                 <span>Layers</span>
                 <span>{preview.availableLayers.length} global sources</span>
+              </div>
+              <div className="onboarding-preview-row">
+                <span>Compare</span>
+                <span>Pin up to 4 cities</span>
               </div>
               {nutrition && (
                 <div className="onboarding-nutrition">
@@ -141,7 +176,14 @@ export function CityOnboardingModal({ open, onClose }: Props) {
             onClick={handleAdd}
             disabled={!preview}
           >
-            Add to Dashboard
+            Add
+          </button>
+          <button
+            className="onboarding-btn onboarding-btn--primary"
+            onClick={handleAddAndPin}
+            disabled={!preview}
+          >
+            Add + Pin
           </button>
         </div>
       </div>

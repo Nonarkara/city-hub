@@ -9,6 +9,18 @@ export interface NominatimResult {
   boundingbox: [string, string, string, string] // [s, n, w, e]
   type: string
   class: string
+  addresstype?: string
+  importance?: number
+  address?: {
+    city?: string
+    town?: string
+    village?: string
+    municipality?: string
+    county?: string
+    state?: string
+    country?: string
+    country_code?: string
+  }
 }
 
 export interface GeneratedCity {
@@ -38,10 +50,20 @@ export function nutritionScore(level: NutritionLevel): number {
 
 /** Search Nominatim for city candidates. Free, no key, CORS-safe. */
 export async function searchNominatim(query: string): Promise<NominatimResult[]> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=en`
+  const url =
+    'https://nominatim.openstreetmap.org/search' +
+    `?q=${encodeURIComponent(query)}` +
+    '&format=json&limit=8&addressdetails=1&dedupe=1&accept-language=en'
   const res = await fetch(url, { headers: { 'User-Agent': 'CityHub/1.0' } })
   if (!res.ok) throw new Error(`Nominatim ${res.status}`)
-  return res.json()
+  const results = await res.json() as NominatimResult[]
+  return results
+    .filter((r) => {
+      const t = `${r.class}:${r.type}:${r.addresstype ?? ''}`.toLowerCase()
+      return /place|boundary/.test(t) && !/continent|country|postcode|road|house/.test(t)
+    })
+    .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))
+    .slice(0, 6)
 }
 
 /** Convert Nominatim result → CityConfig. */
@@ -51,9 +73,15 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
   const [s, n, w, e] = result.boundingbox.map(parseFloat)
 
   // Extract city name and country from display_name
-  const parts = result.display_name.split(',').map((p) => p.trim())
-  const name = parts[0]
-  const country = parts[parts.length - 1] ?? 'Unknown'
+  const parts = result.display_name.split(',').map((p) => p.trim()).filter(Boolean)
+  const name =
+    result.address?.city ??
+    result.address?.town ??
+    result.address?.village ??
+    result.address?.municipality ??
+    parts[0] ??
+    'Unnamed place'
+  const country = result.address?.country ?? parts[parts.length - 1] ?? 'Unknown'
 
   // Generate a unique slug id (name + country to avoid collisions)
   const countrySlug = country.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -81,7 +109,7 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
   return {
     id,
     name,
-    country: countryCode(country),
+    country: countryCode(country, result.address?.country_code),
     center: [lon, lat],
     zoom: 11,
     bbox: [w, s, e, n],
@@ -95,7 +123,7 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
     populationMillions: 1.0,       // placeholder — update after adding city
     founded: undefined,
     climate: 'Unknown — add locally',
-    distinctiveness: `${name}, ${country}. Auto-generated city config.`,
+    distinctiveness: `${name}, ${country}. Auto-generated global city config from OpenStreetMap. Local civic feeds can be attached later.`,
     kpis: [
       { label: 'POPULATION', value: '—' },
       { label: 'SMART SCORE', value: '—' },
@@ -113,7 +141,8 @@ export function computeNutrition(city: CityConfig): NutritionLevel {
   return 'instant-noodle'
 }
 
-function countryCode(countryName: string): string {
+function countryCode(countryName: string, iso2?: string): string {
+  if (iso2 && /^[a-z]{2}$/i.test(iso2)) return iso2.toUpperCase()
   const map: Record<string, string> = {
     'Thailand': 'TH',
     'Singapore': 'SG',
@@ -147,5 +176,7 @@ const LITE_LAYERS = [
   'weather-owm',
   'sat-true-color',
   'sat-night-lights',
+  'sat-esri',
+  'sat-sentinel2',
   'sat-ndvi',
 ]
