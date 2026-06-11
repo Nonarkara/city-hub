@@ -5824,7 +5824,7 @@
 .city-facts-card {
   position: fixed;
   top: 76px;  /* clears topbar + ribbon */
-  left: 8px;
+  left: 228px;  /* snap: just past the 220px left rail into the map zone */
   z-index: var(--z-overlay);
   width: 204px;
   max-height: calc(100vh - 156px);
@@ -5903,6 +5903,63 @@
 .cfc-close:hover {
   color: var(--amber);
   border-color: var(--amber);
+}
+
+.cfc-actions {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+/* Minimized strip — 36px tall, full-width clickable row */
+.city-facts-card--minimized {
+  width: 204px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+.cfc-minimize-strip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+.cfc-minimize-strip:hover {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.cfc-strip-hint {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  opacity: 0.5;
+  margin-left: auto;
+}
+
+.cfc-strip-caret {
+  font-size: 9px;
+  color: var(--amber);
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+.city-facts-card--minimized .cfc-close {
+  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .cfc-facts {

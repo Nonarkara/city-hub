@@ -6,7 +6,7 @@
  * coordinates, the one-line distinctiveness sentence.
  *
  * Auto-dismisses on map interaction (the moment the user starts exploring).
- * Skippable via × button.
+ * Skippable via × button. Minimizable to a 36px strip via ▾ button.
  *
  * The point: a tourist, journalist, or new analyst lands here and within
  * 30 seconds knows more about the city than 99% of visitors. UNL has
@@ -21,26 +21,49 @@ interface Props {
 
 export function CityFactsCard({ activeCity }: Props) {
   const [visible, setVisible] = useState(true)
+  const [minimized, setMinimized] = useState(false)
   const [introCityId, setIntroCityId] = useState(activeCity.id)
 
-  // Re-show on every city change
+  // Re-show expanded on every city change
   useEffect(() => {
     if (introCityId !== activeCity.id) {
       setIntroCityId(activeCity.id)
       setVisible(true)
+      setMinimized(false)
     }
   }, [activeCity.id, introCityId])
 
-  // Auto-dismiss after 12s
+  // Auto-dismiss after 12s — paused when minimized (user chose to keep it)
   useEffect(() => {
-    if (!visible) return
+    if (!visible || minimized) return
     const t = setTimeout(() => setVisible(false), 12_000)
     return () => clearTimeout(t)
-  }, [visible, activeCity.id])
+  }, [visible, minimized, activeCity.id])
 
   if (!visible) return null
 
   const coordStr = `${Math.abs(activeCity.center[1]).toFixed(4)}°${activeCity.center[1] >= 0 ? 'N' : 'S'} · ${Math.abs(activeCity.center[0]).toFixed(4)}°${activeCity.center[0] >= 0 ? 'E' : 'W'}`
+
+  if (minimized) {
+    return (
+      <aside
+        className="city-facts-card city-facts-card--minimized"
+        role="complementary"
+        aria-label={`Introduction to ${activeCity.name} (minimized)`}
+      >
+        <button
+          className="cfc-minimize-strip"
+          onClick={() => setMinimized(false)}
+          aria-label={`Expand city introduction for ${activeCity.name}`}
+        >
+          <span className="cfc-eyebrow">{activeCity.name.toUpperCase()}</span>
+          <span className="cfc-strip-hint">CITY INTRO</span>
+          <span className="cfc-strip-caret">▸</span>
+        </button>
+        <button className="cfc-close" onClick={() => setVisible(false)} aria-label="Dismiss city introduction">✕</button>
+      </aside>
+    )
+  }
 
   return (
     <aside className="city-facts-card" role="complementary" aria-label={`Introduction to ${activeCity.name}`}>
@@ -52,7 +75,10 @@ export function CityFactsCard({ activeCity }: Props) {
             <div className="cfc-name-local" lang="th">{activeCity.nameLocal}</div>
           )}
         </div>
-        <button className="cfc-close" onClick={() => setVisible(false)} aria-label="Dismiss city introduction">✕</button>
+        <div className="cfc-actions">
+          <button className="cfc-close" onClick={() => setMinimized(true)} aria-label="Minimize city introduction">▾</button>
+          <button className="cfc-close" onClick={() => setVisible(false)} aria-label="Dismiss city introduction">✕</button>
+        </div>
       </header>
 
       <div className="cfc-facts">
