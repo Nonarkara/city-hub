@@ -20,7 +20,7 @@ type Tab = 'shadow' | 'balance' | 'lights'
 
 // ── Row sub-components ────────────────────────────────────────────────────────
 
-function ShadowRow({ d, max }: { d: DOPADistrict; max: number }) {
+function ShadowRow({ d }: { d: DOPADistrict }) {
   const regPct  = Math.round((d.registered / d.estimatedActual) * 100)
   const color   = d.shadowRatio >= 2.0 ? '#f97316'
                 : d.shadowRatio >= 1.6 ? '#f59e0b'
@@ -145,7 +145,7 @@ export function PopulationRealityPanel() {
       </div>
 
       <div className="pop-list">
-        {tab === 'shadow'  && rows.map((r) => <ShadowRow  key={r.name_th} d={r} max={maxVal} />)}
+        {tab === 'shadow'  && rows.map((r) => <ShadowRow  key={r.name_th} d={r} />)}
         {tab === 'balance' && rows.map((r) => <BalanceRow key={r.name_th} d={r} max={maxVal} />)}
         {tab === 'lights'  && rows.map((r) => <LightsRow  key={r.name_th} d={r} max={maxVal} />)}
       </div>

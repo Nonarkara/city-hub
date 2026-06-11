@@ -231,11 +231,11 @@ export default function App() {
 
       {forecastOpen && <ForecastPanel activeCity={activeCity} />}
 
-      <NewsTicker activeCity={activeCity} />
+      {!splitOpen && <NewsTicker activeCity={activeCity} />}
 
-      <SituationBrief allCities={allCities} />
-      <CopernicusAlert />
-      <DisasterAlerts />
+      {!splitOpen && <SituationBrief allCities={allCities} />}
+      {!splitOpen && <CopernicusAlert />}
+      {!splitOpen && <DisasterAlerts />}
       {bangkokMode && <SmokeConeOverlay map={map} activeCity={activeCity} visible={smokeVisible} />}
 
 
@@ -615,30 +615,32 @@ export default function App() {
         }}
       />
 
-      {showComparison ? (
-        <ComparisonPanel />
-      ) : bangkokMode ? (
-        districtComparePair ? (
-          <DistrictComparePanel />
-        ) : governorMode
-          ? (selectedDistrict
-              ? (
-                <DistrictPanel
-                  district={selectedDistrict}
-                  onClose={() => setSelectedDistrict(null)}
-                  onDraft={setAppDraft}
-                />
+      {!splitOpen && (
+        showComparison ? (
+          <ComparisonPanel />
+        ) : bangkokMode ? (
+          districtComparePair ? (
+            <DistrictComparePanel />
+          ) : governorMode
+            ? (selectedDistrict
+                ? (
+                  <DistrictPanel
+                    district={selectedDistrict}
+                    onClose={() => setSelectedDistrict(null)}
+                    onDraft={setAppDraft}
+                  />
+                )
+                : <AlertPanel />
               )
-              : <AlertPanel />
+            : (
+              <>
+                <LayerRail activeIds={activeLayers} onToggle={toggleLayer} />
+                <DataFeedPanel />
+              </>
             )
-          : (
-            <>
-              <LayerRail activeIds={activeLayers} onToggle={toggleLayer} />
-              <DataFeedPanel />
-            </>
-          )
-      ) : (
-        <LiteCityPanel activeCity={activeCity} />
+        ) : (
+          <LiteCityPanel activeCity={activeCity} />
+        )
       )}
     </Suspense>
   )
