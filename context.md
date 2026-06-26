@@ -205,3 +205,24 @@ npx wrangler pages deploy dist --project-name unl-city-hub
 ```
 
 Note: Vite bakes `VITE_*` vars at build time — for CI-based deploys, set them in Cloudflare Pages → Settings → Environment Variables (Build only, not Secrets) so they're available during `npm run build`. Current approach is local build + wrangler deploy, which picks up `.env.local`.
+
+---
+
+## Mapbox public token (2026-06-26)
+
+Basemap rendering uses **Mapbox GL JS** (`src/components/MapView.tsx`), not UNL tiles — see README / STORY.md for the May 2026 migration.
+
+| Field | Value |
+|--------|--------|
+| **Env var** | `VITE_MAPBOX_ACCESS_TOKEN` (local: `.env.local`; Cloudflare Pages: build env) |
+| **Token identifier** | Mapbox user `nonarkara`; public token suffix `…aLTw` (last 4 chars only — full value never in git) |
+| **URL allowlist** | `*.pages.dev`, `*.nonarkara.org` (configured in Mapbox account → token restrictions) |
+| **Restricted on** | 2026-06-26 |
+
+**Operational notes**
+
+- Vite inlines `VITE_*` at build time — rotate or restrict the token in Mapbox, then rebuild and redeploy Pages.
+- URL allowlisting limits *which origins* may use the token in the browser; the token still ships in the client bundle. Treat it as a public token with usage bounds, not a secret.
+- Primary production host (README): https://city-hub.pages.dev — Wrangler project name `city-hub`.
+- Legacy hostnames in older notes (`unl-city-hub.pages.dev`, `unl.nonarkara.org`) may still be on the `*.nonarkara.org` / `*.pages.dev` patterns if DNS points at the same Pages project.
+
