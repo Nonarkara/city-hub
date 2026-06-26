@@ -28,6 +28,45 @@ const MAX_BACK  = 30
 // MAX_PANES = 8 (enforced via panel-count button presets: 2 / 4 / 6 / 8)
 const MIN_PANES = 2
 
+// ── Live traffic overlay (global) ─────────────────────────────────────────────
+// Mapbox Traffic v1 is a worldwide vector tileset — it drops onto any MapLibre
+// map for ANY city using the existing Mapbox token. No Google billing, no rebuild.
+const MAPBOX_TOKEN  = (import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string) ?? ''
+const TRAFFIC_SRC   = 'mb-traffic'
+const TRAFFIC_LAYER = 'mb-traffic-line'
+const TRAFFIC_TILES = `https://api.mapbox.com/v4/mapbox.mapbox-traffic-v1/{z}/{x}/{y}.vector.pbf?access_token=${MAPBOX_TOKEN}`
+
+/** Add or remove the live-traffic overlay on a pane's map. Works for every city. */
+function applyTraffic(map: MapLibreMap, on: boolean) {
+  if (!map.isStyleLoaded()) return  // caller retries on 'idle' / 'styledata'
+  const hasSrc = !!map.getSource(TRAFFIC_SRC)
+  if (on && !hasSrc) {
+    map.addSource(TRAFFIC_SRC, { type: 'vector', tiles: [TRAFFIC_TILES], maxzoom: 16 })
+    map.addLayer({
+      id: TRAFFIC_LAYER,
+      type: 'line',
+      source: TRAFFIC_SRC,
+      'source-layer': 'traffic',
+      paint: {
+        // standard congestion ramp (green → amber → orange → red) — semantic, not decorative
+        'line-color': [
+          'match', ['get', 'congestion'],
+          'low',      '#22c55e',
+          'moderate', '#f59e0b',
+          'heavy',    '#fb8c00',
+          'severe',   '#e53935',
+          '#22c55e',
+        ],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 12, 2.6, 16, 5],
+        'line-opacity': 0.85,
+      },
+    })
+  } else if (!on && hasSrc) {
+    if (map.getLayer(TRAFFIC_LAYER)) map.removeLayer(TRAFFIC_LAYER)
+    map.removeSource(TRAFFIC_SRC)
+  }
+}
+
 interface PaneState {
   cityId:  string
   basemap: BasemapId
@@ -52,7 +91,7 @@ function prettyDate(date: string): string {
 // Single map pane
 // ─────────────────────────────────────────────────────────────────────────────
 function CompareMapPane({
-  state, onChange, onRemove, cities, tokenAvailable, index, canRemove,
+  state, onChange, onRemove, cities, tokenAvailable, index, canRemove, trafficOn,
 }: {
   state:          PaneState
   onChange:       (next: PaneState) => void
@@ -61,12 +100,14 @@ function CompareMapPane({
   tokenAvailable: boolean
   index:          number
   canRemove:      boolean
+  trafficOn:      boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<MapLibreMap | null>(null)
   const curBasemap   = useRef(state.basemap)
   const curDate      = useRef(state.date)
   const curCity      = useRef(state.cityId)
+  const trafficOnRef = useRef(trafficOn)
 
   const city = cities.find((c) => c.id === state.cityId) ?? cities[0]
 
@@ -83,11 +124,24 @@ function CompareMapPane({
       attributionControl: { compact: true },
     })
     mapRef.current = map
+    // Re-apply the traffic overlay after every basemap/lens swap (setStyle wipes
+    // added layers). 'styledata' fires when the new style settles; applyTraffic
+    // self-guards on isStyleLoaded() and is idempotent, so repeat calls are safe.
+    map.on('styledata', () => applyTraffic(map, trafficOnRef.current))
     const ro = new ResizeObserver(() => map.resize())
     ro.observe(containerRef.current)
     return () => { ro.disconnect(); map.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Toggle traffic without changing the basemap
+  useEffect(() => {
+    trafficOnRef.current = trafficOn
+    const map = mapRef.current
+    if (!map) return
+    if (map.isStyleLoaded()) applyTraffic(map, trafficOn)
+    else map.once('idle', () => applyTraffic(map, trafficOnRef.current))
+  }, [trafficOn])
 
   useEffect(() => {
     const map = mapRef.current
@@ -199,6 +253,9 @@ export function SplitCompare() {
   const tokenAvailable = hasMapboxToken()
   const today          = activeDate || todayStr()
 
+  // Live traffic overlay — applied to every pane at once (needs the Mapbox token)
+  const [trafficOn, setTrafficOn] = useState(false)
+
   // Start with 2 panes, seeded with different lenses on the same city
   const [panes, setPanes] = useState<PaneState[]>([
     { cityId: activeCity.id, basemap: DEFAULT_LENSES[0], date: today },
@@ -244,6 +301,7 @@ export function SplitCompare() {
             tokenAvailable={tokenAvailable}
             index={i}
             canRemove={count > MIN_PANES}
+            trafficOn={trafficOn}
           />
         ))}
       </div>
@@ -279,6 +337,15 @@ export function SplitCompare() {
             </button>
           ))}
         </div>
+
+        {tokenAvailable && (
+          <button
+            className={`split-count-btn split-traffic-btn ${trafficOn ? 'split-count-btn--active' : ''}`}
+            onClick={() => setTrafficOn((v) => !v)}
+            title="Live traffic overlay — Mapbox, shown across every pane / city"
+            aria-pressed={trafficOn}
+          >▦ TRAFFIC</button>
+        )}
 
         <button
           className="split-toolbar-btn split-toolbar-btn--exit"

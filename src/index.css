@@ -1350,6 +1350,9 @@
 .split-count-btn:hover             { border-color: var(--amber); color: var(--amber); }
 .split-count-btn--active           { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.08); }
 
+/* Traffic toggle floats right, away from the panel-count presets */
+.split-traffic-btn { margin-left: auto; }
+
 .split-toolbar-btn {
   background: transparent;
   border: 1px solid var(--line);
