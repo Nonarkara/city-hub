@@ -778,3 +778,41 @@ export const CITIES: CityConfig[] = [
     }
   },
 ]
+
+// ── Region grouping for city pickers ──────────────────────────────────────────
+// Thailand is split out of ASEAN (it's the home region); everything else maps by
+// country code. Used to render <optgroup>s so the city dropdown stays scannable.
+export const REGION_ORDER = [
+  'Thailand', 'ASEAN', 'Eastern Europe', 'Western Europe', 'Asia-Pacific', 'Americas', 'Other',
+] as const
+
+const COUNTRY_REGION: Record<string, (typeof REGION_ORDER)[number]> = {
+  TH: 'Thailand',
+  SG: 'ASEAN', MY: 'ASEAN', ID: 'ASEAN', PH: 'ASEAN', VN: 'ASEAN', KH: 'ASEAN', LA: 'ASEAN', MM: 'ASEAN', BN: 'ASEAN',
+  PL: 'Eastern Europe', CZ: 'Eastern Europe', HU: 'Eastern Europe', RO: 'Eastern Europe', EE: 'Eastern Europe',
+  LT: 'Eastern Europe', LV: 'Eastern Europe', BG: 'Eastern Europe', RS: 'Eastern Europe', SI: 'Eastern Europe',
+  SK: 'Eastern Europe', HR: 'Eastern Europe', UA: 'Eastern Europe',
+  ES: 'Western Europe', FR: 'Western Europe', DE: 'Western Europe', IT: 'Western Europe', PT: 'Western Europe',
+  NL: 'Western Europe', BE: 'Western Europe', GB: 'Western Europe', IE: 'Western Europe', AT: 'Western Europe', CH: 'Western Europe',
+  AU: 'Asia-Pacific', NZ: 'Asia-Pacific', JP: 'Asia-Pacific', KR: 'Asia-Pacific', CN: 'Asia-Pacific',
+  IN: 'Asia-Pacific', TW: 'Asia-Pacific', HK: 'Asia-Pacific',
+  BR: 'Americas', US: 'Americas', CA: 'Americas', MX: 'Americas', AR: 'Americas', CL: 'Americas',
+}
+
+export function cityRegion(city: CityConfig): (typeof REGION_ORDER)[number] {
+  return COUNTRY_REGION[city.country] ?? 'Other'
+}
+
+/** Group cities by region in REGION_ORDER; empty regions are dropped. */
+export function groupCitiesByRegion(cities: CityConfig[]): Array<{ region: string; cities: CityConfig[] }> {
+  const byRegion = new Map<string, CityConfig[]>()
+  for (const c of cities) {
+    const r = cityRegion(c)
+    const bucket = byRegion.get(r) ?? []
+    bucket.push(c)
+    byRegion.set(r, bucket)
+  }
+  return REGION_ORDER
+    .filter((r) => byRegion.has(r))
+    .map((r) => ({ region: r, cities: byRegion.get(r)! }))
+}

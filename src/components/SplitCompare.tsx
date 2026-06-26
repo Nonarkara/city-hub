@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Map as MapLibreMap } from 'maplibre-gl'
-import { CITIES, type CityConfig, type BasemapId } from '../config/cities'
+import { CITIES, groupCitiesByRegion, type CityConfig, type BasemapId } from '../config/cities'
 import { useCityStore } from '../store/cityStore'
 import { useUIStore } from '../store/uiStore'
 import {
@@ -188,8 +188,12 @@ function CompareMapPane({
           onChange={(e) => onChange({ ...state, cityId: e.target.value })}
           aria-label="City"
         >
-          {cities.map((c) => (
-            <option key={c.id} value={c.id}>{c.hudClockLabel} · {c.name}</option>
+          {groupCitiesByRegion(cities).map((g) => (
+            <optgroup key={g.region} label={g.region.toUpperCase()}>
+              {g.cities.map((c) => (
+                <option key={c.id} value={c.id}>{c.hudClockLabel} · {c.name}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
 

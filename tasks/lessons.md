@@ -1,5 +1,21 @@
 # Lessons — UNL City Hub
 
+## 2026-06-26 · city-hub Pages project is NOT git-auto-deployed (deploy = build + wrangler)
+- **What went wrong:** Twice told Dr Non "pushed, refresh in ~3 min" assuming a `git push` to the GitHub repo auto-builds Cloudflare Pages. It does not. `wrangler pages project list` shows `city-hub` with **Git Provider: No**; production sat on commit `a3c6f31` for 2 weeks while I pushed commits to GitHub that never went live.
+- **Correct behaviour:** Deploy is **manual, local-build + direct upload**:
+  `npm run build` (Vite inlines `VITE_*` from `.env.local` at build time) → `wrangler pages deploy dist --project-name=city-hub --branch=main`. The main alias `city-hub.pages.dev` updates within seconds.
+- **How to recognise:** `git push` alone never changes the live site. Confirm with `wrangler pages deployment list --project-name=city-hub` or `curl -s https://city-hub.pages.dev/ | grep index-` (bundle hash changes). `unl-city-hub.pages.dev` is the older secondary alias; active prod is `city-hub`.
+
+## 2026-06-26 · Preview sandbox blocks external map tiles — verify maps on the deployed site via Chrome MCP
+- **What went wrong:** Spent many cycles trying to verify the Mapbox traffic overlay in the Claude Preview sandbox. The sandbox iframe blocks external tile servers (NASA GIBS = `Failed to fetch (0)`, Mapbox tiles never requested), so panes render **black** and `map.isStyleLoaded()` stays false → the overlay (correctly) never applies. Looked like a code bug; it was the environment.
+- **Correct behaviour:** A direct `fetch()` from `preview_eval` *can* reach the tile servers (different context) — use it to prove endpoint+token work (Mapbox traffic tile `200`, 44 KB). To verify maps actually **render**, use the **Chrome MCP** (`mcp__Claude_in_Chrome__*`) against the deployed URL — a real browser, no sandbox CORS wall. That's where the traffic congestion lines showed.
+- **How to recognise:** Maps black in preview but open-meteo etc. return 200; console shows `AJAXError: Failed to fetch (0)` for tile hosts. Verify on the deployed site, not in preview.
+
+## 2026-06-26 · Stale SPA after redeploy → "Failed to fetch dynamically imported module"
+- **What went wrong:** After deploying, opening Split in the browser threw `Failed to fetch dynamically imported module: .../SplitCompare-<oldhash>.js` → ErrorBoundary ("SYSTEM ERROR"). The browser had the **old cached `index.html` shell** referencing lazy-chunk hashes the new deploy deleted.
+- **Correct behaviour:** Not a code bug. Hard-reload / cache-bust (`?cb=...`) or visit the deployment-specific subdomain for the fresh shell. A normal user reload fixes it.
+- **How to recognise:** `Failed to fetch dynamically imported module` naming a chunk hash that 404s, right after a redeploy.
+
 ## 2026-06-10 · Grid snap system — floating panels obstructing map
 
 - **What went wrong:** `.small-multiples-wrap` and `.multicity-chart-wrap` were positioned at `right: 340px` with `width: 340px`. At 1456px viewport the SmallMultiplesGrid was covering x:776–1116 — deep inside the map center zone. Map visible area shrank to ~245px wide. The `.counterpart-strip` bled from `left:220px` all the way to `right:0`, running under the right panel instead of stopping at its left edge. `.compare-panel` had a hard-coded `z-index: 20` outside the design system z-scale. Topbar mode buttons ("SIT ROOM", "ACTION CENTER") wrapped at 1280–1400px viewport widths.
