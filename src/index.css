@@ -1184,12 +1184,25 @@
 .split-grid--2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr; }
 .split-grid--3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; }
 .split-grid--4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.split-grid--6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.split-grid--8 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+
+/* Tablet: 6/8 collapse to 2 columns so panes stay legible */
+@media (max-width: 1100px) {
+  .split-grid--6, .split-grid--8 {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: unset;
+    grid-auto-rows: 1fr;
+  }
+}
 
 /* Mobile: always stack in a single column */
 @media (max-width: 767px) {
-  .split-grid--2, .split-grid--3, .split-grid--4 {
+  .split-grid--2, .split-grid--3, .split-grid--4,
+  .split-grid--6, .split-grid--8 {
     grid-template-columns: 1fr;
     grid-template-rows: unset;
+    grid-auto-rows: 60vh;
   }
 }
 
@@ -7613,6 +7626,29 @@
   color: var(--dim);
   opacity: 0.5;
 }
+
+/* Legal fine print — must stay legible on the dark card (§11.10) */
+.about-legal { margin: 6px 0 0; }
+.about-legal p {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.55;
+  color: rgba(245, 245, 240, 0.72);
+  margin: 0 0 8px;
+}
+.about-legal p:last-child { margin-bottom: 0; }
+.about-legal strong { color: var(--fg); font-weight: 600; }
+
+.about-link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  text-decoration: none;
+  transition: opacity 0.12s;
+}
+.about-link:hover { opacity: 0.7; text-decoration: underline; }
+.about-link .ext-icon { font-size: 0.85em; margin-left: 2px; opacity: 0.8; }
 
 /* ── Topbar right cluster ─────────────────────────────────────────────────── */
 .topbar-right {

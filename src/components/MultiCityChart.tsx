@@ -20,7 +20,8 @@ interface CitySeries {
   peakLevel: string
 }
 
-const CITY_COLORS = ['#f59e0b', '#58a6ff', '#e53935', '#8bc34a']
+// Amber leads (house primary); rest are distinct data hues for series separation.
+const CITY_COLORS = ['#f59e0b', '#58a6ff', '#e53935', '#8bc34a', '#fdd835', '#ce93d8', '#4dd0e1', '#ff8a65']
 
 export function MultiCityChart() {
   const compareSet = useCityStore((s) => s.compareSet)
@@ -30,7 +31,7 @@ export function MultiCityChart() {
 
   const cities = useMemo(() => {
     const ids = compareSet.length >= 2 ? compareSet : [activeCity.id]
-    return allCities.filter((c) => ids.includes(c.id)).slice(0, 4)
+    return allCities.filter((c) => ids.includes(c.id)).slice(0, 8)
   }, [compareSet, allCities, activeCity])
 
   const [series, setSeries] = useState<CitySeries[]>([])

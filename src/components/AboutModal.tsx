@@ -95,9 +95,51 @@ export function AboutModal() {
           ))}
         </div>
 
+        <div className="about-divider" />
+
+        <div className="about-sources-label">LEGAL · IP · DATA</div>
+        <div className="about-legal">
+          <p>
+            <strong>Intellectual property.</strong> Dr Non's City Hub — its concept,
+            the SLIC / AMPI indexing methodology, the data architecture, the design
+            system, and the source code — is the intellectual property of
+            Non&nbsp;Arkaraprasertkul (Dr&nbsp;Non&nbsp;Arkara).
+            © 2026. All rights reserved. Reuse, white-labelling, or redeployment for a
+            city or client requires a written licence.
+          </p>
+          <p>
+            <strong>Privacy — GDPR &amp; PDPA.</strong> This dashboard renders publicly
+            available open data only. It collects no personal data, sets no advertising
+            cookies, and runs no third-party analytics or tracking. Compliant by design
+            with the EU GDPR and Thailand's PDPA — there is no personal data to process.
+          </p>
+          <p>
+            <strong>Systems.</strong> Built and self-hosted by Dr&nbsp;Non — a static
+            client (React + Vite) delivered at the edge via Cloudflare Pages, with live
+            data proxied through a single Cloudflare Worker. The open data sources listed
+            above remain the property of their respective providers and are used under
+            their public terms.
+          </p>
+        </div>
+
+        <div className="about-divider" />
+
+        <div className="about-footer-row">
+          <a
+            className="about-link"
+            href="mailto:non@nonarkara.org"
+          >non@nonarkara.org</a>
+          <a
+            className="about-link"
+            href="https://www.linkedin.com/in/drnon/"
+            target="_blank"
+            rel="noreferrer"
+          >linkedin.com/in/drnon <span className="ext-icon" aria-hidden>↗</span></a>
+        </div>
+
         <div className="about-footer-row">
           <span className="about-footer-dim">hub.nonarkara.org</span>
-          <span className="about-footer-dim">open source · self-hosted</span>
+          <span className="about-footer-dim">self-hosted · © 2026 Non Arkaraprasertkul</span>
         </div>
       </div>
     </div>

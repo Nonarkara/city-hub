@@ -34,7 +34,7 @@ export const useCityStore = create<CityStore>()(
         const has = compareSet.includes(cityId)
         const next = has
           ? compareSet.filter((id) => id !== cityId)
-          : compareSet.length >= 4
+          : compareSet.length >= 8
             ? compareSet
             : [...compareSet, cityId]
         set({ compareSet: next, compareMode: next.length >= 2 })

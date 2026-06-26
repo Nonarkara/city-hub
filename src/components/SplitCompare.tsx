@@ -1,16 +1,18 @@
 /**
- * SplitCompare — up to 4 independent satellite panes.
+ * SplitCompare — up to 8 independent satellite panes.
  *
  * Each pane has its own city + lens + date — so you can compare:
  *   - city vs city         (BKK NDVI | SIN NDVI | CNX true-color)
  *   - then vs now          (BKK aerosol today | BKK aerosol −30d)
  *   - lens vs lens         (BKK true-color | BKK surface-heat | BKK CO)
- *   - any combination of the above, 4-ways
+ *   - any combination of the above, up to 8-ways
  *
- * Grid layouts:
+ * Grid layouts (presets 2 / 4 / 6 / 8):
  *   2 panes → side by side (or stacked on mobile)
  *   3 panes → 3 columns
  *   4 panes → 2 × 2 grid
+ *   6 panes → 3 × 2 grid
+ *   8 panes → 4 × 2 grid
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Map as MapLibreMap } from 'maplibre-gl'
@@ -23,7 +25,7 @@ import {
 
 const MS_DAY    = 86_400_000
 const MAX_BACK  = 30
-// MAX_PANES = 4 (enforced via button click handlers)
+// MAX_PANES = 8 (enforced via panel-count button presets: 2 / 4 / 6 / 8)
 const MIN_PANES = 2
 
 interface PaneState {
@@ -184,6 +186,7 @@ function CompareMapPane({
 // Seeded lens presets so each new pane starts with something meaningfully different
 const DEFAULT_LENSES: BasemapId[] = [
   'nasa-true-color', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-aerosol',
+  'esri-imagery', 'nasa-nightlights', 'sentinel-cloudless', 'nasa-co',
 ]
 
 export function SplitCompare() {
@@ -223,12 +226,10 @@ export function SplitCompare() {
     return () => window.removeEventListener('keydown', onKey)
   }, [setSplitOpen])
 
-  // Grid class based on count
-  const gridClass = count === 4
-    ? 'split-grid split-grid--4'
-    : count === 3
-    ? 'split-grid split-grid--3'
-    : 'split-grid split-grid--2'
+  // Grid class based on count. Odd counts (from removing a pane) bucket up to the
+  // next even grid; the trailing empty cell just shows the gap colour.
+  const bucket = count <= 2 ? 2 : count === 3 ? 3 : count <= 4 ? 4 : count <= 6 ? 6 : 8
+  const gridClass = `split-grid split-grid--${bucket}`
 
   return (
     <div className="split-compare">
@@ -251,7 +252,7 @@ export function SplitCompare() {
         <span className="split-toolbar-title">SPLIT COMPARE</span>
 
         <div className="split-panel-count" role="group" aria-label="Panel count">
-          {[2, 3, 4].map((n) => (
+          {[2, 4, 6, 8].map((n) => (
             <button
               key={n}
               className={`split-count-btn ${count === n ? 'split-count-btn--active' : ''}`}
