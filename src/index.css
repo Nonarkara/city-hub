@@ -1196,13 +1196,36 @@
   }
 }
 
-/* Mobile: always stack in a single column */
+/* Mobile: single-column grid + stacked pane controls */
 @media (max-width: 767px) {
   .split-grid--2, .split-grid--3, .split-grid--4,
   .split-grid--6, .split-grid--8 {
     grid-template-columns: 1fr;
     grid-template-rows: unset;
     grid-auto-rows: 60vh;
+  }
+  .split-pane-controls {
+    flex-direction: column;
+    align-items: stretch;
+    right: 10px;
+  }
+  .split-select {
+    max-width: none;
+    width: 100%;
+  }
+  .split-pane-stats {
+    left: 8px;
+    right: 48px;
+    top: 40px;
+  }
+  .split-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .split-traffic-btn {
+    margin-left: 0;
+    width: 100%;
   }
 }
 
@@ -1232,14 +1255,37 @@
   pointer-events: none;
 }
 
+/* Curated demographics strip — real static data from cities.ts */
+.split-pane-stats {
+  position: absolute;
+  top: 8px;
+  left: 36px;
+  right: 40px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: none;
+}
+.split-pane-stat {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  background: rgba(4, 6, 11, 0.88);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 /* Close button (top-right corner) */
 .split-pane-remove {
   position: absolute;
   top: 6px;
   right: 6px;
-  z-index: 3;
-  width: 24px;
-  height: 24px;
+  z-index: 4;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
   background: rgba(4, 6, 11, 0.88);
   border: 1px solid var(--line);
   color: var(--dim);
@@ -1253,6 +1299,9 @@
 }
 .split-pane:hover .split-pane-remove { opacity: 1; }
 .split-pane-remove:hover { border-color: #e5484d; color: #e5484d; }
+@media (max-width: 767px) {
+  .split-pane-remove { opacity: 1; }
+}
 
 /* Per-pane controls (bottom) */
 .split-pane-controls {
@@ -1282,7 +1331,7 @@
   font-size: 11px;
   letter-spacing: 0.05em;
   padding: 7px 24px 7px 10px;
-  min-height: 36px;
+  min-height: var(--tap-min);
   cursor: pointer;
   max-width: 180px;
 }
@@ -1296,7 +1345,7 @@
   background: rgba(4, 6, 11, 0.92);
   border: 1px solid var(--line);
   padding: 6px 10px;
-  min-height: 36px;
+  min-height: var(--tap-min);
 }
 .split-date-range { width: 90px; accent-color: var(--amber); cursor: pointer; }
 .split-date-label {
@@ -1343,7 +1392,8 @@
   font-size: 10px;
   letter-spacing: 0.08em;
   padding: 4px 9px;
-  min-height: 30px;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
   cursor: pointer;
   transition: all 0.12s;
 }
@@ -1362,7 +1412,8 @@
   font-size: 10px;
   letter-spacing: 0.1em;
   padding: 5px 9px;
-  min-height: 30px;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
   cursor: pointer;
 }
 .split-toolbar-btn:hover { border-color: var(--amber); color: var(--amber); }
@@ -1730,10 +1781,25 @@
   flex-direction: column;
 }
 
+.city-region-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.city-region-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  padding: 10px var(--space-md) 6px;
+  border-bottom: var(--border);
+  background: rgba(4, 6, 11, 0.6);
+}
+
 .city-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: var(--tap-min);
   padding: 0 var(--space-md);
   gap: var(--space-sm);
@@ -1748,6 +1814,14 @@
   cursor: pointer;
   text-align: left;
   transition: background 0.1s, color 0.1s;
+}
+
+.city-item-code {
+  flex: 0 0 36px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--dim);
 }
 
 .city-item:hover {
@@ -1773,6 +1847,8 @@
 }
 
 .city-flag {
+  flex-shrink: 0;
+  margin-left: auto;
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   color: var(--dim);

@@ -171,6 +171,24 @@ function CompareMapPane({
       {/* Pane index badge */}
       <div className="split-pane-badge">{index + 1}</div>
 
+      {city.demographics && (
+        <div className="split-pane-stats" aria-label={`${city.name} comparison stats`}>
+          {city.demographics.greenSpaceM2PerPerson != null && (
+            <span className="split-pane-stat">
+              GRN {city.demographics.greenSpaceM2PerPerson >= 1000
+                ? `${(city.demographics.greenSpaceM2PerPerson / 1000).toFixed(1)}K`
+                : city.demographics.greenSpaceM2PerPerson} m²/p
+            </span>
+          )}
+          {city.demographics.trafficCongestionPct != null && (
+            <span className="split-pane-stat">TRF {city.demographics.trafficCongestionPct}%</span>
+          )}
+          {city.demographics.giniCoefficient != null && (
+            <span className="split-pane-stat">GINI {city.demographics.giniCoefficient.toFixed(2)}</span>
+          )}
+        </div>
+      )}
+
       {/* Close button — only shown when canRemove */}
       {canRemove && (
         <button

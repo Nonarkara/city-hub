@@ -273,7 +273,7 @@ export const CITIES: CityConfig[] = [
     country: 'ES',
     center: [2.1734, 41.3851],
     zoom: 12,
-    bbox: [-2.5, 41.0, 2.5, 41.8],
+    bbox: [2.05, 41.32, 2.23, 41.47],
     timezone: 'Europe/Madrid',
     hudClockLabel: 'BCN',
     countryName: 'Spain',
@@ -814,5 +814,8 @@ export function groupCitiesByRegion(cities: CityConfig[]): Array<{ region: strin
   }
   return REGION_ORDER
     .filter((r) => byRegion.has(r))
-    .map((r) => ({ region: r, cities: byRegion.get(r)! }))
+    .map((r) => ({
+      region: r,
+      cities: [...byRegion.get(r)!].sort((a, b) => a.name.localeCompare(b.name)),
+    }))
 }

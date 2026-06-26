@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import type { CityConfig } from '../config/cities'
-import { CITIES } from '../config/cities'
+import { CITIES, groupCitiesByRegion } from '../config/cities'
 import { useCityStore } from '../store/cityStore'
 import { useSelectionStore } from '../store/selectionStore'
 import { KpiCard } from './KpiCard'
@@ -93,27 +93,35 @@ function CityList({
   onClose?: () => void
   cities: CityConfig[]
 }) {
+  const groups = groupCitiesByRegion(cities)
+
   return (
     <div className="city-list">
-      {cities.map((city) => (
-        <button
-          key={city.id}
-          className={`city-item ${city.id === activeCity.id ? 'active' : ''}`}
-          onClick={() => {
-            onSelect(city)
-            onClose?.()
-          }}
-        >
-          <span className="city-item-name">
-            {city.name}
-            {city.nameLocal && (
-              <span className="city-item-local" data-lang="th">
-                {city.nameLocal}
+      {groups.map((g) => (
+        <div key={g.region} className="city-region-group">
+          <div className="city-region-label">{g.region.toUpperCase()}</div>
+          {g.cities.map((city) => (
+            <button
+              key={city.id}
+              className={`city-item ${city.id === activeCity.id ? 'active' : ''}`}
+              onClick={() => {
+                onSelect(city)
+                onClose?.()
+              }}
+            >
+              <span className="city-item-code">{city.hudClockLabel}</span>
+              <span className="city-item-name">
+                {city.name}
+                {city.nameLocal && (
+                  <span className="city-item-local" data-lang="th">
+                    {city.nameLocal}
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <span className="city-flag">{FLAG[city.country] ?? city.country}</span>
-        </button>
+              <span className="city-flag">{FLAG[city.country] ?? city.country}</span>
+            </button>
+          ))}
+        </div>
       ))}
     </div>
   )

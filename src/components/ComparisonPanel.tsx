@@ -28,6 +28,8 @@ import {
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
 import { fetchCityNews } from '../data/gdelt'
+import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
+import { fetchSingaporePSI, type PSIBundle } from '../data/datagov-sg'
 import { CITY_NIGHT_LIGHTS, adjustedBrightness } from '../lib/night-lights-index'
 
 const POLL_MS   = 5 * 60_000
@@ -36,6 +38,23 @@ const NEWS_TTL  = 15 * 60_000
 
 /** WHO PM2.5 daily guideline: 15 µg/m³ (2021 revision) */
 const WHO_PM25 = 15
+
+/** NEA PSI band colours — Singapore national standard via data.gov.sg */
+function psiBarColor(value: number): string {
+  if (value <= 50)  return '#8bc34a'
+  if (value <= 100) return '#fdd835'
+  if (value <= 200) return '#fb8c00'
+  if (value <= 300) return '#e53935'
+  return '#7e0023'
+}
+
+function psiBandLabel(value: number): string {
+  if (value <= 50)  return 'GOOD'
+  if (value <= 100) return 'MODERATE'
+  if (value <= 200) return 'UNHEALTHY'
+  if (value <= 300) return 'VERY UNHEALTHY'
+  return 'HAZARDOUS'
+}
 
 interface LiveSnapshot {
   aqi:      CityAQI     | null
@@ -161,6 +180,8 @@ export function ComparisonPanel() {
   const [liveLoading, setLive2]   = useState(false)
   const [hist, setHist]           = useState<Record<string, HistSnapshot>>({})
   const [news, setNews]           = useState<Record<string, NewsSnapshot>>({})
+  const [traffy, setTraffy]       = useState<TraffyStats | null>(null)
+  const [sgPsi, setSgPsi]         = useState<PSIBundle | null>(null)
 
   const compareKey = compareSet.join(',')
   useEffect(() => {
@@ -233,6 +254,24 @@ export function ComparisonPanel() {
         setNews((prev) => ({ ...prev, [city.id]: { articles: count, avgTone: tone, sentimentPct } }))
       })
     )
+
+    // Bangkok civic maintenance — Traffy Fondue (only city with open civic API wired)
+    if (cities.some((c) => c.id === 'bangkok')) {
+      cachedFetch('cmp/traffy/stats', () => fetchTraffyStats(), POLL_MS)
+        .then((stats) => { if (!cancelled) setTraffy(stats) })
+        .catch(() => { if (!cancelled) setTraffy(null) })
+    } else {
+      setTraffy(null)
+    }
+
+    // Singapore air quality — NEA PSI via data.gov.sg (only city with national PSI API wired)
+    if (cities.some((c) => c.id === 'singapore')) {
+      cachedFetch('cmp/sg/psi', () => fetchSingaporePSI(), POLL_MS)
+        .then((bundle) => { if (!cancelled) setSgPsi(bundle) })
+        .catch(() => { if (!cancelled) setSgPsi(null) })
+    } else {
+      setSgPsi(null)
+    }
 
     return () => { cancelled = true; clearInterval(timer) }
   }, [compareKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -800,6 +839,135 @@ export function ComparisonPanel() {
               barColor={(v) => v === 0 ? 'var(--emerald)' : v < 3 ? 'var(--amber)' : '#ef4444'}
               fmt={(v) => v === 0 ? 'clean air' : `$${v}M/day`}
             />
+          </section>
+        )}
+
+        {/* ── Urban planning lineage ─────────────────────────────────────── */}
+        {cities.some((c) => c.demographics?.urbanPlanningYear) && (
+          <section className="cmp-section">
+            <div className="cmp-section-label">
+              URBAN PLANNING
+              <span className="cmp-section-sub"> · year of major master plan</span>
+            </div>
+            <MetricRows
+              label="MASTER PLAN YEAR"
+              cities={cities}
+              noWinner
+              getValue={(c) => c.demographics?.urbanPlanningYear ?? null}
+              fmt={(v) => String(v)}
+            />
+          </section>
+        )}
+
+        {/* ── Singapore PSI — data.gov.sg (open API) ─────────────────────── */}
+        {sgPsi && cities.some((c) => c.id === 'singapore') && (
+          <section className="cmp-section">
+            <div className="cmp-section-label">
+              SINGAPORE AIR QUALITY
+              <span className="cmp-section-sub"> · NEA PSI · data.gov.sg · Singapore only · other cities lack national PSI APIs</span>
+            </div>
+
+            <MetricRows
+              label="WORST REGION PSI"
+              unit="24h · lower = cleaner"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => (c.id === 'singapore' ? sgPsi.worst?.psi_24h ?? null : null)}
+              barColor={(v) => psiBarColor(v)}
+              fmt={(v, c) => {
+                if (c.id !== 'singapore') return String(v)
+                const region = sgPsi.worst?.region?.toUpperCase() ?? ''
+                return `${v} · ${region} · ${psiBandLabel(v)}`
+              }}
+            />
+
+            <MetricRows
+              label="PM2.5 · WORST REGION"
+              unit="µg/m³ · 24h"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => (c.id === 'singapore' ? sgPsi.worst?.pm25_24h ?? null : null)}
+              barColor={(v) => RISK_COLOR[pm25ToRisk(v)]}
+              fmt={(v) => v.toFixed(1)}
+            />
+
+            {sgPsi.regions.map((r) => (
+              <MetricRows
+                key={r.region}
+                label={`PSI · ${r.region.toUpperCase()}`}
+                unit="24h regional"
+                cities={cities}
+                lowerIsBetter
+                getValue={(c) => (c.id === 'singapore' ? r.psi_24h ?? null : null)}
+                barColor={(v) => psiBarColor(v)}
+                fmt={(v) => `${v} · ${psiBandLabel(v)}`}
+              />
+            ))}
+          </section>
+        )}
+
+        {/* ── Civic maintenance — Bangkok Traffy (open API) ──────────────── */}
+        {traffy && cities.some((c) => c.id === 'bangkok') && (
+          <section className="cmp-section">
+            <div className="cmp-section-label">
+              CIVIC MAINTENANCE
+              <span className="cmp-section-sub"> · Traffy Fondue · Bangkok only · other cities lack open civic APIs</span>
+            </div>
+
+            <MetricRows
+              label="ACTIVE REPORTS"
+              unit="open citizen tickets"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => (c.id === 'bangkok' ? traffy.active : null)}
+              barColor={() => 'var(--amber)'}
+            />
+
+            <MetricRows
+              label="TOTAL REPORTS"
+              unit="all-time in dataset"
+              cities={cities}
+              noWinner
+              getValue={(c) => (c.id === 'bangkok' ? traffy.total : null)}
+            />
+
+            <MetricRows
+              label="RESOLUTION RATE"
+              unit="% closed"
+              cities={cities}
+              getValue={(c) => {
+                if (c.id !== 'bangkok' || traffy.total === 0) return null
+                return Math.round((traffy.finished / traffy.total) * 100)
+              }}
+              maxOverride={100}
+              fmt={(v) => `${v}%`}
+            />
+
+            <MetricRows
+              label="ACTIVE PER 100K"
+              unit="open tickets per 100k residents"
+              cities={cities}
+              lowerIsBetter
+              getValue={(c) => {
+                if (c.id !== 'bangkok' || c.populationMillions <= 0) return null
+                return Math.round((traffy.active / (c.populationMillions * 1_000_000)) * 100_000)
+              }}
+              barColor={(v) => v <= 50 ? 'var(--emerald)' : v <= 150 ? 'var(--amber)' : '#ef4444'}
+            />
+
+            {Object.entries(traffy.byType)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 4)
+              .map(([type, count]) => (
+                <MetricRows
+                  key={type}
+                  label={type.toUpperCase()}
+                  unit="reports in sample"
+                  cities={cities}
+                  noWinner
+                  getValue={(c) => (c.id === 'bangkok' ? count : null)}
+                />
+              ))}
           </section>
         )}
 

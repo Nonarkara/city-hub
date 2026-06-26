@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BANGKOK_LAYERS } from '../config/bangkok-layers'
 import { useDistrictData, type DistrictSummary } from '../hooks/useDistrictData'
 import type { CityConfig, BasemapId } from '../config/cities'
+import { cityRegion } from '../config/cities'
 import { BASEMAP_GROUPS, getBasemapDef } from './MapView'
 
 type Item =
@@ -118,7 +119,7 @@ export function CommandPalette({
       kind: 'city' as const,
       id: c.id,
       label: c.name.toUpperCase(),
-      sub: `${c.hudClockLabel} · ${c.countryName}${c.id === activeCity.id ? ' · ACTIVE' : ''}`,
+      sub: `${cityRegion(c)} · ${c.hudClockLabel} · ${c.countryName}${c.id === activeCity.id ? ' · ACTIVE' : ''}`,
       city: c,
     }))
 
