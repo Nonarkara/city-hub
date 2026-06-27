@@ -10,6 +10,8 @@ import { bangkokAQI, type BangkokAQI } from '../data/openmeteo-aq'
 import { PM25_COLORS, AQI_COLORS } from '../config/bangkok-layers'
 import { useDistrictData, type DistrictSummary } from '../hooks/useDistrictData'
 import { RISK_COLOR } from '../lib/risk'
+import { prefetchCity } from '../lib/city-prefetch'
+import { STRESS_COLOR, type StressMap } from '../hooks/useCityStress'
 
 // CamelCase name_en → spaced (e.g. "BangKapi" → "Bang Kapi")
 function formatDistrictName(name: string): string {
@@ -281,6 +283,138 @@ export function MobileStrip({
         )}
       </div>
     </>
+  )
+}
+
+// Desktop topbar — region-grouped city dropdown (replaces flat tab strip)
+export function TopbarCityDropdown({
+  activeCity,
+  cities,
+  onSelect,
+  compareSet,
+  onTogglePin,
+  onAddCity,
+  cityStress,
+}: {
+  activeCity: CityConfig
+  cities: CityConfig[]
+  onSelect: (city: CityConfig) => void
+  compareSet: string[]
+  onTogglePin: (id: string) => void
+  onAddCity: () => void
+  cityStress: StressMap
+}) {
+  const [open, setOpen] = useState(false)
+  const groups = groupCitiesByRegion(cities)
+  const stress = cityStress[activeCity.id]
+
+  return (
+    <nav className="topbar-city-wrap topbar-tabs" aria-label="Switch city">
+      <button
+        type="button"
+        className={`topbar-city-select-btn ${open ? 'open' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={`${activeCity.name} — switch city`}
+      >
+        <span className="topbar-city-select-code">{activeCity.hudClockLabel}</span>
+        <span className="topbar-city-select-name">{activeCity.name}</span>
+        {stress && (
+          <span
+            className={`topbar-tab-stress topbar-tab-stress--${stress.level}`}
+            style={{ color: STRESS_COLOR[stress.level] }}
+            title={`City stress: ${stress.score}/100 · ${stress.level.toUpperCase()}`}
+          >
+            {stress.score}
+          </span>
+        )}
+        <span className="chevron" aria-hidden>▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="basemap-menu-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          <ul className="topbar-city-menu basemap-menu" role="listbox" aria-label="Cities by region">
+            {groups.map((g) => (
+              <li key={g.region} role="presentation">
+                <div className="basemap-menu-group">{g.region.toUpperCase()}</div>
+                <ul className="basemap-menu-sublist" role="group" aria-label={g.region}>
+                  {g.cities.map((city) => {
+                    const pinned = compareSet.includes(city.id)
+                    const active = city.id === activeCity.id
+                    const cs = cityStress[city.id]
+                    return (
+                      <li key={city.id} role="none">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          className={`basemap-menu-item topbar-city-menu-item ${active ? 'basemap-menu-item--active' : ''}`}
+                          onClick={() => {
+                            onSelect(city)
+                            setOpen(false)
+                          }}
+                          onMouseEnter={() => prefetchCity(city)}
+                          onFocus={() => prefetchCity(city)}
+                        >
+                          <span
+                            className="basemap-menu-dot"
+                            style={{ background: active ? 'var(--amber)' : 'transparent' }}
+                            aria-hidden
+                          />
+                          <span className="topbar-city-menu-code">{city.hudClockLabel}</span>
+                          <span className="basemap-menu-label">{city.name}</span>
+                          {cs && (
+                            <span
+                              className={`topbar-tab-stress topbar-tab-stress--${cs.level}`}
+                              style={{ color: STRESS_COLOR[cs.level] }}
+                            >
+                              {cs.score}
+                            </span>
+                          )}
+                          <span
+                            className="topbar-city-menu-pin"
+                            role="button"
+                            tabIndex={-1}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onTogglePin(city.id)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                onTogglePin(city.id)
+                              }
+                            }}
+                            title={pinned ? 'Unpin from comparison' : 'Pin for comparison'}
+                            aria-label={pinned ? `Unpin ${city.name}` : `Pin ${city.name} for comparison`}
+                          >
+                            {pinned ? '📌' : '·'}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </li>
+            ))}
+            <li role="presentation" className="topbar-city-menu-footer">
+              <button
+                type="button"
+                className="topbar-city-menu-add"
+                onClick={() => {
+                  setOpen(false)
+                  onAddCity()
+                }}
+              >
+                + ADD CITY
+              </button>
+            </li>
+          </ul>
+        </>
+      )}
+    </nav>
   )
 }
 

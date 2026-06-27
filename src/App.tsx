@@ -4,7 +4,7 @@ import type { CityConfig } from './config/cities'
 import { CITIES } from './config/cities'
 
 import { MapView, defaultBasemap, getBasemapDef, BASEMAP_GROUPS, isTemporalBasemap, hasMapboxToken } from './components/MapView'
-import { CityRail, MobileStrip, TopbarCityButton } from './components/CityRail'
+import { CityRail, MobileStrip, TopbarCityButton, TopbarCityDropdown } from './components/CityRail'
 import { LayerRail } from './components/LayerRail'
 import { DataFeedPanel } from './components/DataFeedPanel'
 import { AlertPanel, DraftModal } from './components/AlertPanel'
@@ -23,7 +23,7 @@ import { useGlobalOverlays } from './components/map-layers/use-global-overlays'
 import { InsightPanel, type InsightTemplate } from './components/InsightPanel'
 import { CityFactsCard } from './components/CityFactsCard'
 import { ActiveInsightBanner } from './components/ActiveInsightBanner'
-import { prefetchCity } from './lib/city-prefetch'
+import { useCityStress } from './hooks/useCityStress'
 import { useCityStore } from './store/cityStore'
 import { useLayerStore } from './store/layerStore'
 import { useUIStore } from './store/uiStore'
@@ -35,8 +35,6 @@ import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
 import { NewsTicker } from './components/NewsTicker'
 import { useCityRisk } from './hooks/useCityRisk'
-import { useCityStress, STRESS_COLOR } from './hooks/useCityStress'
-// RISK_COLOR removed (replaced by STRESS_COLOR)
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { CounterpartStrip } from './components/CounterpartStrip'
 import { MultiCityChart } from './components/MultiCityChart'
@@ -304,52 +302,29 @@ export default function App() {
 
         <div className="topbar-zone-sep" aria-hidden />
 
-        {/* Desktop tab strip — all cities + pin toggle */}
-        <nav className="topbar-tabs" aria-label="Switch city">
-          {allCities.map((city) => {
-            const pinned = compareSet.includes(city.id)
-            return (
-              <button
-                key={city.id}
-                className={`topbar-tab ${city.id === activeCity.id ? 'topbar-tab--active' : ''}`}
-                onClick={() => cityHandler(city)}
-                onMouseEnter={() => prefetchCity(city)}
-                onFocus={() => prefetchCity(city)}
-                title={city.name}
-                aria-label={`Select city: ${city.name}`}
-              >
-                <span
-                  className="topbar-tab-pin"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleCompareCity(city.id)
-                  }}
-                  title={pinned ? 'Unpin from comparison' : 'Pin for comparison'}
-                >
-                  {pinned ? '📌' : '·'}
-                </span>
-                {city.hudClockLabel}
-                {cityStress[city.id] && (
-                  <span
-                    className={`topbar-tab-stress topbar-tab-stress--${cityStress[city.id].level}`}
-                    style={{ color: STRESS_COLOR[cityStress[city.id].level] }}
-                    title={`City stress: ${cityStress[city.id].score}/100 · ${cityStress[city.id].level.toUpperCase()}`}
-                  >
-                    {cityStress[city.id].score}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-          <button
-            className="topbar-tab topbar-tab--add"
-            onClick={() => setOnboardingOpen(true)}
-            title="Add a new city"
-            aria-label="Add a new city"
-          >
-            + ADD
-          </button>
-        </nav>
+        {/* Desktop city picker — region-grouped dropdown */}
+        <TopbarCityDropdown
+          activeCity={activeCity}
+          cities={allCities}
+          onSelect={cityHandler}
+          compareSet={compareSet}
+          onTogglePin={toggleCompareCity}
+          onAddCity={() => setOnboardingOpen(true)}
+          cityStress={cityStress}
+        />
+
+        {/* SPLIT — side-by-side satellite compare (primary action, always visible) */}
+        <button
+          type="button"
+          className={`topbar-split-btn ${splitOpen ? 'topbar-split-btn--active' : ''}`}
+          onClick={() => setSplitOpen(!splitOpen)}
+          title="Split-screen compare — any city / lens / date vs any other (S)"
+          aria-label={splitOpen ? 'Close split compare' : 'Open split compare'}
+          aria-pressed={splitOpen}
+        >
+          <span className="topbar-split-icon" aria-hidden>◫</span>
+          <span className="topbar-split-label">SPLIT</span>
+        </button>
 
         <div className="topbar-spacer" />
 
@@ -527,18 +502,6 @@ export default function App() {
             <span className="topbar-insight-label">SMOKE</span>
           </button>
         )}
-
-        {/* SPLIT — side-by-side satellite compare */}
-        <button
-          className={`topbar-insight-btn ${splitOpen ? 'topbar-insight-btn--active' : ''}`}
-          onClick={() => setSplitOpen(!splitOpen)}
-          title="Split-screen compare — any city / lens / date vs any other"
-          aria-label="Toggle split-screen compare"
-          aria-pressed={splitOpen}
-        >
-          <span className="topbar-insight-icon" aria-hidden>◫</span>
-          <span className="topbar-insight-label">SPLIT</span>
-        </button>
 
         {/* FORECAST — 48h AQI + temp outlook */}
         <button

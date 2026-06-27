@@ -868,13 +868,171 @@
   flex: 1;
 }
 
-/* ── Topbar city tabs (desktop) ──────────────────────────────────────────── */
+/* ── Topbar city tabs (desktop) — now a single region-grouped dropdown ─── */
 .topbar-tabs {
   display: flex;
   align-items: stretch;
   gap: 0;
   height: 44px;
   margin-left: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.topbar-city-wrap {
+  position: relative;
+}
+
+.topbar-city-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  min-height: var(--tap-min);
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.topbar-city-select-btn:hover,
+.topbar-city-select-btn.open {
+  background: rgba(245, 158, 11, 0.06);
+  border-bottom-color: var(--amber);
+}
+
+.topbar-city-select-code {
+  font-family: var(--font-data);
+  letter-spacing: 0.08em;
+}
+
+.topbar-city-select-name {
+  color: var(--fg);
+  letter-spacing: 0.06em;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-city-select-btn .chevron {
+  font-size: 9px;
+  color: var(--fg-dim);
+  transition: transform 0.2s;
+}
+
+.topbar-city-select-btn.open .chevron {
+  transform: rotate(180deg);
+}
+
+.topbar-city-menu {
+  left: 0;
+  right: auto;
+  min-width: 260px;
+  max-width: min(360px, 90vw);
+}
+
+.topbar-city-menu-item {
+  gap: 8px;
+}
+
+.topbar-city-menu-code {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.topbar-city-menu-pin {
+  font-size: 11px;
+  opacity: 0.45;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: -4px -6px -4px 0;
+  flex-shrink: 0;
+  transition: opacity 0.12s;
+}
+
+.topbar-city-menu-item:hover .topbar-city-menu-pin,
+.topbar-city-menu-pin:hover {
+  opacity: 1;
+}
+
+.topbar-city-menu-footer {
+  border-top: 1px solid var(--line);
+}
+
+.topbar-city-menu-add {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.topbar-city-menu-add:hover {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+/* ── Split compare — primary topbar action ─────────────────────────────── */
+.topbar-split-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 12px;
+  margin-left: 4px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.topbar-split-btn:hover {
+  background: rgba(245, 158, 11, 0.24);
+  color: #fff;
+}
+
+.topbar-split-btn--active {
+  background: var(--amber);
+  color: #04060b;
+}
+
+.topbar-split-btn--active:hover {
+  background: #fbbf24;
+  color: #04060b;
+}
+
+.topbar-split-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.topbar-split-label {
+  font-weight: 600;
 }
 
 .topbar-tab {
@@ -1729,6 +1887,9 @@
 /* ── Mobile: hide topbar-tabs strip; mobile dropdown takes over ────────── */
 @media (max-width: 767px) {
   .topbar-tabs { display: none; }
+  /* Split stays visible on mobile — secondary insight buttons tuck away */
+  .topbar-insight-btn { display: none; }
+  .topbar-split-btn { display: flex; margin-left: 0; }
   /* Basemap label trimmed on phones to just the icon */
   .topbar-basemap-label { display: none; }
   .topbar-basemap-btn { padding: 4px 6px; }
@@ -5534,6 +5695,18 @@
 
 .topbar-insight-btn:active {
   transform: translateY(1px);
+}
+
+.topbar-insight-btn--active {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #04060b;
+}
+
+.topbar-insight-btn--active:hover {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #04060b;
 }
 
 .topbar-insight-icon {
