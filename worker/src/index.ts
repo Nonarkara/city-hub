@@ -5,8 +5,11 @@
  * ──────────────
  * • CORS origin-locked to nonarkara.org + city-hub.pages.dev + localhost (dev).
  *   Wildcard CORS removed — this Worker must not be usable as a free public proxy.
- * • Sensitive AI endpoints (/narrate, /forecast, /ee/mapid) carry rate-limit
- *   headers so CF Rate Limiting rules can cap them at the dashboard level.
+ * • Origin check runs before OPTIONS preflight — unknown origins get 403 on every
+ *   method including CORS preflights (not just non-OPTIONS requests).
+ * • AI-cost routes (/narrate, /forecast, /ee/mapid) additionally reject requests
+ *   with no Origin AND no same-site Referer, blocking bare server-to-server calls
+ *   (curl, scripts) that omit both headers entirely.
  * • API keys for keyed upstream APIs (WAQI, OpenAQ, OWM) live here as Worker
  *   secrets — never in the SPA bundle.
  *
@@ -87,15 +90,25 @@ export default {
     const origin = request.headers.get('Origin')
     const cors   = corsHeaders(origin)
 
+    // Reject unknown origins on every method — including CORS preflights (P1)
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
     // Preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors })
     }
 
-    // Reject cross-origin requests from unknown origins
-    // (Allow null-origin for same-origin server-side use / Wrangler dev)
-    if (origin && !isAllowedOrigin(origin)) {
-      return new Response('Forbidden', { status: 403 })
+    // AI-cost routes additionally require Origin or a same-site Referer to block
+    // bare server-to-server calls (curl/scripts) that carry neither header (S1)
+    const AI_PATHS = new Set(['/forecast', '/forecast/timefm', '/narrate', '/ee/mapid'])
+    if (!origin && AI_PATHS.has(url.pathname)) {
+      const ref = request.headers.get('Referer') ?? ''
+      const refOrigin = (() => { try { return new URL(ref).origin } catch { return '' } })()
+      if (!isAllowedOrigin(refOrigin)) {
+        return new Response('Forbidden', { status: 403 })
+      }
     }
 
     // Forecast — POST /forecast (alias: /forecast/timefm for backward compat)

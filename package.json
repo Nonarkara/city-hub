@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
-    "firebase": "^12.14.0",
+    "@supabase/supabase-js": "^2.110.0",
+    "firebase": "^12.15.0",
     "maplibre-gl": "^5.24.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tz-lookup": "^6.1.25",
     "zustand": "^5.0.14"
   },
@@ -23,8 +23,8 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@types/tz-lookup": "^6.1.2",
-    "@vitejs/plugin-react": "^4.5.0",
+    "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.4.3"
   }
 }

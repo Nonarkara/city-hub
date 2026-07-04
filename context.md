@@ -118,7 +118,7 @@ See `tasks/todo.md` and `tasks/lessons.md` for the full Wave 1 trace.
 ## Bangkok Super Dashboard (Wave 2 — built 2026-05-25)
 
 ### What shipped
-- **Cloudflare Worker proxy** (`worker/`) deployed to `unl-city-proxy.drnon.workers.dev`
+- **Cloudflare Worker proxy** (`worker/`) deployed to `cityhub-proxy.drnon.workers.dev` (earlier hostname `unl-city-proxy.drnon.workers.dev` is retired — returns 404)
   - Unblocks `data.go.th`, NASA FIRMS, Traffy Fondue, GDELT from browser CORS
   - Route-based: `/data-go-th/*`, `/firms/*`, `/traffy/*`, `/gdelt/*`
 - **Traffy Fondue integration** (`src/data/traffy.ts`)
