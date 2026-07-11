@@ -18,3 +18,5 @@ dist/
 
 # Vite
 vite.config.ts.timestamp-*
+
+test-results/
