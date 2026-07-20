@@ -84,18 +84,31 @@ export const KranjIntelligence = memo(function KranjIntelligence({ activeCity }:
     return () => clearInterval(t)
   }, [activeCity.timezone])
 
-  // Simulated CITY OPS telemetry — small random walk around plausible bases.
-  const [ops, setOps] = useState({ grid: 68, transit: 412, requests: 37, ev: 24 })
+  // Live hydrology — Sava river discharge (GloFAS model via Open-Meteo Flood API,
+  // tokenless, CORS-open). The Sava–Kokra confluence IS Kranj's flood geography.
+  const [hydro, setHydro] = useState<{ current: number; series: number[]; delta7: number } | null>(null)
   useEffect(() => {
-    const t = setInterval(() => {
-      setOps((o) => ({
-        grid:     Math.max(41, Math.min(92, o.grid + (Math.random() - 0.5) * 4)),
-        transit:  Math.max(180, Math.min(640, o.transit + Math.round((Math.random() - 0.5) * 22))),
-        requests: Math.max(0, o.requests + (Math.random() < 0.35 ? 1 : 0)),
-        ev:       Math.max(6, Math.min(48, o.ev + Math.round((Math.random() - 0.5) * 3))),
-      }))
-    }, 3200)
-    return () => clearInterval(t)
+    let cancelled = false
+    const load = async () => {
+      try {
+        const r = await fetch('https://flood-api.open-meteo.com/v1/flood?latitude=46.28&longitude=14.28&daily=river_discharge&past_days=10&forecast_days=4')
+        const j = await r.json()
+        const times: string[] = j?.daily?.time ?? []
+        const disch: (number | null)[] = j?.daily?.river_discharge ?? []
+        const today = new Date().toISOString().slice(0, 10)
+        let i = times.indexOf(today)
+        if (i < 0) i = disch.length - 4 // fall back to today ≈ end-of-past (before 4 forecast days)
+        const current = disch[i]
+        const past = disch[Math.max(0, i - 7)]
+        const series = disch.filter((v): v is number => v != null)
+        if (cancelled || current == null || series.length < 2) return
+        const delta7 = past ? ((current - past) / past) * 100 : 0
+        setHydro({ current, series, delta7 })
+      } catch { /* offline — the block simply hides */ }
+    }
+    load()
+    const t = setInterval(load, 30 * 60_000)
+    return () => { cancelled = true; clearInterval(t) }
   }, [])
 
   const gdp = useCountUp(K.gdpPerCapita)
@@ -103,6 +116,18 @@ export const KranjIntelligence = memo(function KranjIntelligence({ activeCity }:
   const emp = useCountUp(K.employment, 1)
 
   const skillsPct = Math.round((K.digitalSkills / K.euDigitalSkills) * 100)
+
+  const rising = (hydro?.delta7 ?? 0) >= 0
+  const hydroSpark = hydro && hydro.series.length > 1 ? (() => {
+    const W = 120, H = 34, s = hydro.series
+    const mn = Math.min(...s), mx = Math.max(...s), rng = (mx - mn) || 1
+    const pts = s.map((v, i) => `${((i / (s.length - 1)) * W).toFixed(1)},${(H - ((v - mn) / rng) * H).toFixed(1)}`).join(' ')
+    return (
+      <svg className="ki-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+        <polyline points={pts} fill="none" stroke="var(--amber)" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    )
+  })() : null
 
   return (
     <section className="kranj-intel" aria-label="Kranj economic and digital intelligence">
@@ -163,19 +188,26 @@ export const KranjIntelligence = memo(function KranjIntelligence({ activeCity }:
         </div>
       </div>
 
-      {/* Simulated live city operations */}
-      <div className="ki-block">
-        <div className="ki-block-head"><span>CITY OPS</span><span className="ki-live-sm"><span className="ki-live-dot" aria-hidden />STREAMING</span></div>
-        <div className="ki-ops">
-          <div className="ki-op"><span className="ki-op-val">{ops.grid.toFixed(0)}<span className="ki-unit">%</span></span><span className="ki-op-lbl">GRID LOAD</span></div>
-          <div className="ki-op"><span className="ki-op-val">{ops.transit}</span><span className="ki-op-lbl">TRANSIT /HR</span></div>
-          <div className="ki-op"><span className="ki-op-val">{ops.requests}</span><span className="ki-op-lbl">CIVIC REPORTS</span></div>
-          <div className="ki-op"><span className="ki-op-val">{ops.ev}</span><span className="ki-op-lbl">EV SESSIONS</span></div>
+      {/* Live hydrology — Sava discharge (GloFAS via Open-Meteo Flood) */}
+      {hydro && (
+        <div className="ki-block">
+          <div className="ki-block-head">
+            <span>SAVA · RIVER FLOW</span>
+            <span className="ki-live-sm"><span className="ki-live-dot" aria-hidden />LIVE</span>
+          </div>
+          <div className="ki-hydro">
+            <div className="ki-hydro-read">
+              <span className="ki-hydro-val">{hydro.current.toFixed(1)}<span className="ki-unit">m³/s</span></span>
+              <span className="ki-hydro-delta">{rising ? '▲' : '▼'} {Math.abs(hydro.delta7).toFixed(0)}% · 7d</span>
+            </div>
+            {hydroSpark}
+          </div>
+          <div className="ki-block-note">Sava modeled discharge · GloFAS via Open-Meteo · Kranj sits at the Sava–Kokra confluence</div>
         </div>
-      </div>
+      )}
 
       <div className="ki-foot">
-        SURS · Eurostat (Gorenjska) · EU Digital Decade — figures 2024. City-ops telemetry simulated for demonstration.
+        Economics: SURS · Eurostat (Gorenjska) 2024 · digital: EU Digital Decade. River: GloFAS via Open-Meteo (live).
       </div>
     </section>
   )
