@@ -342,7 +342,11 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
       container: containerRef.current,
       style: def.style,
       center: city.center,
-      zoom: city.zoom,
+      // 3D cities open tilted + closer so terrain relief and building extrusions
+      // read immediately on a direct ?city= deep-link (the shared demo path).
+      zoom: city.threeD ? Math.max(city.zoom, 14.6) : city.zoom,
+      pitch: city.threeD ? 62 : 0,
+      bearing: city.threeD ? 18 : 0,
       minZoom: 3,
       renderWorldCopies: false,
       attributionControl: { compact: true },
@@ -382,7 +386,11 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
       const duration = Math.min(3200, Math.max(1400, distDeg * 200))
       map.flyTo({
         center: to,
-        zoom: city.zoom,
+        // 3D cities land closer and tilted so terrain relief + building
+        // extrusions read; flat cities reset pitch/bearing to 0.
+        zoom: city.threeD ? Math.max(city.zoom, 14.6) : city.zoom,
+        pitch: city.threeD ? 62 : 0,
+        bearing: city.threeD ? 18 : 0,
         duration,
         essential: true,
         curve: distDeg > 3 ? 1.6 : 1.2,   // bigger arc for longer hauls
@@ -428,6 +436,85 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
     map.on('style.load', apply)
     return () => { map.off('style.load', apply) }
   }, [globeView])
+
+  // 3D city view — terrain relief + building extrusions + sky, for cities that
+  // opt in (`city.threeD`). Fully tokenless: AWS Terrarium DEM (open elevation)
+  // drapes whatever basemap is active — satellite → Google-Earth relief — and
+  // buildings come from a baked OSM footprint GeoJSON (`city.buildings3dUrl`,
+  // ODbL) extruded by real height/levels where OSM has them. No Mapbox needed.
+  // Additive: every basemap, the globe toggle, fly-to and temporal logic are
+  // untouched. Re-applied on style.load — basemap swaps wipe added sources/layers.
+  const threeD = !!city.threeD
+  const buildingsUrl = city.buildings3dUrl
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const TERRAIN_SRC = 'terrain-dem'
+    const BLD_SRC = 'city-buildings'
+    const BLD_LAYER = 'ly-city-3d'
+    const apply = () => {
+      try {
+        if (threeD) {
+          // Terrain — AWS Terrarium open-elevation tiles (no token).
+          if (!map.getSource(TERRAIN_SRC)) {
+            map.addSource(TERRAIN_SRC, {
+              type: 'raster-dem',
+              tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+              encoding: 'terrarium',
+              tileSize: 256,
+              maxzoom: 14,
+            })
+          }
+          map.setTerrain({ source: TERRAIN_SRC, exaggeration: 1.35 })
+          try {
+            map.setSky({
+              'sky-color': '#0a1830',
+              'horizon-color': '#16324f',
+              'fog-color': '#05070d',
+              'sky-horizon-blend': 0.6,
+              'horizon-fog-blend': 0.5,
+              'fog-ground-blend': 0.6,
+            })
+          } catch { /* sky spec unsupported on this build */ }
+          // Buildings — baked OSM footprints (ODbL). `h` = real height/levels
+          // where OSM has them; 9 m fallback ≈ a low-rise Alpine town block.
+          // Colour-graded by height (slate → amber).
+          if (buildingsUrl && !map.getSource(BLD_SRC)) {
+            map.addSource(BLD_SRC, { type: 'geojson', data: buildingsUrl })
+          }
+          if (buildingsUrl && map.getSource(BLD_SRC) && !map.getLayer(BLD_LAYER)) {
+            map.addLayer({
+              id: BLD_LAYER,
+              type: 'fill-extrusion',
+              source: BLD_SRC,
+              minzoom: 13,
+              paint: {
+                'fill-extrusion-height': ['coalesce', ['get', 'h'], 9],
+                'fill-extrusion-base': ['coalesce', ['get', 'base'], 0],
+                'fill-extrusion-color': [
+                  'interpolate', ['linear'], ['coalesce', ['get', 'h'], 9],
+                  0,  '#5b6472',
+                  10, '#7d8698',
+                  22, '#a98f57',
+                  45, '#c2933a',
+                ],
+                'fill-extrusion-opacity': 0.88,
+              },
+            })
+          }
+        } else {
+          if (map.getLayer(BLD_LAYER)) map.removeLayer(BLD_LAYER)
+          if (map.getSource(BLD_SRC)) map.removeSource(BLD_SRC)
+          try { map.setTerrain(null) } catch { /* no terrain active */ }
+          if (map.getSource(TERRAIN_SRC)) map.removeSource(TERRAIN_SRC)
+        }
+      } catch { /* style mid-swap — style.load re-runs apply */ }
+    }
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
+    map.on('style.load', apply)
+    return () => { map.off('style.load', apply) }
+  }, [threeD, buildingsUrl])
 
   return <div ref={containerRef} className="map-container" />
 })

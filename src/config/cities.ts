@@ -43,6 +43,8 @@ export interface CityConfig {
   tier: 'full' | 'lite'
   availableLayers: string[]                             // layer IDs available for this city
   basemapDefault?: BasemapId                            // optional per-city default basemap
+  threeD?: boolean                                      // opt into 3D terrain + building extrusions
+  buildings3dUrl?: string                               // static GeoJSON of footprints for 3D extrusion
 
   // City onboarding — these fields power the CityFactsCard that introduces
   // a newcomer to the city in ~30 seconds. Static, curated facts.
@@ -775,6 +777,47 @@ export const CITIES: CityConfig[] = [
       giniCoefficient: 0.24,
       trafficCongestionPct: 28,
       walkabilityScore: 72,
+    }
+  },
+  {
+    id: 'kranj',
+    name: 'Kranj',
+    nameLocal: 'Kranj',
+    country: 'SI',
+    center: [14.3556, 46.2389],
+    zoom: 13,
+    bbox: [14.30, 46.20, 14.42, 46.30],
+    timezone: 'Europe/Ljubljana',
+    hudClockLabel: 'KRJ',
+    countryName: 'Slovenia',
+    gdeltQuery: 'kranj slovenia',
+    tier: 'lite',
+    availableLayers: LITE_LAYERS,
+    basemapDefault: 'esri-imagery',        // tokenless satellite over 3D terrain
+    threeD: true,                          // terrain relief + OSM building extrusions
+    buildings3dUrl: '/geo/kranj-buildings.geojson',  // 6.2k baked OSM footprints (ODbL)
+    area_km2: 151,
+    populationMillions: 0.057,
+    founded: 'Roman Carnium · Creina, 973 AD',
+    climate: 'Alpine-influenced continental · Sava valley',
+    distinctiveness: 'Slovenia\'s fourth city and the capital of Alpine Gorenjska. A medieval old town on a rocky promontory above the Sava–Kokra confluence, ringed by the Kamnik Alps. Iskra\'s post-industrial heart, now an EU Mission climate-neutral & smart city.',
+    kpis: [
+      { label: 'POPULATION', value: '57K' },
+      { label: 'REGION', value: 'ALPINE EU' },
+      { label: 'EU MISSION', value: '100 CITIES' },
+    ],
+    // Honest seed: city-exact from SURS municipal profile 2024 where noted;
+    // GDP is Gorenjska NUTS3 regional proxy (−16% vs national); Gini is Slovenia
+    // national (one of EU's lowest); green space is an alpine-municipality estimate.
+    // Congestion/walkability omitted — no official Kranj index exists (don't fake it).
+    demographics: {
+      gdpBillionUsd: 1.6,          // Gorenjska GDP/capita × municipality pop — regional proxy
+      gdpPerCapitaUsd: 28_700,     // Gorenjska €26,532 (2024) → USD — regional proxy
+      birthRatePer1k: 8.5,
+      lifeExpectancyYears: 81,
+      greenSpacePct: 42.0,         // alpine, forested surrounds — estimate
+      greenSpaceM2PerPerson: 300,
+      giniCoefficient: 0.24,       // Slovenia national — proxy
     }
   },
 ]

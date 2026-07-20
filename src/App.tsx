@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { CityConfig } from './config/cities'
 import { CITIES } from './config/cities'
@@ -168,6 +168,14 @@ export default function App() {
   // Mirror the view (city · lens · date · overlays · globe) to the URL so it's
   // shareable, and apply any params from an incoming shared link on load.
   useShareableView()
+
+  // Honor a city's declared basemap (only cities that set one — e.g. Kranj's
+  // satellite-over-terrain 3D view). Fires on city switch; other cities keep
+  // whatever lens is active, so a manual choice persists across switches.
+  useEffect(() => {
+    if (activeCity.basemapDefault) setBasemap(activeCity.basemapDefault)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCity.id])
 
   const anomalies = useAnomalies(bangkokMode)
 
