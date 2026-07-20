@@ -20,6 +20,7 @@ import { CitizenReportsSection } from './CitizenReportsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { SingaporeDataSection } from './SingaporeDataSection'
 import { PrepareCard } from './PrepareCard'
+import { KranjIntelligence } from './KranjIntelligence'
 
 interface Props {
   activeCity: CityConfig
@@ -137,6 +138,8 @@ export const LiteCityPanel = memo(function LiteCityPanel({ activeCity }: Props) 
         </div>
 
         <div className="alert-scroll">
+          {activeCity.id === 'kranj' && <KranjIntelligence activeCity={activeCity} />}
+
           <div className="brief-section">
             <div className="brief-open">
               <div className="brief-open-date">

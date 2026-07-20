@@ -1,5 +1,15 @@
 # Lessons — UNL City Hub
 
+## 2026-07-21 · A "valid" Mapbox token can still 401 on tiles — the account was disabled
+- **What went wrong:** After swapping in a new restricted Mapbox token, the map was black. `/tokens/v2` said `TokenValid`, so the token looked fine — but every tile/style request returned `401 {"message":"Not Authorized - Invalid Token"}`. Chased it as a URL-restriction/scope problem for several cycles. Root cause: the **whole Mapbox account** is disabled (free-tier cap or billing) — the OLD token 401s identically, and 401s are cache-controlled 12h.
+- **Correct behaviour:** When Mapbox tiles 401, test BOTH the token metadata (`/tokens/v2`) AND a raw tile fetch. TokenValid + tile-401 = account-level, not token-level; no token change fixes it (billing is Dr Non's). Don't trust a URL-restricted token via curl OR the in-app Browser pane either — both lack a real origin and 401 the same way a broken token would. Only real Chrome on the live allowlisted domain is a valid test.
+- **How to recognise:** all tokens 401 at once; `/tokens/v2` = TokenValid; `cache-control: max-age=43200` on the 401. See [[reference_mapbox-account-down]]. Fix path: go tokenless (ESRI + AWS Terrarium + OSM) — it's more resilient and matches "open + precise" anyway.
+
+## 2026-07-21 · Tokenless 3D city stack (no Mapbox): Terrarium terrain + OSM building extrusion
+- **What went wrong / learned:** Needed Google-Earth-style 3D for Kranj but Mapbox was down. Mapbox's `composite`/`building` layer and terrain-dem are the usual path — all dead here.
+- **Correct behaviour:** Fully tokenless works and is cleaner: `raster-dem` from **AWS Terrarium** (`s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`, `encoding:'terrarium'`) + `map.setTerrain` drapes ANY basemap (ESRI satellite → relief). Buildings: bake OSM footprints once to a static GeoJSON (Overpass; **main mirror needs a User-Agent header or it 406s** — use kumi mirror or set UA) and `fill-extrusion` by a computed height property. 3D cities need pitch set at BOTH map init (deep-link path) and in flyTo (tab-click path) — the fly effect skips the first mount.
+- **How to recognise:** if a demo needs 3D and Mapbox is unavailable/undesired, reach for Terrarium + OSM, not Mapbox composite. See [[feature_kranj-3d-demo]].
+
 ## 2026-06-26 · city-hub Pages project is NOT git-auto-deployed (deploy = build + wrangler)
 - **What went wrong:** Twice told Dr Non "pushed, refresh in ~3 min" assuming a `git push` to the GitHub repo auto-builds Cloudflare Pages. It does not. `wrangler pages project list` shows `city-hub` with **Git Provider: No**; production sat on commit `a3c6f31` for 2 weeks while I pushed commits to GitHub that never went live.
 - **Correct behaviour:** Deploy is **manual, local-build + direct upload**:

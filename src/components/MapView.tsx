@@ -304,15 +304,15 @@ export function getBasemapDef(id: BasemapId, activeDate?: string): BasemapDef {
 export const BASEMAP_GROUPS: { label: BasemapGroup; ids: BasemapId[] }[] = [
   { label: 'imagery',  ids: ['esri-imagery', 'sentinel-cloudless', 'nasa-true-color'] },
   { label: 'spectral', ids: ['nasa-aerosol', 'nasa-co', 'nasa-so2', 'nasa-ndvi', 'nasa-surface-temp', 'nasa-nightlights'] },
-  { label: 'vector',   ids: ['dark-vector', 'mapbox-sat-streets'] },
+  // 'vector' group (Mapbox dark-vector + sat-streets) retired 2026-07-21 — Mapbox dropped.
 ]
 
 /** Flat list of all basemap IDs, in display order. */
 export const BASEMAPS: BasemapId[] = BASEMAP_GROUPS.flatMap((g) => g.ids)
 
-/** Default basemap — Dark Vector when token is available, ESRI imagery otherwise. */
+/** Default basemap — tokenless ESRI imagery everywhere (Mapbox retired). */
 export function defaultBasemap(): BasemapId {
-  return hasMapboxToken() ? 'dark-vector' : 'esri-imagery'
+  return 'esri-imagery'
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
