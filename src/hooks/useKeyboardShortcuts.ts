@@ -118,5 +118,6 @@ export function useKeyboardShortcuts(h: Handlers) {
   }, [
     h.allCities, h.activeCity, h.globeView,
     h.forecastOpen, h.splitOpen, h.chatOpen, h.cmdkOpen,
+    h.settingsOpen, h.setSettingsOpen, h.onRunInsightScan,
   ])
 }

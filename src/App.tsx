@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { CityConfig } from './config/cities'
 import { CITIES } from './config/cities'
@@ -50,6 +50,7 @@ import { DisasterAlerts } from './components/DisasterAlerts'
 import { SmokeConeOverlay } from './components/SmokeConeOverlay'
 import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 import { sourceCountForCity } from './data/source-registry'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -124,25 +125,43 @@ export default function App() {
   const [smokeVisible, setSmokeVisible]       = useState(false)
 
   // ── Insight application ─────────────────────────────────────────────────────
+  // Pending applyInsight timeouts — cleared on city switch / unmount so a
+  // stale flight can't yank the camera back to the previous city.
+  const insightTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => {
+    insightTimeoutsRef.current.forEach(clearTimeout)
+  }, [])
+  useEffect(() => {
+    insightTimeoutsRef.current.forEach(clearTimeout)
+    insightTimeoutsRef.current = []
+  }, [activeCity.id])
+
   const applyInsight = useCallback((t: InsightTemplate) => {
     setGovernorMode(false)
     setActiveInsight(t)
     if (t.basemap && t.basemap !== basemap) {
       setBasemap(t.basemap)
     }
-    setTimeout(() => {
+    insightTimeoutsRef.current.forEach(clearTimeout)
+    insightTimeoutsRef.current = []
+    const outer = setTimeout(() => {
       setActiveLayers(new Set(t.layers))
       if (t.zoom && map) {
-        setTimeout(() => {
+        const inner = setTimeout(() => {
+          // Read the city at fire time — skip the flight if it changed.
+          const current = useCityStore.getState().activeCity
+          if (current.id !== activeCity.id) return
           map.flyTo({
-            center: activeCity.center,
+            center: current.center,
             zoom: t.zoom!,
             duration: 1600,
             essential: true,
           })
         }, 250)
+        insightTimeoutsRef.current.push(inner)
       }
     }, 800)
+    insightTimeoutsRef.current.push(outer)
   }, [map, activeCity, basemap, setGovernorMode, setActiveInsight, setBasemap, setActiveLayers])
 
   const clearInsight = useCallback(() => {
@@ -232,11 +251,11 @@ export default function App() {
 
       <MapView city={activeCity} basemap={basemap} activeDate={activeDate} globeView={globeView} onMapReady={setMap} />
 
-      {splitOpen && <SplitCompare />}
+      {splitOpen && <ErrorBoundary fallback={null}><SplitCompare /></ErrorBoundary>}
 
-      {chatOpen && <CityChat activeCity={activeCity} />}
+      {chatOpen && <ErrorBoundary fallback={null}><CityChat activeCity={activeCity} /></ErrorBoundary>}
 
-      {forecastOpen && <ForecastPanel activeCity={activeCity} />}
+      {forecastOpen && <ErrorBoundary fallback={null}><ForecastPanel activeCity={activeCity} /></ErrorBoundary>}
 
       {!splitOpen && <NewsTicker activeCity={activeCity} />}
 
@@ -567,7 +586,9 @@ export default function App() {
         onApply={applyInsight}
       />
 
-      <CityOnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      <ErrorBoundary fallback={null}>
+        <CityOnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      </ErrorBoundary>
 
       <CityRail
         activeCity={activeCity}
@@ -589,18 +610,20 @@ export default function App() {
 
       {!splitOpen && (
         showComparison ? (
-          <ComparisonPanel />
+          <ErrorBoundary fallback={null}><ComparisonPanel /></ErrorBoundary>
         ) : bangkokMode ? (
           districtComparePair ? (
             <DistrictComparePanel />
           ) : governorMode
             ? (selectedDistrict
                 ? (
-                  <DistrictPanel
-                    district={selectedDistrict}
-                    onClose={() => setSelectedDistrict(null)}
-                    onDraft={setAppDraft}
-                  />
+                  <ErrorBoundary fallback={null}>
+                    <DistrictPanel
+                      district={selectedDistrict}
+                      onClose={() => setSelectedDistrict(null)}
+                      onDraft={setAppDraft}
+                    />
+                  </ErrorBoundary>
                 )
                 : <AlertPanel />
               )

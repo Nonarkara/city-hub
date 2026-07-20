@@ -63,20 +63,29 @@ export function ForecastPanel({ activeCity }: { activeCity: CityConfig }) {
     // health-band reference lines (AQI 50/100/150)
     const bands = [50, 100, 150].filter((b) => b <= aqiMax).map((b) => ({ v: b, y: yA(b) }))
 
-    // day boundaries + tick labels
+    // day boundaries + tick labels — hour strings are UTC without a 'Z' suffix;
+    // parse as UTC and label in the *city's* timezone, not the browser's.
+    const tz = activeCity.timezone
+    const hourFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz })
+    const dayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz })
+    const cityHour = (h: string) => {
+      const d = new Date(h.endsWith('Z') ? h : h + 'Z')
+      return Number(hourFmt.format(d))
+    }
     const ticks: { x: number; label: string }[] = []
     hrs.forEach((h, i) => {
-      const d = new Date(h.time)
+      const d = new Date(h.time.endsWith('Z') ? h.time : h.time + 'Z')
+      const hr = cityHour(h.time)
       if (i === 0) ticks.push({ x: x(i), label: 'NOW' })
-      else if (d.getHours() === 0) ticks.push({ x: x(i), label: d.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() })
-      else if (d.getHours() === 12) ticks.push({ x: x(i), label: '12:00' })
+      else if (hr === 0) ticks.push({ x: x(i), label: dayFmt.format(d).toUpperCase() })
+      else if (hr === 12) ticks.push({ x: x(i), label: '12:00' })
     })
 
     const peakIdx = hrs.findIndex((h) => h.usAqi === aqi.peakAqi)
     const peak = { x: x(Math.max(0, peakIdx)), y: yA(aqi.peakAqi) }
 
     return { aqiPts, tempPts, bands, ticks, peak, aqiColor: RISK_COLOR[aqiToRisk(aqi.peakAqi)], tMin, tMax }
-  }, [aqi, temps])
+  }, [aqi, temps, activeCity.timezone])
 
   const summary = useMemo(() => {
     if (!aqi) return ''

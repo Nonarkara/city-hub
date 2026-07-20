@@ -15,13 +15,6 @@ export async function loadBangkokRail(): Promise<GeoJSON.FeatureCollection> {
   }, TTL_STATIC)
 }
 
-export async function loadBangkokDistricts(): Promise<GeoJSON.FeatureCollection> {
-  return cachedFetch('bma/districts', async () => {
-    const res = await fetch('/geo/bangkok-districts.geojson')
-    return res.json()
-  }, TTL_STATIC)
-}
-
 export async function loadBangkokKhet(): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('bma/khet', async () => {
     const res = await fetch('/geo/bangkok-khet.geojson')

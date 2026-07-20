@@ -11,7 +11,8 @@
  *   4. `wrangler secret put GCP_SERVICE_ACCOUNT_JSON < /path/to/key.json`
  *   5. The /ee/mapid endpoint flips from 503 → real tile URL
  *
- * Until then, the layer toggle is harmless — fetches return null silently.
+ * Until then, the layer toggle is harmless — failed fetches throw, cachedFetch
+ * serves stale when available, and the layer loaders catch otherwise.
  */
 import { cachedFetch } from '../lib/cached-fetch'
 
@@ -31,17 +32,14 @@ export async function fetchEETiles(preset: EEPreset = 'alphaearth', startDate?: 
   if (!BASE) return null
   const cacheKey = `ee/mapid-${preset}-${startDate ?? 'default'}-${endDate ?? 'default'}`
   return cachedFetch(cacheKey, async () => {
-    try {
-      const res = await fetch(BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset, startDate, endDate }),
-      })
-      if (!res.ok) return null
-      const data = await res.json() as EEMapResult
-      return data
-    } catch {
-      return null
-    }
+    const res = await fetch(BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset, startDate, endDate }),
+    })
+    // Throw so cachedFetch can serve stale instead of caching a null result.
+    if (!res.ok) throw new Error(`EE mapid ${res.status}`)
+    const data = await res.json() as EEMapResult
+    return data
   }, TTL)
 }

@@ -27,11 +27,13 @@ export async function fetchCitizenReports(): Promise<GeoJSON.FeatureCollection> 
     const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
     try {
       const res = await fetch(ENDPOINT)
-      if (!res.ok) return empty
+      if (!res.ok) throw new Error(`City Reporter ${res.status}`)
       const data = (await res.json()) as GeoJSON.FeatureCollection
       return data && data.type === 'FeatureCollection' ? data : empty
-    } catch {
-      return empty
+    } catch (err) {
+      // Throw so cachedFetch can serve stale instead of caching an empty result.
+      console.warn('[city-reporter] fetch failed:', err)
+      throw err
     }
   }, TTL)
 }

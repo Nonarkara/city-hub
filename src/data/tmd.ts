@@ -11,6 +11,7 @@
  * Open-Meteo is a global model. We display both — citizens trust TMD.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/tmd` : 'https://data.tmd.go.th/api'
@@ -41,21 +42,21 @@ export async function bangkokTMDForecast(): Promise<TMDForecast | null> {
       `${BASE}/WeatherForecast7Days/V2/?uid=api&ukey=api12345&format=json` +
       `&province=${encodeURIComponent('กรุงเทพมหานคร')}`
     try {
-      const res = await fetch(url)
-      if (!res.ok) return null
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
+      if (!res.ok) throw new Error(`TMD ${res.status}`)
       const text = await res.text()
       // Some TMD endpoints return HTML redirects when query is wrong — guard
-      if (text.trim().startsWith('<')) return null
+      if (text.trim().startsWith('<')) throw new Error('TMD returned HTML instead of JSON')
       const data = JSON.parse(text)
       let provinces = data?.Provinces?.Province
-      if (!provinces) return null
+      if (!provinces) throw new Error('TMD payload missing Provinces')
       if (!Array.isArray(provinces)) provinces = [provinces]
       const bkk = (provinces as Array<Record<string, unknown>>).find((p) => {
         const en = String(p.ProvinceNameEnglish ?? '')
         const th = String(p.ProvinceNameThai ?? '')
         return en.includes('Bangkok') || th.includes('กรุงเทพ')
       })
-      if (!bkk) return null
+      if (!bkk) throw new Error('TMD payload missing Bangkok')
       const fc = (bkk.SevenDaysForecast ?? {}) as Record<string, string[]>
       const len = Math.min(
         7,
@@ -87,8 +88,10 @@ export async function bangkokTMDForecast(): Promise<TMDForecast | null> {
         buildDate: String(data?.header?.LastBuildDate ?? ''),
         days,
       }
-    } catch {
-      return null
+    } catch (err) {
+      // Throw so cachedFetch can serve stale instead of caching a null result.
+      console.warn('[tmd] forecast fetch failed:', err)
+      throw err
     }
   }, TTL)
 }

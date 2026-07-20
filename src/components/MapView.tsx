@@ -400,7 +400,7 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
     if (map.isStyleLoaded()) {
       flyCinematic()
     } else {
-      map.once('load', flyCinematic)
+      map.once('style.load', flyCinematic)
     }
   }, [city])
 

@@ -1,6 +1,3 @@
-import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
-
 // Firebase client config — these are client-side identifiers, not server secrets.
 // Restrict the API key in Firebase console to hub.nonarkara.org + city-hub.pages.dev.
 const firebaseConfig = {
@@ -12,14 +9,34 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_ID    || '839839755960',
 }
 
-export const app = initializeApp(firebaseConfig)
-export const db  = getFirestore(app)
+// The Firebase SDK (~150 KB gzip) is lazy-loaded: nothing here runs at startup.
+// App + Firestore initialize on first real use (chat, action center, analytics),
+// keeping the firebase chunk off the critical path.
+import type { FirebaseApp } from 'firebase/app'
+import type { Firestore } from 'firebase/firestore'
+
+let appPromise: Promise<FirebaseApp> | null = null
+export function getFirebaseApp(): Promise<FirebaseApp> {
+  if (!appPromise) {
+    appPromise = import('firebase/app').then(({ initializeApp }) => initializeApp(firebaseConfig))
+  }
+  return appPromise
+}
+
+let dbPromise: Promise<Firestore> | null = null
+export function getDb(): Promise<Firestore> {
+  if (!dbPromise) {
+    dbPromise = Promise.all([getFirebaseApp(), import('firebase/firestore')])
+      .then(([app, { getFirestore }]) => getFirestore(app))
+  }
+  return dbPromise
+}
 
 // Analytics is lazy-loaded — never blocks initial paint.
-// Deferred until after first user interaction via dynamic import.
+// Deferred until the first tracked event via dynamic import.
 export function trackEvent(eventName: string, eventParams?: Record<string, any>) {
   if (typeof window === 'undefined' || !import.meta.env.PROD) return
-  import('firebase/analytics').then(({ getAnalytics, logEvent }) => {
+  Promise.all([getFirebaseApp(), import('firebase/analytics')]).then(([app, { getAnalytics, logEvent }]) => {
     try {
       const analytics = getAnalytics(app)
       logEvent(analytics, eventName, eventParams)

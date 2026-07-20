@@ -11,21 +11,21 @@ export function TimelineSlider({ activeDate, onChange, visible }: TimelineSlider
   const [offset, setOffset] = useState(maxDays)
 
   useEffect(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const active = new Date(activeDate)
-    active.setHours(0, 0, 0, 0)
-    
+    // Parse both ends as UTC so the slider offset matches the UTC date
+    // strings emitted by handleScrub (consistent with SplitCompare).
+    const todayUTC = Date.parse(new Date().toISOString().split('T')[0])
+    const activeUTC = Date.parse(activeDate)
+
     // Days difference
-    const diff = Math.floor((today.getTime() - active.getTime()) / 86400000)
+    const diff = Math.floor((todayUTC - activeUTC) / 86400000)
     const newOffset = maxDays - Math.max(0, Math.min(maxDays, diff))
     setOffset(newOffset)
   }, [activeDate])
 
   const handleScrub = (val: number) => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const target = new Date(today.getTime() - (maxDays - val) * 86400000)
+    // Pure-UTC date math (consistent with SplitCompare) — local-midnight math
+    // shifts the emitted day by one in UTC+ timezones.
+    const target = new Date(Date.now() - (maxDays - val) * 86400000)
     onChange(target.toISOString().split('T')[0])
   }
 

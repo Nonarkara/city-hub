@@ -53,7 +53,9 @@ export function predictAndPrepare(
   // When does the breach happen?
   const firstBreach = forecast.hours.find((h) => h.usAqi >= AQI_UNHEALTHY)
   if (!firstBreach) return null
-  const breachTime = new Date(firstBreach.time)
+  // Forecast hour strings are UTC (Open-Meteo requested with timezone=UTC) but
+  // carry no 'Z' suffix — parse explicitly as UTC, not browser-local.
+  const breachTime = new Date(firstBreach.time.endsWith('Z') ? firstBreach.time : firstBreach.time + 'Z')
   const hoursAhead = Math.max(1, Math.round((breachTime.getTime() - Date.now()) / 3_600_000))
   const windowDescription =
     hoursAhead <= 2 ? `within ${hoursAhead}h — imminent`

@@ -112,8 +112,16 @@ export function spearman(x: number[], y: number[]): number {
   if (n < 4) return 0
   const rank = (arr: number[]) => {
     const sorted = [...arr].map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v)
-    const ranks = new Array(arr.length)
-    sorted.forEach((item, idx) => { ranks[item.i] = idx + 1 })
+    const ranks = new Array<number>(arr.length)
+    // Average ranks for ties: equal values share the mean of their rank span
+    let j = 0
+    while (j < sorted.length) {
+      let k = j
+      while (k + 1 < sorted.length && sorted[k + 1].v === sorted[j].v) k++
+      const avgRank = (j + k) / 2 + 1
+      for (let m = j; m <= k; m++) ranks[sorted[m].i] = avgRank
+      j = k + 1
+    }
     return ranks
   }
   const rx = rank(x.slice(0, n))

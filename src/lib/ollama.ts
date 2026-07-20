@@ -11,6 +11,8 @@
 const OLLAMA_URL   = (import.meta.env.VITE_OLLAMA_URL   as string | undefined) ?? 'http://localhost:11434'
 const OLLAMA_MODEL = (import.meta.env.VITE_OLLAMA_MODEL as string | undefined) ?? 'phi4-mini'
 
+import { timeoutSignal } from '../data/source-registry'
+
 export const OLLAMA_INFO = { url: OLLAMA_URL, model: OLLAMA_MODEL }
 
 export interface ChatMessage {
@@ -88,7 +90,7 @@ export async function generateText(
 /** Check if Ollama is reachable (fast probe). */
 export async function ollamaReachable(): Promise<boolean> {
   try {
-    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) })
+    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: timeoutSignal(2000) })
     return res.ok
   } catch {
     return false

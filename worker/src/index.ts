@@ -10,6 +10,12 @@
  * • AI-cost routes (/narrate, /forecast, /ee/mapid) additionally reject requests
  *   with no Origin AND no same-site Referer, blocking bare server-to-server calls
  *   (curl, scripts) that omit both headers entirely.
+ * • AI-cost routes are also per-IP rate limited (20 req/min, fixed window).
+ *   Best-effort only — the counter lives in per-isolate memory, not a durable
+ *   store. Payload cost amplifiers are bounded (series ≤ 500 points,
+ *   narrate context ≤ 8 KB).
+ * • Error responses never leak upstream/internal error details to clients;
+ *   details are logged server-side via console.error.
  * • API keys for keyed upstream APIs (WAQI, OpenAQ, OWM) live here as Worker
  *   secrets — never in the SPA bundle.
  *
@@ -67,6 +73,36 @@ function corsHeaders(origin: string | null): Record<string, string> {
   }
 }
 
+// ── AI-route rate limiting ────────────────────────────────────────────────
+// Best-effort fixed-window limiter for cost-bearing routes (/forecast,
+// /narrate, /ee/mapid): 20 requests per client IP per minute.
+//
+// LIMITATION: this Map is per-isolate memory. Cloudflare runs many isolates
+// across colos (and recycles them freely), so the effective global limit is
+// roughly 20 × active-isolates per minute — it blunts naive abuse scripts
+// but is NOT a hard quota. For strict limits, back this with a Workers KV /
+// Durable Object / Rate Limiting binding.
+const RATE_LIMIT_PER_MINUTE = 20
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const key = ip
+  const bucket = rateLimitBuckets.get(key)
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + 60_000 })
+    // Opportunistic sweep so the Map can't grow without bound
+    if (rateLimitBuckets.size > 10_000) {
+      for (const [k, v] of rateLimitBuckets) {
+        if (v.resetAt <= now) rateLimitBuckets.delete(k)
+      }
+    }
+    return false
+  }
+  bucket.count += 1
+  return bucket.count > RATE_LIMIT_PER_MINUTE
+}
+
 const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'data-go-th':    { origin: 'https://data.go.th/api/3/action',     cacheSeconds: 300 },
   'data-bma':      { origin: 'https://data.bangkok.go.th/api/3/action', cacheSeconds: 300 },
@@ -101,13 +137,24 @@ export default {
     }
 
     // AI-cost routes additionally require Origin or a same-site Referer to block
-    // bare server-to-server calls (curl/scripts) that carry neither header (S1)
+    // bare server-to-server calls (curl/scripts) that carry neither header (S1).
+    // NOTE: Origin/Referer are spoofable server-side — this is defense-in-depth
+    // only; the per-IP rate limiter below is the real cost brake.
     const AI_PATHS = new Set(['/forecast', '/forecast/timefm', '/narrate', '/ee/mapid'])
     if (!origin && AI_PATHS.has(url.pathname)) {
       const ref = request.headers.get('Referer') ?? ''
       const refOrigin = (() => { try { return new URL(ref).origin } catch { return '' } })()
       if (!isAllowedOrigin(refOrigin)) {
         return new Response('Forbidden', { status: 403 })
+      }
+    }
+
+    // Per-IP rate limit on AI-cost routes (best-effort, per-isolate — see
+    // comment at rateLimitBuckets). 429 before any upstream token spend.
+    if (AI_PATHS.has(url.pathname)) {
+      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
+      if (isRateLimited(ip)) {
+        return jsonCors({ error: 'rate limit exceeded — try again in a minute' }, 429, cors)
       }
     }
 
@@ -184,7 +231,9 @@ export default {
         },
       })
     } catch (err) {
-      return jsonCors({ error: 'Upstream failed', detail: String(err) }, 502, cors)
+      // Don't leak internal error details to the client — log server-side.
+      console.error('[proxy] upstream fetch failed:', String(err))
+      return jsonCors({ error: 'upstream error' }, 502, cors)
     }
   },
 }
@@ -196,9 +245,11 @@ function jsonCors(obj: unknown, status = 200, cors: Record<string, string>): Res
   })
 }
 
-// Back-compat: internal helpers that still use a fixed cors object get a shim
-function json(obj: unknown, status = 200): Response {
-  return jsonCors(obj, status, corsHeaders(null))
+// Request-scoped JSON helper — always carries the per-request CORS headers so
+// /forecast, /narrate, /ee/mapid responses are not browser-blocked on
+// city-hub.pages.dev and preview origins.
+function json(obj: unknown, status = 200, cors: Record<string, string> = corsHeaders(null)): Response {
+  return jsonCors(obj, status, cors)
 }
 
 // ── Forecast ──────────────────────────────────────────────────────────────
@@ -233,7 +284,7 @@ async function handleForecast(request: Request, env: Env, cors: Record<string, s
   try {
     body = await request.json() as ForecastRequest
   } catch {
-    return json({ error: 'Invalid JSON body' }, 400)
+    return json({ error: 'Invalid JSON body' }, 400, cors)
   }
 
   const series = (body.series ?? []).filter((v) => Number.isFinite(v))
@@ -242,20 +293,25 @@ async function handleForecast(request: Request, env: Env, cors: Record<string, s
   const domain = body.domain ?? 'hourly PM2.5 concentration in Bangkok (μg/m³)'
 
   if (series.length < 4) {
-    return json({ error: 'series too short (min 4)' }, 400)
+    return json({ error: 'series too short (min 4)' }, 400, cors)
+  }
+  // Cost bound — cap series length so a single request can't force an
+  // unbounded Gemini prompt / Holt-Winters loop.
+  if (series.length > 500) {
+    return json({ error: 'series too long (max 500 points)' }, 413, cors)
   }
 
   // 1. Gemini 2.5 Flash — preferred, free
   if (env.GEMINI_API_KEY) {
     const g = await tryGemini(series, horizon, domain, env.GEMINI_API_KEY)
-    if (g) return json(g)
+    if (g) return json(g, 200, cors)
   }
 
   // 2. TimeFM — HF serverless by default, override with TIMEFM_ENDPOINT_URL
   //    when you've deployed TimeFM yourself (HF Space, Modal, Vertex, etc.)
   if (env.HF_API_TOKEN) {
     const t = await tryTimeFM(series, horizon, env.HF_API_TOKEN, env.TIMEFM_ENDPOINT_URL)
-    if (t) return json(t)
+    if (t) return json(t, 200, cors)
   }
 
   // 3. Holt-Winters fallback
@@ -266,7 +322,7 @@ async function handleForecast(request: Request, env: Env, cors: Record<string, s
     upper: hw.upper,
     model: 'holt-winters',
   }
-  return json(response)
+  return json(response, 200, cors)
 }
 
 async function tryGemini(
@@ -494,8 +550,10 @@ async function handleCEMS(cors: Record<string, string>): Promise<Response> {
       }
     )
   } catch (err) {
+    // Don't leak internal error details to the client — log server-side.
+    console.error('[cems] fetch failed:', String(err))
     return new Response(
-      JSON.stringify({ activations: [], source: 'cems', error: String(err) }),
+      JSON.stringify({ activations: [], source: 'cems', error: 'upstream error' }),
       { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } }
     )
   }
@@ -522,7 +580,13 @@ async function handleNarrate(request: Request, env: Env, cors: Record<string, st
   try {
     body = await request.json() as NarrateRequest
   } catch {
-    return json({ error: 'Invalid JSON body' }, 400)
+    return json({ error: 'Invalid JSON body' }, 400, cors)
+  }
+
+  // Cost bound — context is serialized verbatim into the Gemini prompt, so
+  // reject oversized payloads before they become token spend.
+  if (JSON.stringify(body.context ?? null).length > 8 * 1024) {
+    return json({ error: 'context too large (max 8 KB)' }, 413, cors)
   }
 
   const style = body.style ?? 'brief'
@@ -530,7 +594,7 @@ async function handleNarrate(request: Request, env: Env, cors: Record<string, st
 
   if (env.GEMINI_API_KEY) {
     const text = await tryGeminiNarrate(body.question, body.context, style, maxWords, env.GEMINI_API_KEY)
-    if (text) return json({ narration: text, model: 'gemini-2.5' })
+    if (text) return json({ narration: text, model: 'gemini-2.5' }, 200, cors)
   }
 
   // Fallback — return a structural summary so the UI still has content
@@ -539,7 +603,7 @@ async function handleNarrate(request: Request, env: Env, cors: Record<string, st
       `Based on the live data, the situation is being monitored. ` +
       `Set GEMINI_API_KEY on the Worker to enable AI-narrated explanations.`,
     model: 'template',
-  })
+  }, 200, cors)
 }
 
 async function tryGeminiNarrate(
@@ -931,24 +995,24 @@ async function handleEEMapId(request: Request, env: Env, cors: Record<string, st
     return json({
       error: 'Earth Engine not configured',
       hint: 'Set GCP_SERVICE_ACCOUNT_JSON Worker secret. See worker/README.md.',
-    }, 503)
+    }, 503, cors)
   }
 
   let body: EEMapRequest
-  try { body = await request.json() as EEMapRequest } catch { return json({ error: 'Invalid JSON' }, 400) }
+  try { body = await request.json() as EEMapRequest } catch { return json({ error: 'Invalid JSON' }, 400, cors) }
 
   const presetKey = body.preset ?? 'alphaearth'
   const end = body.endDate ?? new Date().toISOString().split('T')[0]
   const start = body.startDate ?? new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
   const presets = getEEPresets(start, end)
   const preset = presets[presetKey]
-  if (!preset) return json({ error: `Unknown preset: ${presetKey}` }, 400)
+  if (!preset) return json({ error: `Unknown preset: ${presetKey}` }, 400, cors)
 
   let sa: { client_email: string; private_key: string; project_id: string }
   try {
     sa = JSON.parse(env.GCP_SERVICE_ACCOUNT_JSON)
   } catch {
-    return json({ error: 'GCP_SERVICE_ACCOUNT_JSON is not valid JSON' }, 500)
+    return json({ error: 'GCP_SERVICE_ACCOUNT_JSON is not valid JSON' }, 500, cors)
   }
 
   // 1. Get or refresh OAuth token
@@ -973,8 +1037,9 @@ async function handleEEMapId(request: Request, env: Env, cors: Record<string, st
     body: JSON.stringify(eeBody),
   })
   if (!eeRes.ok) {
-    const err = await eeRes.text()
-    return json({ error: 'EE getMapId failed', detail: err.slice(0, 400) }, 502)
+    // Don't leak Earth Engine error bodies to the client — log server-side.
+    console.error('[ee/mapid] getMapId failed:', eeRes.status, (await eeRes.text()).slice(0, 400))
+    return json({ error: 'earth engine error' }, 502, cors)
   }
   const eeData = await eeRes.json() as { name: string }
   // tileFetcher URL template — embed {z}/{x}/{y} for MapLibre
@@ -984,7 +1049,7 @@ async function handleEEMapId(request: Request, env: Env, cors: Record<string, st
     preset: presetKey,
     tiles: tileUrl,
     attribution: preset.attribution ?? 'Google Earth Engine',
-  })
+  }, 200, cors)
 }
 
 /**

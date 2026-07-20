@@ -8,6 +8,7 @@
  * No API key required. Free and open data.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 24 * 60 * 60 * 1000 // 24 hours — OSM data changes slowly
 
@@ -61,6 +62,7 @@ async function fetchOverpass(query: string): Promise<GeoJSON.FeatureCollection> 
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `data=${encodeURIComponent(query)}`,
+    signal: timeoutSignal(30_000), // Overpass query itself requests [timeout:25]
   })
   if (!res.ok) throw new Error(`Overpass ${res.status}`)
   const data = await res.json()

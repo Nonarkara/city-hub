@@ -3,6 +3,7 @@
  * Provides US AQI + individual pollutant readings for any city by lat/lng.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 10 * 60_000
 
@@ -38,7 +39,7 @@ export async function fetchAQI(lng: number, lat: number, timezone = 'Asia/Bangko
       `?latitude=${lat}&longitude=${lng}` +
       '&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone' +
       `&timezone=${encodeURIComponent(timezone)}`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Open-Meteo AQ ${res.status}`)
     const d = await res.json()
     const c = d.current as {

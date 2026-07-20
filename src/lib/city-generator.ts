@@ -101,8 +101,8 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
   // GDELT query
   const gdeltQuery = `${name} ${country}`.toLowerCase()
 
-  // Estimate area from bbox (rough)
-  const widthKm = Math.abs(e - w) * 111
+  // Estimate area from bbox (rough) — longitude degrees shrink with latitude
+  const widthKm = Math.abs(e - w) * 111 * Math.cos((lat * Math.PI) / 180)
   const heightKm = Math.abs(n - s) * 111
   const area_km2 = Math.round(widthKm * heightKm)
 

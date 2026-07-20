@@ -62,6 +62,13 @@ export function useBangkokLayers(
   const onDistrictClickRef = useRef<((d: DistrictSummary) => void) | undefined>(onDistrictClick)
   onDistrictClickRef.current = onDistrictClick
 
+  // Latest-values refs so in-flight layer loads can re-check current state
+  // instead of acting on a stale closure after a city switch / layer toggle.
+  const activeIdsRef = useRef(activeIds)
+  activeIdsRef.current = activeIds
+  const bangkokModeRef = useRef(bangkokMode)
+  bangkokModeRef.current = bangkokMode
+
   // District highlight layer state
   const selectedDistrictRef = useRef<string | null>(null)
   selectedDistrictRef.current = selectedDistrictId ?? null
@@ -71,14 +78,22 @@ export function useBangkokLayers(
     if (bangkokMode || !map) return
     const state = stateRef.current
     state.loaded.forEach((id) => {
-      LAYER_IDS_FOR_TOGGLE[id]?.forEach((layerId) => {
-        if (map.getLayer(layerId)) map.removeLayer(layerId)
-      })
-      const srcId = SOURCE_ID_FOR_TOGGLE[id]
-      if (srcId && map.getSource(srcId)) map.removeSource(srcId)
+      // One bad entry (e.g. a source still in use by an unlisted layer) must
+      // never abort the rest of the cleanup.
+      try {
+        LAYER_IDS_FOR_TOGGLE[id]?.forEach((layerId) => {
+          if (map.getLayer(layerId)) map.removeLayer(layerId)
+        })
+        const srcId = SOURCE_ID_FOR_TOGGLE[id]
+        if (srcId && map.getSource(srcId)) map.removeSource(srcId)
+      } catch (err) {
+        console.warn(`[bangkok-layers] teardown failed for ${id}:`, err)
+      }
     })
     state.loaded.clear()
-    state.popups.forEach((p) => p.remove())
+    state.popups.forEach((p) => {
+      try { p.remove() } catch (err) { console.warn('[bangkok-layers] popup removal failed:', err) }
+    })
     state.popups = []
     state.wiredPopups.clear()
   }, [bangkokMode, map])
@@ -131,8 +146,11 @@ export function useBangkokLayers(
           state.loading.add(id)
           loadLayer(id, map, activeDate).then(() => {
             state.loading.delete(id)
+            // Bail out if Bangkok mode was torn down while the fetch was in
+            // flight — the cleanup already ran; never re-show stale layers.
+            if (!bangkokModeRef.current) return
             state.loaded.add(id)
-            setVisibility(map, id, activeIds.has(id))
+            setVisibility(map, id, activeIdsRef.current.has(id))
             if (id === 'pm25-stations' && !state.wiredPopups.has('pm25')) {
               state.popups.push(wirePm25Popup(map))
               state.wiredPopups.add('pm25')
@@ -168,7 +186,8 @@ export function useBangkokLayers(
     // Re-reconcile after setStyle swaps (basemap switching via insights).
     // 'style.load' fires when MapLibre finishes applying a new style.
     const onStyleLoad = () => {
-      stateRef.current.wiredPopups.clear()
+      // Layer-scoped map.on('click', layerId, …) handlers persist across
+      // setStyle, so keep the wired registry — re-wiring would stack popups.
       reconcile()
     }
     map.on('style.load', onStyleLoad)
@@ -252,7 +271,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'fires-firms':      ['ly-fires-firms'],
   'floods-historical':['ly-floods-historical'],
   'floods':           ['ly-floods'],
-  'districts':        ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label'],
+  'districts':        ['ly-districts-fill', 'ly-districts-line', 'ly-districts-label', 'ly-districts-highlight'],
   'owm-weather':      ['ly-owm-weather'],
   'rail':             ['ly-rail-line', 'ly-rail-dots', 'ly-rail-labels'],
   'gtfs-transit-live':['ly-gtfs-dots', 'ly-gtfs-labels'],
@@ -275,7 +294,7 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'traffy-issues':    ['ly-traffy-issues', 'ly-traffy-clusters', 'ly-traffy-cluster-count'],
   'traffy-heatmap':   ['ly-traffy-heatmap'],
   'buildings-3d':     ['ly-buildings-3d'],
-  'osm-emergency':    ['ly-osm-emergency'],
+  'osm-emergency':    ['ly-osm-emergency', 'ly-osm-emergency-label'],
   'osm-education':    ['ly-osm-education'],
   'water-quality':    ['ly-water-quality'],
   'water-level':      ['ly-water-level'],
@@ -296,7 +315,7 @@ function setVisibility(map: MapLibre, toggleId: string, visible: boolean) {
   }
   // Side effect: 3D buildings toggle also drives the camera pitch + bearing
   // for the cinematic perspective effect.
-  if (toggleId === 'buildings-3d') {
+  if (toggleId === 'buildings-3d' && map.getLayer('ly-buildings-3d')) {
     if (visible) {
       map.easeTo({ pitch: 50, bearing: 25, duration: 800 })
     } else {

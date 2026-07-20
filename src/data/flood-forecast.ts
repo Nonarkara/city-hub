@@ -33,8 +33,8 @@ export interface FloodForecast {
   lat:           number
   lng:           number
   days:          FloodForecastDay[]
-  peakDischarge: number
-  peakDate:      string
+  peakDischarge: number | null   // null when the API returned no finite discharge values
+  peakDate:      string | null
   currentDischarge: number
   trend:         'rising' | 'falling' | 'stable'
 }
@@ -58,7 +58,7 @@ function addDays(dateStr: string, n: number): string {
  * the standard upstream indicator for Bangkok flood risk.
  */
 export async function fetchChaoPrayaForecast(days = 30): Promise<FloodForecast> {
-  return cachedFetch('glofas/chao-phraya', async () => {
+  return cachedFetch(`glofas/chao-phraya/${days}`, async () => {
     const url =
       `https://flood-api.open-meteo.com/v1/flood` +
       `?latitude=15.7&longitude=100.0` +
@@ -87,15 +87,18 @@ export async function fetchChaoPrayaForecast(days = 30): Promise<FloodForecast> 
     })
 
     const validQ  = discharge.filter((q): q is number => q !== null && q > 0)
-    const peak    = Math.max(...validQ)
-    const peakIdx = discharge.findIndex((q) => q === peak)
+    // Guard: Math.max(...[]) is -Infinity — when nothing is finite, report null peaks
+    const hasQ    = validQ.length > 0
+    const peak    = hasQ ? Math.max(...validQ) : null
+    const peakIdx = peak !== null ? discharge.findIndex((q) => q === peak) : -1
 
     const first3  = validQ.slice(0, 3)
     const last3   = validQ.slice(-3)
-    const avgFirst = first3.reduce((s, v) => s + v, 0) / first3.length
-    const avgLast  = last3.reduce((s, v) => s + v, 0) / last3.length
+    const avgFirst = first3.reduce((s, v) => s + v, 0) / Math.max(1, first3.length)
+    const avgLast  = last3.reduce((s, v) => s + v, 0) / Math.max(1, last3.length)
     const trend: FloodForecast['trend'] =
-      avgLast > avgFirst * 1.15 ? 'rising' :
+      !hasQ                     ? 'stable'  :
+      avgLast > avgFirst * 1.15 ? 'rising'  :
       avgLast < avgFirst * 0.85 ? 'falling' : 'stable'
 
     return {
@@ -103,8 +106,8 @@ export async function fetchChaoPrayaForecast(days = 30): Promise<FloodForecast> 
       lat:              15.7,
       lng:              100.0,
       days:             forecastDays,
-      peakDischarge:    Math.round(peak),
-      peakDate:         times[peakIdx] ?? times[0],
+      peakDischarge:    peak !== null ? Math.round(peak) : null,
+      peakDate:         peakIdx >= 0 ? times[peakIdx] : null,
       currentDischarge: Math.round(validQ[0] ?? 0),
       trend,
     }

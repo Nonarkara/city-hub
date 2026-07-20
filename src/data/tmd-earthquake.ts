@@ -10,6 +10,7 @@
  * Early warning and seismic monitoring saves lives.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/tmd-earthquake` : 'https://data.tmd.go.th/api/DailySeismicEvent/v1'
@@ -68,7 +69,7 @@ function magnitudeLabel(mag: number): string {
 export async function fetchTmdEarthquakes(): Promise<EarthquakeEvent[]> {
   return cachedFetch('tmd/earthquakes', async () => {
     const url = `${BASE}/`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`TMD Earthquake ${res.status}`)
     const data = await res.json()
 

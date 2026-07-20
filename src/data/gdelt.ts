@@ -5,6 +5,7 @@
  * Rate limit: 1 req / 5 sec. We cache aggressively (5 min).
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/gdelt` : 'https://api.gdeltproject.org/api/v2'
@@ -30,18 +31,19 @@ export interface GdeltNewsResult {
  * "chiang mai thailand", "kuching malaysia"). Cached per query.
  */
 export async function fetchCityNews(query: string, max = 8): Promise<GdeltNewsResult> {
-  const cacheKey = `gdelt/news/${query.replace(/\s+/g, '-')}`
+  const cacheKey = `gdelt/news/${query.replace(/\s+/g, '-')}/${max}`
   return cachedFetch(cacheKey, async () => {
     const url =
       `${BASE}/doc/doc?query=` +
       encodeURIComponent(query) +
       `&mode=ArtList&maxrecords=${max}&format=json&sort=DateDesc`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`GDELT ${res.status}`)
     const text = await res.text()
-    // GDELT sometimes returns an HTML rate-limit page instead of JSON
+    // GDELT sometimes returns an HTML rate-limit page instead of JSON — throw
+    // so cachedFetch can serve stale instead of caching an empty result.
     if (text.trim().startsWith('<')) {
-      return { articles: [], avgTone: 0 }
+      throw new Error('GDELT rate-limited (HTML response)')
     }
     const data = JSON.parse(text)
     const articles = (data?.articles ?? []) as Array<Record<string, unknown>>

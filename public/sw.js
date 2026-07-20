@@ -2,10 +2,12 @@
  * Dr Non's City Hub — service worker.
  *
  * Strategy:
- *   - App shell (index.html, JS, CSS): cache-first with background refresh,
- *     so the dashboard opens instantly even when offline. Stale shell still
- *     works because the data layers tolerate offline (cachedFetch falls
- *     back to last-known values).
+ *   - HTML navigation (index.html): network-first with cache fallback, so a
+ *     fresh deploy always wins and users never get stuck on a stale shell
+ *     ('Failed to fetch dynamically imported module'). Offline still works
+ *     via the cached fallback.
+ *   - Static assets (JS, CSS, SVG, manifest): cache-first with background
+ *     refresh — Vite content-hashes these, so staleness is harmless.
  *   - Map tiles + API JSON: network-first, fall back to cache if offline.
  *
  * The cache name is versioned — bumping it on each deploy forces a fresh
@@ -54,10 +56,26 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url)
 
-  // App shell — cache-first
+  // HTML navigation — network-first so a new deploy always wins; fall back
+  // to the cached shell only when offline. This is the durable fix for stale
+  // shells ('Failed to fetch dynamically imported module') — no hand-bumped
+  // VERSION needed for HTML freshness.
   if (url.origin === self.location.origin &&
-      (url.pathname === '/' || url.pathname.endsWith('.html') ||
-       url.pathname.endsWith('.js') || url.pathname.endsWith('.css') ||
+      (url.pathname === '/' || url.pathname.endsWith('.html'))) {
+    event.respondWith(
+      fetch(req).then((fresh) => {
+        if (fresh.ok) caches.open(SHELL_CACHE).then((c) => c.put(req, fresh.clone()))
+        return fresh
+      }).catch(() =>
+        caches.match(req).then((c) => c ?? Response.error()),
+      ),
+    )
+    return
+  }
+
+  // Static assets — cache-first (content-hashed by Vite, staleness harmless)
+  if (url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') ||
        url.pathname.endsWith('.svg') || url.pathname === '/manifest.webmanifest')) {
     event.respondWith(
       caches.match(req).then((cached) => {

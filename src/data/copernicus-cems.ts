@@ -12,6 +12,7 @@
  * Reference: https://emergency.copernicus.eu/mapping/list-of-activations-rapid
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = (import.meta.env.VITE_PROXY_URL as string | undefined) ?? 'http://127.0.0.1:8787'
 const TTL   = 60 * 60_000  // 1 hour — activations are declared infrequently
@@ -29,7 +30,7 @@ export interface CEMSActivation {
 export async function fetchCEMSActivations(): Promise<CEMSActivation[]> {
   return cachedFetch('cems/sea-activations', async () => {
     const res = await fetch(`${PROXY}/cems/activations`, {
-      signal: AbortSignal.timeout(10_000),
+      signal: timeoutSignal(10_000),
     })
     if (!res.ok) return []
     const data = await res.json() as { activations: CEMSActivation[] }

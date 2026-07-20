@@ -13,6 +13,7 @@
  * For CORS we route through the Worker.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = (import.meta.env.VITE_PROXY_URL as string | undefined) ?? 'http://127.0.0.1:8787'
 const TTL   = 30 * 60_000   // 30 min — GDACS updates every 30 min
@@ -56,15 +57,16 @@ export async function fetchGDACSAlerts(): Promise<GDACSEvent[]> {
     // GDACS GeoJSON API — all events from last 90 days
     const url = `${PROXY}/gdacs/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ,FL,TC,VO,WF&alertlevel=Orange,Red&fromDate=&toDate=&country=&eventtype=&severity=&voluntary=false&geostring=`
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    const res = await fetch(url, { signal: timeoutSignal(10_000) })
     if (!res.ok) {
       // Fallback: try the public GeoJSON feed directly
       const fallback = await fetch(
         'https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?' +
         'eventlist=EQ%2CFL%2CTC%2CVO%2CWF&alertlevel=Orange%2CRed',
-        { signal: AbortSignal.timeout(10_000) }
+        { signal: timeoutSignal(10_000) }
       )
-      if (!fallback.ok) return []
+      // Throw so cachedFetch can serve stale instead of caching an empty list.
+      if (!fallback.ok) throw new Error(`GDACS ${res.status}, fallback ${fallback.status}`)
       const data = await fallback.json() as { features?: unknown[] }
       return parseGDACS(data.features ?? [])
     }

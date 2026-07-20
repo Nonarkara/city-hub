@@ -23,8 +23,8 @@
 - [x] `src/config/bangkok-layers.ts` — layer catalog with 10 items (8 live + 2 pending)
 - [x] `src/components/LayerRail.tsx` — right-edge toggle rail + source status block + mobile FAB
 - [x] `src/components/DataFeedPanel.tsx` — data.go.th list with honest CORS empty state
-- [x] `src/components/BangkokKpiPanel.tsx` — live PM2.5 + 24h sparkline + AQI level word + 24h max
-- [x] `src/components/Sparkline.tsx` — inline SVG, no library
+- [x] `src/components/BangkokKpiPanel.tsx` — live PM2.5 + 24h sparkline + AQI level word + 24h max — **REMOVED** (dead-code sweep, see context.md)
+- [x] `src/components/Sparkline.tsx` — inline SVG, no library — **REMOVED** (dead-code sweep, see context.md)
 - [x] Modify `MapView.tsx` — `onMapReady` callback to expose map ref
 - [x] Modify `CityRail.tsx` — Bangkok-mode KPI variant
 - [x] Modify `App.tsx` — conditional render LayerRail + DataFeedPanel for bangkok

@@ -137,7 +137,9 @@ export function FloodCascadePanel({ compact, onClose }: Props) {
                forecast.trend === 'falling' ? '↓ FALLING' : '→ STABLE'}
             </span>
             <span className="flood-trend-peak">
-              PEAK {forecast.peakDischarge.toLocaleString()} m³/s on {fmtDate(forecast.peakDate)}
+              {forecast.peakDischarge !== null && forecast.peakDate !== null
+                ? `PEAK ${forecast.peakDischarge.toLocaleString()} m³/s on ${fmtDate(forecast.peakDate)}`
+                : 'PEAK — (no discharge data)'}
             </span>
           </div>
 

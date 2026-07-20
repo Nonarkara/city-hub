@@ -7,6 +7,7 @@
  * Proxied through Cloudflare Worker for CORS.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/traffy` : 'https://publicapi.traffy.in.th'
@@ -65,7 +66,7 @@ export function traffyColorForTypes(types: string[]): string {
 export async function fetchTraffyGeoJSON(limit = 500): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('traffy/geojson', async () => {
     const url = `${BASE}/teamchadchart-stat-api/geojson/v1`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Traffy ${res.status}`)
     const data = await res.json()
     const features = (data?.features ?? []) as GeoJSON.Feature[]
@@ -93,7 +94,7 @@ export async function fetchTraffyGeoJSON(limit = 500): Promise<GeoJSON.FeatureCo
 export async function fetchTraffyStats(): Promise<TraffyStats> {
   return cachedFetch('traffy/stats', async () => {
     const url = `${BASE}/teamchadchart-stat-api/geojson/v1`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Traffy ${res.status}`)
     const data = await res.json()
     const sum = (data?.sum_state ?? {}) as Record<string, number>
@@ -120,7 +121,7 @@ export async function fetchTraffyStats(): Promise<TraffyStats> {
 export async function fetchTraffyFloods(limit = 50): Promise<TraffyTicket[]> {
   return cachedFetch('traffy/floods', async () => {
     const url = `${BASE}/share/teamchadchart/search?offset=0&limit=${limit}`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Traffy ${res.status}`)
     const data = await res.json()
     const results = (data?.results ?? []) as Array<Record<string, unknown>>

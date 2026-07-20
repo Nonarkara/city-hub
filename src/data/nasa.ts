@@ -9,9 +9,9 @@ const TTL_FIRES = 10 * 60 * 1000
 /**
  * NASA FIRMS public CSV endpoint for last-24h fires in Thailand.
  * Note: The /api/area/csv/ endpoint requires no key for public area requests.
- * If CORS blocks (likely from a browser), this falls through to the empty-collection
- * fallback and the layer simply doesn't appear — the GISTDA fires layer remains visible
- * for the same data.
+ * On CORS/rate-limit failure this throws so cachedFetch can serve stale data —
+ * if there is no cache the layer simply doesn't appear (loaders catch), and
+ * the GISTDA fires layer remains visible for the same data.
  */
 export async function firmsThailand24h(): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('nasa/firms-th-24h', async () => {
@@ -19,15 +19,10 @@ export async function firmsThailand24h(): Promise<GeoJSON.FeatureCollection> {
     // Country code THA, 1-day window
     const url =
       'https://firms.modaps.eosdis.nasa.gov/api/country/csv/c/VIIRS_SNPP_NRT/THA/1'
-    try {
-      const res = await fetch(url, { mode: 'cors' })
-      if (!res.ok) throw new Error(`FIRMS ${res.status}`)
-      const csv = await res.text()
-      return csvToGeoJSON(csv)
-    } catch {
-      // CORS or rate-limit — return empty FC. The GISTDA hotspots layer still works.
-      return { type: 'FeatureCollection', features: [] }
-    }
+    const res = await fetch(url, { mode: 'cors' })
+    if (!res.ok) throw new Error(`FIRMS ${res.status}`)
+    const csv = await res.text()
+    return csvToGeoJSON(csv)
   }, TTL_FIRES)
 }
 

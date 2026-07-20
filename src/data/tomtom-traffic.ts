@@ -109,7 +109,7 @@ export async function fetchBangkokTrafficIncidents(): Promise<TrafficIncident[]>
     const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?key=${API_KEY}&bbox=${bbox}&fields={incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},startTime,endTime,from,to,length,delay,roadNumbers,timeValidity}}}&language=en-GB&t=1111&timezone=UTC`
     try {
       const res = await fetch(url)
-      if (!res.ok) return []
+      if (!res.ok) throw new Error(`TomTom incidents ${res.status}`)
       const data = await res.json()
       const incidents = data?.incidents ?? []
       return incidents.map((inc: Record<string, unknown>) => {
@@ -138,8 +138,10 @@ export async function fetchBangkokTrafficIncidents(): Promise<TrafficIncident[]>
           delaySeconds: props.delay ? Number(props.delay) : undefined,
         }
       })
-    } catch {
-      return []
+    } catch (err) {
+      // Throw so cachedFetch can serve stale instead of caching an empty list.
+      console.warn('[tomtom-traffic] incidents fetch failed:', err)
+      throw err
     }
   }, TTL_INCIDENT)
 }

@@ -87,12 +87,14 @@ export function gibsSO2Tiles(targetDate?: string): string {
 
 /** MODIS Terra NDVI 8-day — 250m vegetation health. AlphaEarth-class proxy. */
 export function gibsNdviTiles(targetDate?: string): string {
-  // NDVI 8-day composite uses fixed cadence — go back ~16 days to ensure availability
-  let d = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000)
-  if (targetDate) {
-    d = new Date(targetDate)
-    d = new Date(d.getTime() - 16 * 24 * 60 * 60 * 1000)
-  }
+  // MODIS 8-day composites exist only on a fixed cadence: day-of-year 1, 9, 17, …
+  // Arbitrary dates 400 and render blank, so snap to the latest cadence date,
+  // then step back one full period to allow for processing lag.
+  const base = targetDate ? new Date(targetDate) : new Date()
+  const yearStart = Date.UTC(base.getUTCFullYear(), 0, 1)
+  const doy = Math.floor((base.getTime() - yearStart) / 86_400_000) + 1
+  const lastCompositeDoy = doy - ((doy - 1) % 8)
+  const d = new Date(yearStart + (lastCompositeDoy - 1 - 8) * 86_400_000)
   const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
   return buildTileUrl('MODIS_Terra_NDVI_8Day', date, 9, 'png')
 }

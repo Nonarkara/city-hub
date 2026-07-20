@@ -18,7 +18,8 @@ const TTL = 8 * 60 * 1000
 export async function fetchRadarTileTemplate(): Promise<string | null> {
   return cachedFetch('rainviewer/latest', async () => {
     const res = await fetch(INDEX)
-    if (!res.ok) return null
+    // Throw so cachedFetch can serve stale instead of caching a null result.
+    if (!res.ok) throw new Error(`RainViewer ${res.status}`)
     const data = await res.json() as RainViewerIndex
     const frames = data.radar?.past ?? []
     const latest = frames[frames.length - 1]

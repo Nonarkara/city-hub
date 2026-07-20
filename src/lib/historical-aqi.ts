@@ -30,7 +30,7 @@ function dateString(daysAgo: number): string {
 export async function fetchAQIHistory(
   lat: number,
   lng: number,
-  timezone = 'Asia/Bangkok',
+  _timezone = 'Asia/Bangkok',
 ): Promise<AQIHistory> {
   const key       = `hist/aqi/${lat.toFixed(2)},${lng.toFixed(2)}`
   const startDate = dateString(8)   // 8 days back to ensure 7 full days
@@ -42,7 +42,8 @@ export async function fetchAQIHistory(
       `?latitude=${lat}&longitude=${lng}` +
       `&hourly=us_aqi` +
       `&start_date=${startDate}&end_date=${endDate}` +
-      `&timezone=${encodeURIComponent(timezone)}`
+      // dateString() above is UTC — request UTC so the window is consistent
+      '&timezone=UTC'
 
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Historical AQI ${res.status}`)

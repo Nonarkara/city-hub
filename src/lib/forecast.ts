@@ -8,6 +8,8 @@
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string
 
+import { timeoutSignal } from '../data/source-registry'
+
 export type ForecastModel = 'gemini-2.5' | 'timefm-2.0' | 'holt-winters'
 
 export interface ForecastResult {
@@ -42,12 +44,14 @@ export async function forecastSeries(
     }
   }
 
-  // Try the Worker first
+  // Try the Worker first — 20s timeout so a hung HuggingFace cold start
+  // falls back to the local model instead of blocking the panel forever.
   try {
     const url = `${PROXY}/forecast`
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: timeoutSignal(20_000),
       body: JSON.stringify({
         series: clean,
         horizon,
@@ -69,7 +73,17 @@ export async function forecastSeries(
     // Fall through to local
   }
 
-  // Local Holt-Winters (last-resort fallback — usually Worker handles this)
+  // Local Holt-Winters (last-resort fallback — usually Worker handles this).
+  // Holt-Winters seeds its trend from series[period..2*period), so anything
+  // shorter than 2 full seasons produces NaN — flat-line instead.
+  if (clean.length < 2 * seasonalPeriod) {
+    const last = clean.length > 0 ? clean[clean.length - 1] : 0
+    return {
+      forecast: Array(horizon).fill(last),
+      model: 'holt-winters',
+      durationMs: performance.now() - t0,
+    }
+  }
   const hw = holtWinters(clean, horizon, seasonalPeriod)
   return { ...hw, model: 'holt-winters', durationMs: performance.now() - t0 }
 }

@@ -33,7 +33,9 @@ export async function fetchAQIForecast(lng: number, lat: number, timezone = 'Asi
       `?latitude=${lat}&longitude=${lng}` +
       '&hourly=us_aqi,pm2_5' +
       `&forecast_days=${days}` +
-      `&timezone=${encodeURIComponent(timezone)}`
+      // Request UTC so hourly.time strings align with Date.toISOString() below;
+      // the city timezone is only used to render peakHour for display.
+      '&timezone=UTC'
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Open-Meteo Forecast ${res.status}`)
     const d = await res.json()
@@ -56,7 +58,10 @@ export async function fetchAQIForecast(lng: number, lat: number, timezone = 'Asi
 
     const peakAqi = Math.max(...hours.map((h) => h.usAqi))
     const peakIdx = hours.findIndex((h) => h.usAqi === peakAqi)
-    const peakDate = new Date(hours[peakIdx]?.time ?? now.toISOString())
+    // hours[].time is UTC (timezone=UTC above) but lacks a 'Z' suffix — parse it
+    // explicitly as UTC, then render in the city's timezone for display.
+    const peakTimeStr = hours[peakIdx]?.time ?? now.toISOString()
+    const peakDate = new Date(peakTimeStr.endsWith('Z') ? peakTimeStr : `${peakTimeStr}Z`)
     const peakHour = peakDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone })
 
     return {
@@ -85,7 +90,7 @@ export interface TempForecastHour {
  * October 2025, fully open data). 10-day window at 1h resolution.
  * Falls back to Open-Meteo's default multi-model blend if ECMWF is unavailable.
  */
-export async function fetchTempForecast(lng: number, lat: number, timezone = 'Asia/Bangkok', hoursAhead = 240): Promise<TempForecastHour[]> {
+export async function fetchTempForecast(lng: number, lat: number, _timezone = 'Asia/Bangkok', hoursAhead = 240): Promise<TempForecastHour[]> {
   const cacheKey = `openmeteo/ecmwf-temp/${lat.toFixed(3)},${lng.toFixed(3)}/${hoursAhead}`
   return cachedFetch(cacheKey, async () => {
     const days = Math.min(10, Math.max(2, Math.ceil((hoursAhead + 12) / 24)))
@@ -95,7 +100,8 @@ export async function fetchTempForecast(lng: number, lat: number, timezone = 'As
       '&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code' +
       `&forecast_days=${days}` +
       '&models=ecmwf_ifs04' +
-      `&timezone=${encodeURIComponent(timezone)}`
+      // UTC so hourly.time strings align with Date.toISOString() below.
+      '&timezone=UTC'
     let res = await fetch(url)
     // Fallback: ECMWF may not cover all lat/lng — retry without model spec
     if (!res.ok) {

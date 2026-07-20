@@ -12,6 +12,7 @@
  * UNL has zero offering for Singapore beyond the basemap.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const BASE = 'https://api.data.gov.sg/v1'
 const TTL_SHORT = 2 * 60_000
@@ -58,8 +59,8 @@ interface PSIRaw {
 export async function fetchSingaporePSI(): Promise<PSIBundle | null> {
   return cachedFetch('datagov-sg/psi', async () => {
     try {
-      const res = await fetch(`${BASE}/environment/psi`)
-      if (!res.ok) return null
+      const res = await fetch(`${BASE}/environment/psi`, { signal: timeoutSignal(15_000) })
+      if (!res.ok) throw new Error(`data.gov.sg PSI ${res.status}`)
       const raw = (await res.json()) as PSIRaw
       const item = raw.items?.[0]
       if (!item) return null
@@ -76,8 +77,10 @@ export async function fetchSingaporePSI(): Promise<PSIBundle | null> {
       }))
       const worst = regions.reduce((w, r) => ((r.psi_24h ?? 0) > (w?.psi_24h ?? 0) ? r : w), regions[0])
       return { timestamp: item.timestamp, regions, regionMeta, worst }
-    } catch {
-      return null
+    } catch (err) {
+      // Throw so cachedFetch can serve stale instead of caching a null result.
+      console.warn('[datagov-sg] PSI fetch failed:', err)
+      throw err
     }
   }, TTL_MED)
 }
@@ -111,8 +114,8 @@ export async function fetchSingaporeRainfall(): Promise<GeoJSON.FeatureCollectio
   return cachedFetch('datagov-sg/rainfall', async () => {
     const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
     try {
-      const res = await fetch(`${BASE}/environment/rainfall`)
-      if (!res.ok) return empty
+      const res = await fetch(`${BASE}/environment/rainfall`, { signal: timeoutSignal(15_000) })
+      if (!res.ok) throw new Error(`data.gov.sg rainfall ${res.status}`)
       const raw = (await res.json()) as RainfallRaw
       const item = raw.items?.[0]
       if (!item) return empty
@@ -128,8 +131,9 @@ export async function fetchSingaporeRainfall(): Promise<GeoJSON.FeatureCollectio
         },
       }))
       return { type: 'FeatureCollection', features }
-    } catch {
-      return empty
+    } catch (err) {
+      console.warn('[datagov-sg] rainfall fetch failed:', err)
+      throw err
     }
   }, TTL_SHORT)
 }
@@ -152,15 +156,16 @@ interface UVRaw {
 export async function fetchSingaporeUV(): Promise<{ current: number; series: SingaporeUVPoint[] } | null> {
   return cachedFetch('datagov-sg/uv', async () => {
     try {
-      const res = await fetch(`${BASE}/environment/uv-index`)
-      if (!res.ok) return null
+      const res = await fetch(`${BASE}/environment/uv-index`, { signal: timeoutSignal(15_000) })
+      if (!res.ok) throw new Error(`data.gov.sg UV ${res.status}`)
       const raw = (await res.json()) as UVRaw
       const latest = raw.items?.[0]
       if (!latest) return null
       const series = (latest.index ?? []).map((p) => ({ timestamp: p.timestamp, value: p.value }))
       return { current: series[0]?.value ?? 0, series }
-    } catch {
-      return null
+    } catch (err) {
+      console.warn('[datagov-sg] UV fetch failed:', err)
+      throw err
     }
   }, TTL_MED)
 }
@@ -182,8 +187,8 @@ export async function fetchSingaporeTaxis(): Promise<{
 } | null> {
   return cachedFetch('datagov-sg/taxi', async () => {
     try {
-      const res = await fetch(`${BASE}/transport/taxi-availability`)
-      if (!res.ok) return null
+      const res = await fetch(`${BASE}/transport/taxi-availability`, { signal: timeoutSignal(15_000) })
+      if (!res.ok) throw new Error(`data.gov.sg taxis ${res.status}`)
       const raw = (await res.json()) as TaxiRaw
       const f = raw.features?.[0]
       if (!f) return null
@@ -198,8 +203,9 @@ export async function fetchSingaporeTaxis(): Promise<{
         count: f.properties?.taxi_count ?? coords.length,
         geo: { type: 'FeatureCollection', features },
       }
-    } catch {
-      return null
+    } catch (err) {
+      console.warn('[datagov-sg] taxi fetch failed:', err)
+      throw err
     }
   }, TTL_SHORT)
 }

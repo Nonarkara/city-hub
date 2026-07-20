@@ -29,13 +29,15 @@ export interface AirbnbListing {
   lastReview: string
   availability365: number
   calculatedHostListings: number
+  /** True when this entry is fabricated fallback data, not a real scraped listing. */
+  isFallback?: boolean
 }
 
 /** Parse Airbnb CSV into structured data */
 export async function fetchAirbnbBangkok(): Promise<AirbnbListing[]> {
   return cachedFetch('airbnb/bangkok-listings', async () => {
     // Inside Airbnb provides a summary CSV with essential fields
-    const url = 'http://data.insideairbnb.com/thailand/central-thailand/bangkok/2025-06-24/visualisations/listings.csv'
+    const url = 'https://data.insideairbnb.com/thailand/central-thailand/bangkok/2025-06-24/visualisations/listings.csv'
     try {
       const res = await fetch(url)
       if (!res.ok) {
@@ -175,22 +177,23 @@ export async function fetchAirbnbSummary(): Promise<{
 // ── Fallback data — representative Bangkok Airbnb distribution ─────────────
 
 function getAirbnbFallback(): AirbnbListing[] {
-  // Representative sample of high-density Airbnb neighborhoods in Bangkok
+  // Representative sample of high-density Airbnb neighborhoods in Bangkok.
+  // Marked isFallback so analytics (correlations) never treat it as real data.
   return [
-    { id: 1, lat: 13.7437, lng: 100.5626, name: 'Sukhumvit Soi 11', neighbourhood: 'Watthana', roomType: 'Entire home/apt', price: 2800, minimumNights: 2, numberOfReviews: 142, lastReview: '2026-05-20', availability365: 320, calculatedHostListings: 8 },
-    { id: 2, lat: 13.7419, lng: 100.5514, name: 'Silom Condo', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 2200, minimumNights: 1, numberOfReviews: 89, lastReview: '2026-05-18', availability365: 340, calculatedHostListings: 12 },
-    { id: 3, lat: 13.7230, lng: 100.5292, name: 'Riverside Villa', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 4500, minimumNights: 2, numberOfReviews: 67, lastReview: '2026-05-15', availability365: 280, calculatedHostListings: 3 },
-    { id: 4, lat: 13.7563, lng: 100.5018, name: 'Victory Monument Studio', neighbourhood: 'Ratchathewi', roomType: 'Private room', price: 850, minimumNights: 1, numberOfReviews: 234, lastReview: '2026-05-22', availability365: 310, calculatedHostListings: 5 },
-    { id: 5, lat: 13.7688, lng: 100.5377, name: 'Pratunam Market Stay', neighbourhood: 'Ratchathewi', roomType: 'Private room', price: 650, minimumNights: 1, numberOfReviews: 198, lastReview: '2026-05-21', availability365: 350, calculatedHostListings: 15 },
-    { id: 6, lat: 13.7041, lng: 100.5938, name: 'On Nut Apartment', neighbourhood: 'Phra Khanong', roomType: 'Entire home/apt', price: 1500, minimumNights: 2, numberOfReviews: 56, lastReview: '2026-05-10', availability365: 290, calculatedHostListings: 2 },
-    { id: 7, lat: 13.7963, lng: 100.5758, name: 'Ladprao Family Home', neighbourhood: 'Lat Phrao', roomType: 'Entire home/apt', price: 1800, minimumNights: 3, numberOfReviews: 34, lastReview: '2026-05-05', availability365: 200, calculatedHostListings: 1 },
-    { id: 8, lat: 13.7308, lng: 100.5685, name: 'Rama IV Loft', neighbourhood: 'Khlong Toei', roomType: 'Entire home/apt', price: 3200, minimumNights: 2, numberOfReviews: 78, lastReview: '2026-05-19', availability365: 330, calculatedHostListings: 6 },
-    { id: 9, lat: 13.7199, lng: 100.5801, name: 'Phrom Phong Penthouse', neighbourhood: 'Watthana', roomType: 'Entire home/apt', price: 5200, minimumNights: 2, numberOfReviews: 45, lastReview: '2026-05-12', availability365: 300, calculatedHostListings: 4 },
-    { id: 10, lat: 13.7501, lng: 100.4913, name: 'Khao San Backpacker', neighbourhood: 'Phra Nakhon', roomType: 'Shared room', price: 350, minimumNights: 1, numberOfReviews: 312, lastReview: '2026-05-23', availability365: 365, calculatedHostListings: 20 },
-    { id: 11, lat: 13.7432, lng: 100.5519, name: 'Sathorn Executive Suite', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 3800, minimumNights: 2, numberOfReviews: 92, lastReview: '2026-05-17', availability365: 315, calculatedHostListings: 9 },
-    { id: 12, lat: 13.7804, lng: 100.4889, name: 'Banglamphu Boutique', neighbourhood: 'Phra Nakhon', roomType: 'Private room', price: 1200, minimumNights: 2, numberOfReviews: 156, lastReview: '2026-05-20', availability365: 280, calculatedHostListings: 3 },
-    { id: 13, lat: 13.8031, lng: 100.5547, name: 'Chatuchak Weekend Stay', neighbourhood: 'Chatuchak', roomType: 'Entire home/apt', price: 1900, minimumNights: 2, numberOfReviews: 43, lastReview: '2026-05-08', availability365: 260, calculatedHostListings: 2 },
-    { id: 14, lat: 13.7170, lng: 100.4859, name: 'Thonburi Canal House', neighbourhood: 'Khlong San', roomType: 'Entire home/apt', price: 2100, minimumNights: 2, numberOfReviews: 38, lastReview: '2026-05-14', availability365: 240, calculatedHostListings: 1 },
-    { id: 15, lat: 13.8591, lng: 100.5217, name: 'Don Mueang Airport Stay', neighbourhood: 'Don Mueang', roomType: 'Private room', price: 750, minimumNights: 1, numberOfReviews: 89, lastReview: '2026-05-16', availability365: 340, calculatedHostListings: 7 },
+    { id: 1, lat: 13.7437, lng: 100.5626, name: 'Sukhumvit Soi 11', neighbourhood: 'Watthana', roomType: 'Entire home/apt', price: 2800, minimumNights: 2, numberOfReviews: 142, lastReview: '2026-05-20', availability365: 320, calculatedHostListings: 8, isFallback: true },
+    { id: 2, lat: 13.7419, lng: 100.5514, name: 'Silom Condo', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 2200, minimumNights: 1, numberOfReviews: 89, lastReview: '2026-05-18', availability365: 340, calculatedHostListings: 12, isFallback: true },
+    { id: 3, lat: 13.7230, lng: 100.5292, name: 'Riverside Villa', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 4500, minimumNights: 2, numberOfReviews: 67, lastReview: '2026-05-15', availability365: 280, calculatedHostListings: 3, isFallback: true },
+    { id: 4, lat: 13.7563, lng: 100.5018, name: 'Victory Monument Studio', neighbourhood: 'Ratchathewi', roomType: 'Private room', price: 850, minimumNights: 1, numberOfReviews: 234, lastReview: '2026-05-22', availability365: 310, calculatedHostListings: 5, isFallback: true },
+    { id: 5, lat: 13.7688, lng: 100.5377, name: 'Pratunam Market Stay', neighbourhood: 'Ratchathewi', roomType: 'Private room', price: 650, minimumNights: 1, numberOfReviews: 198, lastReview: '2026-05-21', availability365: 350, calculatedHostListings: 15, isFallback: true },
+    { id: 6, lat: 13.7041, lng: 100.5938, name: 'On Nut Apartment', neighbourhood: 'Phra Khanong', roomType: 'Entire home/apt', price: 1500, minimumNights: 2, numberOfReviews: 56, lastReview: '2026-05-10', availability365: 290, calculatedHostListings: 2, isFallback: true },
+    { id: 7, lat: 13.7963, lng: 100.5758, name: 'Ladprao Family Home', neighbourhood: 'Lat Phrao', roomType: 'Entire home/apt', price: 1800, minimumNights: 3, numberOfReviews: 34, lastReview: '2026-05-05', availability365: 200, calculatedHostListings: 1, isFallback: true },
+    { id: 8, lat: 13.7308, lng: 100.5685, name: 'Rama IV Loft', neighbourhood: 'Khlong Toei', roomType: 'Entire home/apt', price: 3200, minimumNights: 2, numberOfReviews: 78, lastReview: '2026-05-19', availability365: 330, calculatedHostListings: 6, isFallback: true },
+    { id: 9, lat: 13.7199, lng: 100.5801, name: 'Phrom Phong Penthouse', neighbourhood: 'Watthana', roomType: 'Entire home/apt', price: 5200, minimumNights: 2, numberOfReviews: 45, lastReview: '2026-05-12', availability365: 300, calculatedHostListings: 4, isFallback: true },
+    { id: 10, lat: 13.7501, lng: 100.4913, name: 'Khao San Backpacker', neighbourhood: 'Phra Nakhon', roomType: 'Shared room', price: 350, minimumNights: 1, numberOfReviews: 312, lastReview: '2026-05-23', availability365: 365, calculatedHostListings: 20, isFallback: true },
+    { id: 11, lat: 13.7432, lng: 100.5519, name: 'Sathorn Executive Suite', neighbourhood: 'Bang Rak', roomType: 'Entire home/apt', price: 3800, minimumNights: 2, numberOfReviews: 92, lastReview: '2026-05-17', availability365: 315, calculatedHostListings: 9, isFallback: true },
+    { id: 12, lat: 13.7804, lng: 100.4889, name: 'Banglamphu Boutique', neighbourhood: 'Phra Nakhon', roomType: 'Private room', price: 1200, minimumNights: 2, numberOfReviews: 156, lastReview: '2026-05-20', availability365: 280, calculatedHostListings: 3, isFallback: true },
+    { id: 13, lat: 13.8031, lng: 100.5547, name: 'Chatuchak Weekend Stay', neighbourhood: 'Chatuchak', roomType: 'Entire home/apt', price: 1900, minimumNights: 2, numberOfReviews: 43, lastReview: '2026-05-08', availability365: 260, calculatedHostListings: 2, isFallback: true },
+    { id: 14, lat: 13.7170, lng: 100.4859, name: 'Thonburi Canal House', neighbourhood: 'Khlong San', roomType: 'Entire home/apt', price: 2100, minimumNights: 2, numberOfReviews: 38, lastReview: '2026-05-14', availability365: 240, calculatedHostListings: 1, isFallback: true },
+    { id: 15, lat: 13.8591, lng: 100.5217, name: 'Don Mueang Airport Stay', neighbourhood: 'Don Mueang', roomType: 'Private room', price: 750, minimumNights: 1, numberOfReviews: 89, lastReview: '2026-05-16', availability365: 340, calculatedHostListings: 7, isFallback: true },
   ]
 }

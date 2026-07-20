@@ -3,6 +3,7 @@
  * Current weather + wind for heat vital + PM2.5 drift advisory.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 export interface CityWeather {
   temp: number
@@ -10,7 +11,7 @@ export interface CityWeather {
   windSpeed: number
   windDir: number
   windCardinal: string
-  condition: string   // tactical short-code: CLR / PRT / OVC / FOG / RAIN / SNOW / TSTM / DRZL
+  condition: string   // tactical short-code: CLR / PRT / OVC / FOG / RAIN / SNOW / TSTM / DRZL / SHWR
 }
 
 /** WMO weather code → tactical short code */
@@ -49,7 +50,7 @@ export async function fetchWeather(lng: number, lat: number, timezone = 'Asia/Ba
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
       '&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,weather_code' +
       `&timezone=${encodeURIComponent(timezone)}`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Open-Meteo ${res.status}`)
     const d = await res.json()
     const c = d.current as {

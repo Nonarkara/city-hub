@@ -78,6 +78,13 @@ export const useCityStore = create<CityStore>()(
       partialize: (state) => ({
         compareSet: state.compareSet,
       }),
+      // compareMode isn't persisted — derive it on rehydrate so a reload with
+      // ≥2 pinned cities restores the comparison view (and its exit path).
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<CityStore>
+        const compareSet = p.compareSet ?? current.compareSet
+        return { ...current, ...p, compareSet, compareMode: compareSet.length >= 2 }
+      },
     },
   ),
 )

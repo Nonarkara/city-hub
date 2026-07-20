@@ -5,6 +5,7 @@
 // @ts-expect-error — _shared/lib/gistda.js has no .d.ts (ESM named exports)
 import * as G from '@shared/lib/gistda.js'
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const BKK_PROVINCE = 'กรุงเทพมหานคร'
 const BKK_LAT = 13.7563
@@ -68,7 +69,14 @@ export async function bangkokAQIStations() {
   }, TTL_STATIONS)
 }
 
-export async function thailandFires24h(): Promise<GeoJSON.FeatureCollection> {
+export interface FiresFeatureCollection extends GeoJSON.FeatureCollection {
+  /** True when the upstream layer's newest point is older than the 7-day window. */
+  stale?: boolean
+  /** ISO timestamp of the newest hotspot in the upstream layer (any age). */
+  latestDate?: string
+}
+
+export async function thailandFires24h(): Promise<FiresFeatureCollection> {
   return cachedFetch('gistda/fires-th-24h', async () => {
     // The shared lib's filter `datetime > CURRENT_TIMESTAMP - 2` 400s on this endpoint —
     // the field is actually `date` (epoch ms), not `datetime`. Pagination is disabled, so
@@ -76,7 +84,8 @@ export async function thailandFires24h(): Promise<GeoJSON.FeatureCollection> {
     const url =
       'https://gistdaportal.gistda.or.th/data/rest/services/FR_Fire/hotspot_npp_daily/MapServer/0/query' +
       '?f=geojson&where=1%3D1&outFields=date,latitude,longitude,satellite,confident,pv_tn'
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
+    if (!res.ok) throw new Error(`GISTDA fires ${res.status}`)
     const fc = await res.json()
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
     const all = (fc?.features ?? []) as GeoJSON.Feature[]
@@ -84,9 +93,17 @@ export async function thailandFires24h(): Promise<GeoJSON.FeatureCollection> {
       const d = Number((f.properties as Record<string, unknown>)?.date ?? 0)
       return d >= cutoff
     })
+    // Never silently substitute stale data when nothing is recent — return the
+    // (possibly empty) recent set and mark the vintage so callers can show it.
+    const latest = all.reduce(
+      (m, f) => Math.max(m, Number((f.properties as Record<string, unknown>)?.date ?? 0)),
+      0,
+    )
     return {
       type: 'FeatureCollection' as const,
-      features: recent.length ? recent : all, // fall back to all if nothing in last 7d
+      features: recent,
+      stale: latest > 0 && latest < cutoff,
+      latestDate: latest > 0 ? new Date(latest).toISOString() : undefined,
     }
   }, TTL_FIRES)
 }

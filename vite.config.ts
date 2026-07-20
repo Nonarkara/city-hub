@@ -15,7 +15,7 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom'],
           mapbox: ['maplibre-gl'],
-          firebase: ['firebase/app', 'firebase/firestore', 'firebase/analytics']
+          firebase: ['firebase/app', 'firebase/firestore', 'firebase/analytics', 'firebase/ai']
         }
       }
     }

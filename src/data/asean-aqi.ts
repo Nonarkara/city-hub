@@ -38,7 +38,7 @@ async function fetchCityAQI(city: ASEANCity): Promise<CityAQI | null> {
         `?latitude=${city.lat}&longitude=${city.lng}` +
         `&current=us_aqi,pm2_5`
       const res = await fetch(url)
-      if (!res.ok) return null
+      if (!res.ok) throw new Error(`Open-Meteo AQ ${res.status}`)
       const d = await res.json()
       const c = d.current as { us_aqi: number; pm2_5: number }
       return {
@@ -46,13 +46,19 @@ async function fetchCityAQI(city: ASEANCity): Promise<CityAQI | null> {
         usAqi: Math.round(c.us_aqi),
         pm25: Math.round(c.pm2_5 * 10) / 10,
       }
-    } catch {
-      return null
+    } catch (err) {
+      // Throw so cachedFetch can serve stale instead of caching a null result.
+      console.warn(`[asean-aqi] ${city.id} fetch failed:`, err)
+      throw err
     }
   }, TTL)
 }
 
 export async function fetchAllASEAN(): Promise<CityAQI[]> {
-  const results = await Promise.all(ASEAN_PEERS.map((c) => fetchCityAQI(c)))
-  return results.filter((r): r is CityAQI => r !== null)
+  // allSettled so one city's failure (with no stale cache) doesn't sink the rest
+  const results = await Promise.allSettled(ASEAN_PEERS.map((c) => fetchCityAQI(c)))
+  return results
+    .filter((r): r is PromiseFulfilledResult<CityAQI | null> => r.status === 'fulfilled')
+    .map((r) => r.value)
+    .filter((r): r is CityAQI => r !== null)
 }

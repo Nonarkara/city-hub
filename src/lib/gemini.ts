@@ -1,6 +1,7 @@
 /**
  * Gemini cloud chat — via Firebase AI Logic (the GoogleAIBackend / Gemini
- * Developer API). Reuses the Firebase `app` already initialized in firebase.ts.
+ * Developer API). Uses the lazily-initialized Firebase app from firebase.ts,
+ * so the SDK only loads when chat is actually opened.
  *
  * Unlike the local Ollama path, this works on the DEPLOYED site for any
  * visitor — calls are proxied through Firebase, so no Gemini key is exposed.
@@ -9,17 +10,20 @@
  * Developer API for the project. Until then, calls throw and the chat shows a
  * friendly setup hint.
  */
-import { getAI, getGenerativeModel, GoogleAIBackend, type AI } from 'firebase/ai'
-import { app } from './firebase'
+import type { AI } from 'firebase/ai'
+import { getFirebaseApp } from './firebase'
 import type { ChatMessage } from './ollama'
 
 const GEMINI_MODEL = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-2.5-flash'
 
 export const GEMINI_INFO = { model: GEMINI_MODEL }
 
-let _ai: AI | null = null
-function ai(): AI {
-  if (!_ai) _ai = getAI(app, { backend: new GoogleAIBackend() })
+let _ai: Promise<AI> | null = null
+function ai(): Promise<AI> {
+  if (!_ai) {
+    _ai = Promise.all([getFirebaseApp(), import('firebase/ai')])
+      .then(([app, { getAI, GoogleAIBackend }]) => getAI(app, { backend: new GoogleAIBackend() }))
+  }
   return _ai
 }
 
@@ -34,7 +38,8 @@ export async function streamGeminiChat(
   signal?:  AbortSignal,
 ): Promise<void> {
   const system = messages.find((m) => m.role === 'system')?.content
-  const model = getGenerativeModel(ai(), {
+  const [aiInstance, { getGenerativeModel }] = await Promise.all([ai(), import('firebase/ai')])
+  const model = getGenerativeModel(aiInstance, {
     model: GEMINI_MODEL,
     ...(system ? { systemInstruction: system } : {}),
   })

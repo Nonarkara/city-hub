@@ -5,3 +5,8 @@ compatibility_date = "2026-05-25"
 # Secrets required (set via: wrangler secret put <NAME>):
 #   GEMINI_API_KEY, WAQI_TOKEN, OPENAQ_KEY, OWM_KEY, GCP_SERVICE_ACCOUNT_JSON
 #   Optional: HF_API_TOKEN, TIMEFM_ENDPOINT_URL
+#
+# Note: AI-route rate limiting (/forecast, /narrate, /ee/mapid) is implemented
+# in src/index.ts as a best-effort per-isolate fixed window (20 req/min/IP).
+# Isolate memory is not shared across colos, so it is not a hard global quota —
+# for strict limits, add a Rate Limiting / KV / Durable Object binding here.

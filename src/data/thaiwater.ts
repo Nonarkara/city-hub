@@ -10,7 +10,8 @@
  *
  * No API key required for basic data.
  */
-import { cachedFetch } from '../lib/cached-fetch'
+import { cachedFetch, cacheTimestamp } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/thaiwater` : 'https://www.thaiwater.net'
@@ -32,6 +33,8 @@ export interface WaterQualityStation {
   salinity?: number // ppt
   wqi?: number // Water Quality Index 0-100
   lastUpdate: string
+  /** True when this reading is fabricated fallback data, not a live API reading. */
+  isFallback?: boolean
 }
 
 export interface WaterLevelStation {
@@ -48,6 +51,18 @@ export interface WaterLevelStation {
   rainfall24h?: number // mm
   status: 'normal' | 'warning' | 'critical' | 'severe'
   lastUpdate: string
+  /** True when this reading is fabricated fallback data, not a live API reading. */
+  isFallback?: boolean
+}
+
+/**
+ * On fetch failure: throw when cachedFetch holds a (stale) copy so it can serve
+ * real data; only use the fabricated fallback when there is no cache at all.
+ */
+function fallbackOrThrow<T>(cacheKey: string, err: unknown, fallback: T): T {
+  if (cacheTimestamp(cacheKey) > 0) throw err
+  console.warn('[thaiwater] fetch failed — serving marked fallback data:', err)
+  return fallback
 }
 
 /** Parse water quality data from Thaiwater API */
@@ -57,11 +72,9 @@ export async function fetchThaiwaterQuality(): Promise<WaterQualityStation[]> {
     // The actual endpoint structure varies — this is a best-effort wrapper
     const url = `${BASE}/api/v1/waterquality?province=กรุงเทพมหานคร`
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) {
-        // Fallback: return demo/placeholder data if API is unavailable
-        // This ensures the layer renders something useful
-        return getBangkokWaterQualityFallback()
+        return fallbackOrThrow('thaiwater/quality', new Error(`Thaiwater quality ${res.status}`), getBangkokWaterQualityFallback())
       }
       const data = await res.json()
       const stations: WaterQualityStation[] = []
@@ -92,8 +105,8 @@ export async function fetchThaiwaterQuality(): Promise<WaterQualityStation[]> {
       }
 
       return stations.length > 0 ? stations : getBangkokWaterQualityFallback()
-    } catch {
-      return getBangkokWaterQualityFallback()
+    } catch (err) {
+      return fallbackOrThrow('thaiwater/quality', err, getBangkokWaterQualityFallback())
     }
   }, TTL)
 }
@@ -103,8 +116,8 @@ export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
   return cachedFetch('thaiwater/levels', async () => {
     const url = `${BASE}/api/v1/waterlevel?province=กรุงเทพมหานคร`
     try {
-      const res = await fetch(url)
-      if (!res.ok) return getBangkokWaterLevelFallback()
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
+      if (!res.ok) return fallbackOrThrow('thaiwater/levels', new Error(`Thaiwater levels ${res.status}`), getBangkokWaterLevelFallback())
       const data = await res.json()
       const raw = data?.data ?? data?.stations ?? data ?? []
       const arr = Array.isArray(raw) ? raw : []
@@ -137,8 +150,8 @@ export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
       }
 
       return stations.length > 0 ? stations : getBangkokWaterLevelFallback()
-    } catch {
-      return getBangkokWaterLevelFallback()
+    } catch (err) {
+      return fallbackOrThrow('thaiwater/levels', err, getBangkokWaterLevelFallback())
     }
   }, TTL)
 }
@@ -214,20 +227,20 @@ export async function fetchWaterLevelGeoJSON(): Promise<GeoJSON.FeatureCollectio
 function getBangkokWaterQualityFallback(): WaterQualityStation[] {
   // Known monitoring stations from BMA and RID
   return [
-    { id: 'bma-01', name: 'Chao Phraya @ Rama VIII', nameTH: 'เจ้าพระยา สะพานพระราม 8', lat: 13.7659, lng: 100.4954, agency: 'BMA', ph: 7.2, do: 4.1, conductivity: 320, turbidity: 15, temperature: 29.5, wqi: 62, lastUpdate: '2026-05-26' },
-    { id: 'bma-02', name: 'Khlong Saen Saep', nameTH: 'คลองแสนแสบ', lat: 13.7406, lng: 100.5508, agency: 'BMA', ph: 6.8, do: 2.3, conductivity: 450, turbidity: 45, temperature: 30.1, wqi: 38, lastUpdate: '2026-05-26' },
-    { id: 'bma-03', name: 'Khlong Toey Port', nameTH: 'ท่าเรือคลองเตย', lat: 13.7034, lng: 100.5590, agency: 'BMA', ph: 7.0, do: 3.5, conductivity: 380, turbidity: 28, temperature: 29.8, wqi: 52, lastUpdate: '2026-05-26' },
-    { id: 'rid-01', name: 'Chao Phraya @ Bang Khen', nameTH: 'เจ้าพระยา บางเขน', lat: 13.8608, lng: 100.5863, agency: 'RID', ph: 7.1, do: 4.5, conductivity: 290, turbidity: 12, temperature: 29.2, wqi: 68, lastUpdate: '2026-05-26' },
-    { id: 'rid-02', name: 'Chao Phraya @ Bang Sai', nameTH: 'เจ้าพระยา บางไทร', lat: 14.2153, lng: 100.4767, agency: 'RID', ph: 7.0, do: 4.8, conductivity: 280, turbidity: 10, temperature: 28.9, wqi: 72, lastUpdate: '2026-05-26' },
+    { id: 'bma-01', name: 'Chao Phraya @ Rama VIII', nameTH: 'เจ้าพระยา สะพานพระราม 8', lat: 13.7659, lng: 100.4954, agency: 'BMA', ph: 7.2, do: 4.1, conductivity: 320, turbidity: 15, temperature: 29.5, wqi: 62, lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-02', name: 'Khlong Saen Saep', nameTH: 'คลองแสนแสบ', lat: 13.7406, lng: 100.5508, agency: 'BMA', ph: 6.8, do: 2.3, conductivity: 450, turbidity: 45, temperature: 30.1, wqi: 38, lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-03', name: 'Khlong Toey Port', nameTH: 'ท่าเรือคลองเตย', lat: 13.7034, lng: 100.5590, agency: 'BMA', ph: 7.0, do: 3.5, conductivity: 380, turbidity: 28, temperature: 29.8, wqi: 52, lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'rid-01', name: 'Chao Phraya @ Bang Khen', nameTH: 'เจ้าพระยา บางเขน', lat: 13.8608, lng: 100.5863, agency: 'RID', ph: 7.1, do: 4.5, conductivity: 290, turbidity: 12, temperature: 29.2, wqi: 68, lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'rid-02', name: 'Chao Phraya @ Bang Sai', nameTH: 'เจ้าพระยา บางไทร', lat: 14.2153, lng: 100.4767, agency: 'RID', ph: 7.0, do: 4.8, conductivity: 280, turbidity: 10, temperature: 28.9, wqi: 72, lastUpdate: '2026-05-26', isFallback: true },
   ]
 }
 
 function getBangkokWaterLevelFallback(): WaterLevelStation[] {
   return [
-    { id: 'bma-wl-01', name: 'Chao Phraya @ Sathon', nameTH: 'เจ้าพระยา สาทร', lat: 13.7180, lng: 100.5139, river: 'Chao Phraya', waterLevelM: 1.85, bankLevelM: 2.50, rainfall1h: 0, rainfall24h: 12, status: 'normal', lastUpdate: '2026-05-26' },
-    { id: 'bma-wl-02', name: 'Khlong Saen Saep @ Pratu Nam', nameTH: 'คลองแสนแสบ ประตูน้ำ', lat: 13.7513, lng: 100.5407, river: 'Saen Saep', waterLevelM: 1.20, bankLevelM: 1.80, rainfall1h: 0, rainfall24h: 8, status: 'normal', lastUpdate: '2026-05-26' },
-    { id: 'bma-wl-03', name: 'Khlong Toey @ Rama IV', nameTH: 'คลองเตย พระราม 4', lat: 13.7201, lng: 100.5542, river: 'Khlong Toey', waterLevelM: 0.95, bankLevelM: 1.60, rainfall1h: 0, rainfall24h: 15, status: 'normal', lastUpdate: '2026-05-26' },
-    { id: 'bma-wl-04', name: 'Chao Phraya @ Krung Thon', nameTH: 'เจ้าพระยา กรุงธน', lat: 13.7804, lng: 100.4889, river: 'Chao Phraya', waterLevelM: 2.10, bankLevelM: 2.80, rainfall1h: 0, rainfall24h: 5, status: 'normal', lastUpdate: '2026-05-26' },
-    { id: 'bma-wl-05', name: 'Khlong Lat Phrao @ Ladprao', nameTH: 'คลองลาดพร้าว', lat: 13.8031, lng: 100.5998, river: 'Lat Phrao', waterLevelM: 0.75, bankLevelM: 1.40, rainfall1h: 0, rainfall24h: 20, status: 'warning', lastUpdate: '2026-05-26' },
+    { id: 'bma-wl-01', name: 'Chao Phraya @ Sathon', nameTH: 'เจ้าพระยา สาทร', lat: 13.7180, lng: 100.5139, river: 'Chao Phraya', waterLevelM: 1.85, bankLevelM: 2.50, rainfall1h: 0, rainfall24h: 12, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-wl-02', name: 'Khlong Saen Saep @ Pratu Nam', nameTH: 'คลองแสนแสบ ประตูน้ำ', lat: 13.7513, lng: 100.5407, river: 'Saen Saep', waterLevelM: 1.20, bankLevelM: 1.80, rainfall1h: 0, rainfall24h: 8, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-wl-03', name: 'Khlong Toey @ Rama IV', nameTH: 'คลองเตย พระราม 4', lat: 13.7201, lng: 100.5542, river: 'Khlong Toey', waterLevelM: 0.95, bankLevelM: 1.60, rainfall1h: 0, rainfall24h: 15, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-wl-04', name: 'Chao Phraya @ Krung Thon', nameTH: 'เจ้าพระยา กรุงธน', lat: 13.7804, lng: 100.4889, river: 'Chao Phraya', waterLevelM: 2.10, bankLevelM: 2.80, rainfall1h: 0, rainfall24h: 5, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },
+    { id: 'bma-wl-05', name: 'Khlong Lat Phrao @ Ladprao', nameTH: 'คลองลาดพร้าว', lat: 13.8031, lng: 100.5998, river: 'Lat Phrao', waterLevelM: 0.75, bankLevelM: 1.40, rainfall1h: 0, rainfall24h: 20, status: 'warning', lastUpdate: '2026-05-26', isFallback: true },
   ]
 }

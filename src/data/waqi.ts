@@ -11,6 +11,7 @@
  *   /map/bounds/?latlng=...&token=... all stations in a bbox (GeoJSON-able)
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE  = PROXY ? `${PROXY}/waqi` : 'https://api.waqi.info'
@@ -44,42 +45,39 @@ export async function fetchWAQIStationsByBbox(
 ): Promise<GeoJSON.FeatureCollection> {
   const key = cacheKey ?? `waqi/bbox/${bbox.map((n) => n.toFixed(3)).join(',')}`
   return cachedFetch(key, async () => {
-    const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
-    try {
-      // WAQI bounds API uses lat1,lng1,lat2,lng2 (SW corner first, then NE corner)
-      const [w, s, e, n] = bbox
-      const latlng = `${s},${w},${n},${e}`
-      // When proxied: Worker injects token. Direct: append token (demo or real).
-      const tokenParam = TOKEN ? `&token=${TOKEN}` : ''
-      const url = `${BASE}/map/bounds/?latlng=${latlng}${tokenParam}`
-      const res = await fetch(url)
-      if (!res.ok) return empty
-      const json = await res.json()
-      if (json?.status !== 'ok') return empty
-      const stations = (json.data ?? []) as Array<{ uid: number; lat: number; lon: number; aqi: string; station: { name: string } }>
-      return {
-        type: 'FeatureCollection' as const,
-        features: stations
-          .filter((s) => Number.isFinite(Number(s.aqi)))
-          .map((s): GeoJSON.Feature => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-            properties: {
-              uid: s.uid,
-              name: s.station?.name ?? `WAQI ${s.uid}`,
-              aqi: Number(s.aqi),
-              level:
-                Number(s.aqi) >= 301 ? 'hazardous' :
-                Number(s.aqi) >= 201 ? 'very-unhealthy' :
-                Number(s.aqi) >= 151 ? 'unhealthy' :
-                Number(s.aqi) >= 101 ? 'unhealthy-sensitive' :
-                Number(s.aqi) >= 51  ? 'moderate' :
-                                       'good',
-            },
-          })),
-      }
-    } catch {
-      return empty
+    // Throw on failure so cachedFetch can serve stale — never cache an
+    // error-as-empty result for the full TTL.
+    // WAQI bounds API uses lat1,lng1,lat2,lng2 (SW corner first, then NE corner)
+    const [w, s, e, n] = bbox
+    const latlng = `${s},${w},${n},${e}`
+    // When proxied: Worker injects token. Direct: append token (demo or real).
+    const tokenParam = TOKEN ? `&token=${TOKEN}` : ''
+    const url = `${BASE}/map/bounds/?latlng=${latlng}${tokenParam}`
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
+    if (!res.ok) throw new Error(`WAQI ${res.status}`)
+    const json = await res.json()
+    if (json?.status !== 'ok') throw new Error(`WAQI status ${json?.status ?? 'unknown'}`)
+    const stations = (json.data ?? []) as Array<{ uid: number; lat: number; lon: number; aqi: string; station: { name: string } }>
+    return {
+      type: 'FeatureCollection' as const,
+      features: stations
+        .filter((s) => Number.isFinite(Number(s.aqi)))
+        .map((s): GeoJSON.Feature => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+          properties: {
+            uid: s.uid,
+            name: s.station?.name ?? `WAQI ${s.uid}`,
+            aqi: Number(s.aqi),
+            level:
+              Number(s.aqi) >= 301 ? 'hazardous' :
+              Number(s.aqi) >= 201 ? 'very-unhealthy' :
+              Number(s.aqi) >= 151 ? 'unhealthy' :
+              Number(s.aqi) >= 101 ? 'unhealthy-sensitive' :
+              Number(s.aqi) >= 51  ? 'moderate' :
+                                     'good',
+          },
+        })),
     }
   }, TTL)
 }

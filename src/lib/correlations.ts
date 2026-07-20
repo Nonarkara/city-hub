@@ -71,7 +71,8 @@ export function computeCorrelations(
   }
 
   // ── 2. Water level → Flood risk prediction ─────────────────────────────────
-  const criticalWater = waterLevels.filter((w) => w.status === 'critical' || w.status === 'severe')
+  // Never derive insights from fabricated fallback readings (isFallback).
+  const criticalWater = waterLevels.filter((w) => !w.isFallback && (w.status === 'critical' || w.status === 'severe'))
   if (criticalWater.length > 0) {
     const worst = criticalWater.sort((a, b) => b.waterLevelM - a.waterLevelM)[0]
     const pct = worst.bankLevelM > 0 ? (worst.waterLevelM / worst.bankLevelM) * 100 : 0
@@ -88,10 +89,12 @@ export function computeCorrelations(
   }
 
   // ── 3. Airbnb density → civic pressure ─────────────────────────────────────
-  if (airbnbListings.length > 0) {
-    const highDensity = airbnbListings.filter((l) => l.availability365 > 300 && l.numberOfReviews > 50)
-    const commercialPct = airbnbListings.length > 0
-      ? Math.round((highDensity.length / airbnbListings.length) * 100)
+  // Skip entirely when listings are fabricated fallback data (isFallback).
+  const realListings = airbnbListings.filter((l) => !l.isFallback)
+  if (realListings.length > 0) {
+    const highDensity = realListings.filter((l) => l.availability365 > 300 && l.numberOfReviews > 50)
+    const commercialPct = realListings.length > 0
+      ? Math.round((highDensity.length / realListings.length) * 100)
       : 0
     if (commercialPct > 30 && civicActive > 200) {
       // Compute actual correlation between Airbnb density and complaint count
@@ -145,13 +148,18 @@ export function computeCorrelations(
   }
 
   // ── 6. Water quality + flood risk ──────────────────────────────────────────
-  const poorWaterQuality = waterLevels.length > 0
-  if (floodCount > 0 && poorWaterQuality) {
+  // Honest gate: only fire when a real (non-fallback) station is actually
+  // elevated — canal levels at warning+ during active flooding are a genuine
+  // contamination risk. Previously this was just `waterLevels.length > 0`.
+  const elevatedCanals = waterLevels.some(
+    (w) => !w.isFallback && (w.status === 'warning' || w.status === 'critical' || w.status === 'severe'),
+  )
+  if (floodCount > 0 && elevatedCanals) {
     insights.push({
       id: 'flood-water-quality',
       severity: 'medium',
       headline: 'Flooding may compromise water quality',
-      detail: 'Active flood zones combined with canal water quality monitoring suggest risk of contamination in flood-affected areas. Advise residents to avoid contact with floodwater and boil drinking water.',
+      detail: 'Active flood zones combined with elevated canal levels suggest risk of contamination in flood-affected areas. Advise residents to avoid contact with floodwater and boil drinking water.',
       sources: ['Thaiwater', 'GISTDA'],
       confidence: 0.70,
     })
