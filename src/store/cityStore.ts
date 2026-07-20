@@ -72,8 +72,10 @@ export const useCityStore = create<CityStore>()(
     }),
     {
       name: 'city-hub-city-store',
+      // customCities no longer persisted — typed cities are viewed ephemerally
+      // (active for the session, never saved) so the picker never accumulates.
+      // Only compare pins survive reload.
       partialize: (state) => ({
-        customCities: state.customCities,
         compareSet: state.compareSet,
       }),
     },

@@ -8,20 +8,24 @@ import {
   type NominatimResult,
 } from '../lib/city-generator'
 import { useCityStore } from '../store/cityStore'
+import { trackEvent } from '../lib/firebase'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
+// "View any city" — geocode a typed name (Nominatim) and view it EPHEMERALLY:
+// it becomes the active city for this session only, never written to storage,
+// so the picker never accumulates. Every search + view is logged (city_search /
+// city_view) so the demand geography is captured without a growing tab bar.
 export function CityOnboardingModal({ open, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<NominatimResult[]>([])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<NominatimResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const addCustomCity = useCityStore((s) => s.addCustomCity)
-  const toggleCompareCity = useCityStore((s) => s.toggleCompareCity)
+  const setActiveCity = useCityStore((s) => s.setActiveCity)
   const debounceRef = useRef<number>(0)
 
   const handleSearch = useCallback(async (q: string) => {
@@ -36,6 +40,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
       const r = await searchNominatim(q)
       setResults(r)
       if (r.length > 0) setSelected(r[0])
+      trackEvent('city_search', { query: q.trim(), result_count: r.length })
     } catch (e) {
       setError(String(e))
       setResults([])
@@ -50,21 +55,13 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     return () => window.clearTimeout(debounceRef.current)
   }, [query, handleSearch])
 
-  const handleAdd = () => {
+  const handleView = () => {
     if (!selected) return
     const config = nominatimToCityConfig(selected)
-    addCustomCity(config)
-    onClose()
-    setQuery('')
-    setResults([])
-    setSelected(null)
-  }
-
-  const handleAddAndPin = () => {
-    if (!selected) return
-    const config = nominatimToCityConfig(selected)
-    addCustomCity(config)
-    toggleCompareCity(config.id)
+    setActiveCity(config)   // ephemeral — sets active city, not persisted
+    trackEvent('city_view', {
+      city_id: config.id, name: config.name, country: config.country, source: 'search',
+    })
     onClose()
     setQuery('')
     setResults([])
@@ -74,7 +71,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && selected) {
       e.preventDefault()
-      handleAdd()
+      handleView()
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
@@ -96,14 +93,14 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     <div className="onboarding-backdrop" onClick={onClose}>
       <div className="onboarding-modal" onClick={(e) => e.stopPropagation()}>
         <div className="onboarding-header">
-          <h2>ADD CITY</h2>
+          <h2>VIEW ANY CITY</h2>
           <button className="onboarding-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
 
         <div className="onboarding-body">
-          <label className="onboarding-label">City name</label>
+          <label className="onboarding-label">Search any city</label>
           <input
             className="onboarding-input"
             type="text"
@@ -149,8 +146,8 @@ export function CityOnboardingModal({ open, onClose }: Props) {
                 <span>{preview.availableLayers.length} global sources</span>
               </div>
               <div className="onboarding-preview-row">
-                <span>Compare</span>
-                <span>Pin up to 4 cities</span>
+                <span>View</span>
+                <span>Live · not saved</span>
               </div>
               {nutrition && (
                 <div className="onboarding-nutrition">
@@ -173,17 +170,10 @@ export function CityOnboardingModal({ open, onClose }: Props) {
           </button>
           <button
             className="onboarding-btn onboarding-btn--primary"
-            onClick={handleAdd}
+            onClick={handleView}
             disabled={!preview}
           >
-            Add
-          </button>
-          <button
-            className="onboarding-btn onboarding-btn--primary"
-            onClick={handleAddAndPin}
-            disabled={!preview}
-          >
-            Add + Pin
+            View city
           </button>
         </div>
       </div>

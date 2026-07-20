@@ -229,7 +229,7 @@ export function MobileStrip({
                 onAddCity()
               }}
             >
-              + ADD CITY
+              SEARCH ANY CITY
             </button>
           </div>
         </>
@@ -408,7 +408,7 @@ export function TopbarCityDropdown({
                   onAddCity()
                 }}
               >
-                + ADD CITY
+                SEARCH ANY CITY
               </button>
             </li>
           </ul>

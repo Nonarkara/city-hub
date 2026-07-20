@@ -190,6 +190,7 @@ export default function App() {
     setActiveCity(c)
     setSelectedDistrict(null)
     clearSelection()
+    trackEvent('city_view', { city_id: c.id, name: c.name, country: c.country, source: 'picker' })
   }, [setActiveCity, setSelectedDistrict, clearSelection])
 
   const tokenAvailable = hasMapboxToken()
