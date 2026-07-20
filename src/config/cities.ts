@@ -45,6 +45,7 @@ export interface CityConfig {
   basemapDefault?: BasemapId                            // optional per-city default basemap
   threeD?: boolean                                      // opt into 3D terrain + building extrusions
   buildings3dUrl?: string                               // static GeoJSON of footprints for 3D extrusion
+  heading?: number                                      // 3D camera bearing in degrees (default 18)
 
   // City onboarding — these fields power the CityFactsCard that introduces
   // a newcomer to the city in ~30 seconds. Static, curated facts.
@@ -784,8 +785,9 @@ export const CITIES: CityConfig[] = [
     name: 'Kranj',
     nameLocal: 'Kranj',
     country: 'SI',
-    center: [14.3556, 46.2389],
-    zoom: 13,
+    center: [14.3557, 46.2408],  // old town on the Sava–Kokra promontory
+    zoom: 14.9,
+    heading: 22,                 // face NNE — Kamnik Alps in the background
     bbox: [14.30, 46.20, 14.42, 46.30],
     timezone: 'Europe/Ljubljana',
     hudClockLabel: 'KRJ',

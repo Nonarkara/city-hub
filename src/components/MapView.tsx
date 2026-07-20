@@ -346,7 +346,7 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
       // read immediately on a direct ?city= deep-link (the shared demo path).
       zoom: city.threeD ? Math.max(city.zoom, 14.6) : city.zoom,
       pitch: city.threeD ? 62 : 0,
-      bearing: city.threeD ? 18 : 0,
+      bearing: city.threeD ? (city.heading ?? 18) : 0,
       minZoom: 3,
       renderWorldCopies: false,
       attributionControl: { compact: true },
@@ -390,7 +390,7 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
         // extrusions read; flat cities reset pitch/bearing to 0.
         zoom: city.threeD ? Math.max(city.zoom, 14.6) : city.zoom,
         pitch: city.threeD ? 62 : 0,
-        bearing: city.threeD ? 18 : 0,
+        bearing: city.threeD ? (city.heading ?? 18) : 0,
         duration,
         essential: true,
         curve: distDeg > 3 ? 1.6 : 1.2,   // bigger arc for longer hauls
@@ -489,16 +489,18 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
               source: BLD_SRC,
               minzoom: 13,
               paint: {
-                'fill-extrusion-height': ['coalesce', ['get', 'h'], 9],
+                'fill-extrusion-height': ['coalesce', ['get', 'h'], 8],
                 'fill-extrusion-base': ['coalesce', ['get', 'base'], 0],
+                'fill-extrusion-vertical-gradient': true,
                 'fill-extrusion-color': [
-                  'interpolate', ['linear'], ['coalesce', ['get', 'h'], 9],
-                  0,  '#5b6472',
-                  10, '#7d8698',
-                  22, '#a98f57',
-                  45, '#c2933a',
+                  'interpolate', ['linear'], ['coalesce', ['get', 'h'], 8],
+                  4,  '#39414f',
+                  9,  '#525c6e',
+                  15, '#8a7a55',
+                  22, '#b6893a',
+                  40, '#d19a2e',
                 ],
-                'fill-extrusion-opacity': 0.88,
+                'fill-extrusion-opacity': 0.92,
               },
             })
           }
