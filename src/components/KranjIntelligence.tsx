@@ -61,7 +61,12 @@ function useCountUp(target: number, decimals = 0, ms = 900): number {
       if (t < 1) raf.current = requestAnimationFrame(tick)
     }
     raf.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf.current)
+    // Safety net: requestAnimationFrame is paused in background/unfocused tabs,
+    // which would leave the number stuck at 0. Guarantee the real value lands
+    // regardless (setTimeout still fires when throttled) so the hero figures
+    // are never shown as €0 to a viewer who wasn't looking at the tab on load.
+    const safety = window.setTimeout(() => setV(target), ms + 400)
+    return () => { cancelAnimationFrame(raf.current); clearTimeout(safety) }
   }, [target, decimals, ms])
   return v
 }
