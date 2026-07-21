@@ -51,6 +51,7 @@ import { SmokeConeOverlay } from './components/SmokeConeOverlay'
 import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 import { sourceCountForCity } from './data/source-registry'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { cityHasTwin } from './components/CityIntelligence'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -174,6 +175,17 @@ export default function App() {
   if (typeof window !== 'undefined') {
     (window as unknown as { __openCmdK?: () => void }).__openCmdK = () => setCmdkOpen(true)
   }
+
+  // ── Digital twin affordance ────────────────────────────────────────────────
+  // The topbar TWIN button jumps the right-panel scroll to the active city's
+  // twin section. The twin section itself sets id="city-twin-<id>" so the
+  // jump works regardless of which panel chrome wraps it.
+  const activeHasTwin = cityHasTwin(activeCity.id)
+  const scrollToTwin = useCallback(() => {
+    if (!activeHasTwin) return
+    const target = document.getElementById(`city-twin-${activeCity.id}`)
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [activeHasTwin, activeCity.id])
 
   const bangkokMode = activeCity.tier === 'full'
   const selectedDistrictId = useSelectionStore((s) => s.selectedDistrictId)
@@ -325,7 +337,7 @@ export default function App() {
 
       <header className="topbar">
         <span className="topbar-wordmark" title="Dr Non's City Hub — Open Civic Intelligence">
-          <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB<span className="topbar-version">v3.0</span>
+          <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB
         </span>
 
         <div className="topbar-zone-sep" aria-hidden />
@@ -340,6 +352,22 @@ export default function App() {
           onAddCity={() => setOnboardingOpen(true)}
           cityStress={cityStress}
         />
+
+        {/* TWIN — context-aware affordance. Only renders for cities that ship
+            a full economic/civic twin brief. Click → jump to the twin section
+            in the right panel. */}
+        {activeHasTwin && (
+          <button
+            type="button"
+            className="topbar-twin-btn"
+            onClick={scrollToTwin}
+            title={`Open ${activeCity.name} digital twin — economic, civic, digital brief`}
+            aria-label={`Open ${activeCity.name} digital twin`}
+          >
+            <span className="topbar-twin-marker" aria-hidden />
+            <span className="topbar-twin-label">TWIN</span>
+          </button>
+        )}
 
         {/* SPLIT — side-by-side satellite compare (primary action, always visible) */}
         <button
@@ -363,7 +391,7 @@ export default function App() {
             onClick={() => setAboutOpen(true)}
             title="About this dashboard"
             aria-label="About"
-          >· ABOUT</button>
+          >ABOUT</button>
         </div>
 
         {dataStatusOpen && <DataSourceStatus onClose={() => setDataStatusOpen(false)} />}
@@ -394,7 +422,7 @@ export default function App() {
             title="Exit comparison mode"
             aria-label="Exit comparison mode"
           >
-            · COMPARE ({compareSet.length})
+            COMPARE · {compareSet.length}
           </button>
         )}
 
@@ -406,7 +434,7 @@ export default function App() {
               title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
               aria-label={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
             >
-              ·<span className="topbar-btn-label"> {governorMode ? 'SIT ROOM' : 'ANALYST'}</span>
+              <span className="topbar-btn-label">{governorMode ? 'SIT ROOM' : 'ANALYST'}</span>
             </button>
             <button
               className="topbar-mode-btn topbar-sitrep-btn"
@@ -414,7 +442,7 @@ export default function App() {
               title="Review Global SitRep Actions"
               aria-label="Review Global SitRep Actions"
             >
-              ·<span className="topbar-btn-label"> ACTION CENTER</span>
+              <span className="topbar-btn-label">ACTION CENTER</span>
             </button>
           </>
         )}
@@ -526,7 +554,7 @@ export default function App() {
             aria-label="Toggle smoke trajectory"
             aria-pressed={smokeVisible}
           >
-            <span className="topbar-insight-icon" aria-hidden>🔥</span>
+            <span className="topbar-insight-icon topbar-insight-icon--smoke" aria-hidden />
             <span className="topbar-insight-label">SMOKE</span>
           </button>
         )}

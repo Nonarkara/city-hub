@@ -2905,6 +2905,88 @@
 }
 .topbar-mode-btn:hover { opacity: 1; text-decoration: underline; }
 
+/* ── Topbar TWIN button — context-aware digital twin affordance ─────────── */
+/* Renders only when the active city ships a full economic/civic twin brief.
+   Click → scroll the right panel to the twin section. AXIOM DNA: a small
+   hairline tag with a solid-square marker, never an emoji or full pill. */
+.topbar-twin-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  margin-left: 4px;
+}
+
+.topbar-twin-btn:hover {
+  background: var(--amber);
+  color: #04060b;
+}
+
+.topbar-twin-marker {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.topbar-twin-label {
+  font-weight: 600;
+}
+
+/* On mobile, the right panel is a drawer the user has to open. The TWIN
+   affordance is preserved by the city picker's TWIN badge — the right-side
+   peek button surfaces the panel; from there the twin section is the first
+   block. Hide the topbar TWIN button to save horizontal real estate. */
+@media (max-width: 767px) {
+  .topbar-twin-btn { display: none; }
+}
+
+/* When the user clicks TWIN, the section in the right panel flashes briefly
+   so they can see where they landed. Animation ≤ 150ms per AXIOM DNA §13. */
+@keyframes twin-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.0); }
+  20%  { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.85); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.0); }
+}
+
+:target,
+.city-twin-flash {
+  animation: twin-flash 1.4s ease-out;
+}
+
+/* ── City dropdown TWIN badge (mirrors the topbar affordance) ────────────── */
+.topbar-city-menu-twin {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  padding: 1px 5px;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+/* Active pin state — solid square replaces the interpunct */
+.topbar-city-menu-pin--on {
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+}
+
 /* ── Vitals bar (governor left rail) ─────────────────────────────────────── */
 .vitals-bar {
   display: flex;
@@ -5832,6 +5914,29 @@
 .topbar-insight-icon {
   font-size: 13px;
   line-height: 1;
+}
+
+/* Smoke trajectory marker — solid stacked squares (no emoji).
+   Replaces the deprecated 🔥 glyph. AXIOM DNA §17: icons only where they
+   out-perform text. The "SMOKE" label carries meaning; the mark is rhythm. */
+.topbar-insight-icon--smoke {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.topbar-insight-icon--smoke::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .topbar-insight-label {

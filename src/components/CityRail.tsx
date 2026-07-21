@@ -12,6 +12,7 @@ import { useDistrictData, type DistrictSummary } from '../hooks/useDistrictData'
 import { RISK_COLOR } from '../lib/risk'
 import { prefetchCity } from '../lib/city-prefetch'
 import { STRESS_COLOR, type StressMap } from '../hooks/useCityStress'
+import { cityHasTwin } from './CityIntelligence'
 
 // CamelCase name_en → spaced (e.g. "BangKapi" → "Bang Kapi")
 function formatDistrictName(name: string): string {
@@ -343,6 +344,7 @@ export function TopbarCityDropdown({
                     const pinned = compareSet.includes(city.id)
                     const active = city.id === activeCity.id
                     const cs = cityStress[city.id]
+                    const hasTwin = cityHasTwin(city.id)
                     return (
                       <li key={city.id} role="none">
                         <button
@@ -364,6 +366,15 @@ export function TopbarCityDropdown({
                           />
                           <span className="topbar-city-menu-code">{city.hudClockLabel}</span>
                           <span className="basemap-menu-label">{city.name}</span>
+                          {hasTwin && (
+                            <span
+                              className="topbar-city-menu-twin"
+                              title={`${city.name} has a full digital twin — economic, civic, digital brief`}
+                              aria-label={`${city.name} has a digital twin`}
+                            >
+                              TWIN
+                            </span>
+                          )}
                           {cs && (
                             <span
                               className={`topbar-tab-stress topbar-tab-stress--${cs.level}`}
@@ -373,7 +384,7 @@ export function TopbarCityDropdown({
                             </span>
                           )}
                           <span
-                            className="topbar-city-menu-pin"
+                            className={`topbar-city-menu-pin ${pinned ? 'topbar-city-menu-pin--on' : ''}`}
                             role="button"
                             tabIndex={-1}
                             onClick={(e) => {
@@ -390,7 +401,7 @@ export function TopbarCityDropdown({
                             title={pinned ? 'Unpin from comparison' : 'Pin for comparison'}
                             aria-label={pinned ? `Unpin ${city.name}` : `Pin ${city.name} for comparison`}
                           >
-                            {pinned ? '📌' : '·'}
+                            {pinned ? 'PIN' : '·'}
                           </span>
                         </button>
                       </li>

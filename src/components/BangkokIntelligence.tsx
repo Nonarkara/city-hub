@@ -162,7 +162,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
     : '#8bc34a'
 
   return (
-    <section className="bkk-intel" aria-label="Bangkok economic and digital twin intelligence">
+    <section className="bkk-intel" id="city-twin-bangkok" aria-label="Bangkok economic and digital twin intelligence">
       <div className="ki-head">
         <span className="ki-title">BANGKOK DIGITAL TWIN · ECONOMIC &amp; CIVIC</span>
         <span className="ki-live"><span className="ki-live-dot" aria-hidden />LIVE {clock}</span>

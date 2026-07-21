@@ -135,7 +135,7 @@ export const KranjIntelligence = memo(function KranjIntelligence({ activeCity }:
   })() : null
 
   return (
-    <section className="kranj-intel" aria-label="Kranj economic and digital intelligence">
+    <section className="kranj-intel" id="city-twin-kranj" aria-label="Kranj economic and digital intelligence">
       <div className="ki-head">
         <span className="ki-title">ECONOMIC &amp; DIGITAL INTELLIGENCE</span>
         <span className="ki-live"><span className="ki-live-dot" aria-hidden />LIVE {clock}</span>

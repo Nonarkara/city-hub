@@ -56,6 +56,12 @@ export interface CityConfig {
   distinctiveness: string                               // 1-line "what's special about this city"
 
   demographics?: SocioEconomics
+
+  // Digital twin — true if this city has a full economic/civic twin brief
+  // rendered above the alert panel (BangkokIntelligence, KranjIntelligence).
+  // AXIOM DNA §11: "Information at the point of decision" — the twin is the
+  // structural-intelligence layer; sensors/news live in the brief below it.
+  hasDigitalTwin?: boolean
 }
 
 /** Basemap variant IDs. Defined here for type sharing with MapView. */
@@ -123,7 +129,8 @@ export const CITIES: CityConfig[] = [
       giniCoefficient: 0.45,
       trafficCongestionPct: 47,
       walkabilityScore: 52,
-    }
+    },
+    hasDigitalTwin: true,
   },
   {
     id: 'chiang-mai',
@@ -820,7 +827,8 @@ export const CITIES: CityConfig[] = [
       greenSpacePct: 42.0,         // alpine, forested surrounds — estimate
       greenSpaceM2PerPerson: 300,
       giniCoefficient: 0.24,       // Slovenia national — proxy
-    }
+    },
+    hasDigitalTwin: true,
   },
 ]
 
