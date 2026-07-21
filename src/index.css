@@ -9462,10 +9462,12 @@
   opacity: 0.7;
 }
 
-/* ── Kranj economic + digital intelligence (KranjIntelligence.tsx) ─────────── */
+/* ── City economic + digital intelligence (Kranj + Bangkok twin panels) ────── */
 /* House DNA: hairline borders, one amber accent, mono numerals, hard edges,
-   two-size hierarchy (18px values · 11px labels). No radius/gradient/shadow. */
-.kranj-intel {
+   two-size hierarchy (18px values · 11px labels). No radius/gradient/shadow.
+   Shared .ki-* chrome; .kranj-intel / .bkk-intel are the section shells. */
+.kranj-intel,
+.bkk-intel {
   border-bottom: 1px solid var(--line);
   padding: 12px 14px 14px;
   margin-bottom: 4px;

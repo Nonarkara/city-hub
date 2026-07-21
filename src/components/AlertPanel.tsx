@@ -36,6 +36,7 @@ import { OpenDataInventory } from './OpenDataInventory'
 import { PrepareCard } from './PrepareCard'
 import { InsightCardsGrid } from './InsightCardsGrid'
 import { PopulationRealityPanel } from './PopulationRealityPanel'
+import { BangkokIntelligence } from './BangkokIntelligence'
 import { RealityCheckEngine } from './RealityCheckEngine'
 import { useDistrictData } from '../hooks/useDistrictData'
 import { CITIES } from '../config/cities'
@@ -682,6 +683,7 @@ export function AlertPanel() {
         </div>
 
         <div className="alert-scroll">
+          <BangkokIntelligence />
           <BriefSection brief={brief} onAction={handleBriefAction} />
           <PrepareCard activeCity={BANGKOK_CITY} forecast={forecast} />
           <SLICPanel activeCity={BANGKOK_CITY} />

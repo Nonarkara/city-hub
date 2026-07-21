@@ -189,6 +189,22 @@ supabase/
 
 ---
 
+## Bangkok Digital Twin Intelligence (2026-07-21)
+
+Kranj-pattern economic/civic brief for Bangkok's full-tier twin:
+
+- **Component:** `src/components/BangkokIntelligence.tsx`
+- **Wired into:** `AlertPanel` (top of governor brief scroll) — same slot as `KranjIntelligence` in `LiteCityPanel`
+- **CSS:** reuses shared `.ki-*` chrome; shell class `.bkk-intel` (paired with `.kranj-intel` in `index.css`)
+- **Data (cited, no invented numbers):**
+  - Demographics from `cities.ts` (GPP, GDP/capita, TomTom congestion, green space, Gini)
+  - DOPA 2568 × NASA VIIRS shadow population (`dopa-bkk.ts`)
+  - SLIC v3.4 pillars (`slic-cityhub.ts`) — Samastiti structural frame
+  - Live Chao Phraya discharge via `fetchChaoPrayaForecast` (GloFAS / Open-Meteo)
+- **Map layers:** unchanged — Bangkok already has the full super-dashboard layer set (`bangkok-layers.ts`, `use-bangkok-layers.ts`); 3D buildings via Mapbox `buildings-3d` toggle, not a baked GeoJSON like Kranj
+
+---
+
 ## Deployment (2026-05-25)
 
 - **GitHub:** https://github.com/Nonarkara/unl-city-hub (private)
