@@ -101,13 +101,16 @@ export const CITIES: CityConfig[] = [
     nameLocal: 'กรุงเทพฯ',
     country: 'TH',
     center: [100.5018, 13.7563],
-    zoom: 11,
+    zoom: 12.4,
+    heading: -8,                 // face SE — Rattanakosin old town on the left, Sathorn CBD on the right
     bbox: [100.30, 13.50, 100.95, 14.00],
     timezone: 'Asia/Bangkok',
     hudClockLabel: 'BKK',
     countryName: 'Thailand',
     gdeltQuery: 'bangkok thailand',
     tier: 'full',
+    threeD: true,                          // terrain relief + 29k OSM building extrusions
+    buildings3dUrl: '/geo/bkk-buildings.geojson',  // central Bangkok 0.06°×0.08° extract, ODbL
     availableLayers: ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events'],
     area_km2: 1568,
     populationMillions: 10.5,
