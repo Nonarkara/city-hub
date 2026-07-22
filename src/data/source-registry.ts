@@ -3,6 +3,7 @@ import { fetchAQI } from './openmeteo-aq'
 import { fetchWeather } from './openmeteo'
 import { fetchCityNews } from './gdelt'
 import { bangkokWAQIStations, waqiTokenIsReal } from './waqi'
+import { fetchLongdoEvents, longdoKeyAvailable } from './longdo-traffic'
 import { cacheTimestamp } from '../lib/cached-fetch'
 
 export type SourceZone = 'DATA' | 'INTEL' | 'SATELLITE' | 'CIVIC'
@@ -161,6 +162,49 @@ export const SOURCE_REGISTRY: SourceCheck[] = [
         signal: timeoutSignal(6000),
       })
       return ok(res.ok)
+    },
+  },
+  {
+    id: 'itic-traffic',
+    label: 'TRAFFIC · iTIC LIVE',
+    zone: 'DATA',
+    scope: 'bangkok',
+    refreshLabel: '5 min',
+    timeoutMs: 8000,
+    check: async () => {
+      if (!longdoKeyAvailable()) {
+        return { status: 'stale', note: 'VITE_LONGDO_KEY not set' }
+      }
+      // Probe a single tile at a known Bangkok location — mode=traffic tiles
+      // are 256px PNG/JPEG; if Longdo is up, we get a 200.
+      const x = 16814, y = 11900, z = 14
+      const url = `https://ms.longdo.com/mmmap/tile.php?zoom=${z}&x=${x}&y=${y}&mode=traffic&key=${import.meta.env.VITE_LONGDO_KEY}&proj=epsg3857&HD=1`
+      const res = await fetch(url, { signal: timeoutSignal(8000) })
+      if (!res.ok) return { status: 'offline', note: `HTTP ${res.status}` }
+      const ct = res.headers.get('content-type') ?? ''
+      if (!ct.startsWith('image/')) return { status: 'stale', note: `Bad content-type: ${ct}` }
+      return { status: 'live', note: 'Tiles OK' }
+    },
+  },
+  {
+    id: 'itic-events',
+    label: 'INCIDENTS · iTIC',
+    zone: 'CIVIC',
+    scope: 'bangkok',
+    refreshLabel: '2 min',
+    timeoutMs: 10_000,
+    check: async () => {
+      try {
+        const events = await fetchLongdoEvents()
+        if (events.length === 0) return { status: 'stale', note: 'Empty feed' }
+        // Rough split of how bad it is right now — accidents/closures weighted
+        // higher than info/diversion. Drives the iTIC-style status chip colour.
+        const sev = events.filter((e) => e.kind === 'accident' || e.kind === 'roadclosed').length
+        const note = sev > 0 ? `${events.length} live · ${sev} critical` : `${events.length} live`
+        return { status: 'live', note }
+      } catch (e) {
+        return { status: 'offline', note: e instanceof Error ? e.message : 'Events fetch failed' }
+      }
     },
   },
 ]

@@ -21,6 +21,11 @@ const EVENTS_URL = 'https://event.longdo.com/feed/json'
 const INDEX_TTL  = 5 * 60_000
 const EVENTS_TTL = 2 * 60_000
 
+/** True if VITE_LONGDO_KEY is set — caller must gate Longdo endpoints on this. */
+export function longdoKeyAvailable(): boolean {
+  return Boolean(LONGDO_KEY && LONGDO_KEY.length > 0)
+}
+
 // ── Traffic tiles ────────────────────────────────────────────────────────────
 
 /** Raster tile template for Longdo's live traffic map (basemap + congestion

@@ -19,6 +19,15 @@ import { CITIES } from '../config/cities'
 import { DOPA_SUMMARY } from '../data/dopa-bkk'
 import { fetchChaoPrayaForecast, type FloodForecast } from '../data/flood-forecast'
 import { getCityScore, weakestPillar, strongestPillar } from '../lib/slic'
+import {
+  fetchLongdoEvents,
+  fetchLongdoTrafficIndex,
+  longdoKeyAvailable,
+  ITIC_EVENT_COLOR,
+  ITIC_EVENT_LABEL_TH,
+  type IticEvent,
+  type LongdoTrafficIndex,
+} from '../data/longdo-traffic'
 
 const BANGKOK = CITIES.find((c) => c.id === 'bangkok')!
 const DEMO = BANGKOK.demographics!
@@ -311,6 +320,31 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
     return () => { cancelled = true; clearInterval(t) }
   }, [])
 
+  // iTIC-grade live traffic + incidents (Longdo, the same data plane as
+  // live.iticfoundation.org). The Longdo index is the single number iTIC
+  // shows in its top-right "ดัชนีรถติด" badge. Default-on traffic tiles
+  // and live incident markers are rendered by the bangkok-layers rail;
+  // this block surfaces the same numbers + the top incidents inline.
+  const [trafficIdx, setTrafficIdx] = useState<LongdoTrafficIndex | null>(null)
+  const [iticEvents, setIticEvents] = useState<IticEvent[]>([])
+  const [trafficExpanded, setTrafficExpanded] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      if (!longdoKeyAvailable()) return
+      const [idx, ev] = await Promise.all([
+        fetchLongdoTrafficIndex().catch(() => null),
+        fetchLongdoEvents().catch(() => [] as IticEvent[]),
+      ])
+      if (cancelled) return
+      if (idx) setTrafficIdx(idx)
+      setIticEvents(ev.slice(0, 8))
+    }
+    load()
+    const t = setInterval(load, 2 * 60_000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [])
+
   const gdp = useCountUp(B.gdpBillion)
   const gpc = useCountUp(B.gdpPerCapita)
   const cong = useCountUp(B.congestionPct)
@@ -447,6 +481,85 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
           {B.laborForce}M labor force · {B.informalWorkers}% informal · tourism receipts {B.tourismReceipts}T BHT (2019) → recovered to {B.tourismRecovery}% by 2024 (TAT).
         </div>
       </div>
+
+      {/* ── iTIC-grade live traffic — same data plane as live.iticfoundation.org ── */}
+      {(trafficIdx || iticEvents.length > 0) && (
+        <div className="ki-block ki-block--traffic">
+          <div className="ki-block-head">
+            <span>
+              <span className="ki-live-sm"><span className="ki-live-dot" aria-hidden />LIVE</span>
+              {' '}iTIC TRAFFIC · จราจรสด
+            </span>
+            {trafficIdx && (
+              <span
+                className="ki-block-val"
+                style={{
+                  color: trafficIdx.level === 'heavy'  ? '#e3252c'
+                       : trafficIdx.level === 'moderate' ? '#ffa800'
+                       : '#8bc34a',
+                }}
+                title={`Longdo traffic index — same number iTIC shows in its top-right "ดัชนีรถติด" badge`}
+              >
+                {trafficIdx.index.toFixed(1)}<span className="ki-vs"> / 10 · </span>
+                {trafficIdx.level.toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          {trafficIdx && (
+            <div className="ki-bar" role="img" aria-label={`Citywide traffic index ${trafficIdx.index.toFixed(1)} out of 10`}>
+              <div
+                className="ki-bar-fill"
+                style={{
+                  width: `${Math.min(100, trafficIdx.index * 10)}%`,
+                  background: trafficIdx.level === 'heavy'  ? '#e3252c'
+                            : trafficIdx.level === 'moderate' ? '#ffa800'
+                            : '#8bc34a',
+                }}
+              />
+              <div className="ki-bar-eu" style={{ left: '40%' }} title="iTIC orange threshold" />
+            </div>
+          )}
+
+          {iticEvents.length > 0 && (
+            <>
+              <button
+                className="ki-traffic-toggle"
+                onClick={() => setTrafficExpanded((v) => !v)}
+                aria-expanded={trafficExpanded}
+              >
+                <span>{iticEvents.length} LIVE INCIDENTS</span>
+                <span className="ki-traffic-caret">{trafficExpanded ? '▾' : '▸'}</span>
+              </button>
+              {trafficExpanded && (
+                <div className="ki-traffic-list">
+                  {iticEvents.map((e) => {
+                    const c = ITIC_EVENT_COLOR[e.kind]
+                    return (
+                      <div key={e.id} className="ki-traffic-row">
+                        <span className="ki-traffic-marker" style={{ background: c }} aria-hidden />
+                        <div className="ki-traffic-body">
+                          <span className="ki-traffic-title">{e.title || e.titleEn || ITIC_EVENT_LABEL_TH[e.kind]}</span>
+                          <span className="ki-traffic-meta">
+                            {ITIC_EVENT_LABEL_TH[e.kind]} · {e.start.slice(11, 16)}–{e.stop.slice(11, 16)}
+                          </span>
+                        </div>
+                        <span className="ki-traffic-kind" style={{ color: c }}>{e.kind}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="ki-block-note">
+            {trafficIdx ? `Longdo citywide congestion index, refreshed every 2 min` : 'Longdo tiles loading…'} ·
+            {' '}accidents / breakdowns / closures / diversions from the same feed iTIC Live shows.
+            {longdoKeyAvailable() ? '' : ' (VITE_LONGDO_KEY not set — needs the key in .env.local)'}
+          </div>
+        </div>
+      )}
 
       {/* ── Real estate (NEW) ── */}
       <div className="ki-block">

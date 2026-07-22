@@ -51,6 +51,8 @@ const FEEDS: FeedDescriptor[] = [
   { key: 'tomtom/bangkok-flow',           label: 'TRAFFIC FLOW',    source: 'TomTom'      },
   { key: 'tomtom/bangkok-incidents',      label: 'TRAFFIC INCIDENTS', source: 'TomTom'    },
   { key: 'airbnb/bangkok-listings',       label: 'AIRBNB DENSITY',  source: 'InsideAirbnb' },
+  { key: 'longdo/traffic-index',          label: 'TRAFFIC · iTIC',  source: 'iTIC'        },
+  { key: 'longdo/events',                 label: 'INCIDENTS · iTIC', source: 'iTIC'       },
 ]
 
 function ageColor(ms: number | null): string {
