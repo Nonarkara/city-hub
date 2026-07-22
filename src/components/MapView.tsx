@@ -366,21 +366,35 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
   // Stage 1: zoom out a bit (so the user sees they're moving across the map).
   // Stage 2: fly across at the lower zoom, then zoom into the target.
   // Skipped on first mount because the map is already at the start city.
+  // Hardened 2026-07-22: also force a re-fly if the map's current center is
+  // wildly off from the active city's center (e.g. user panned away, or a
+  // basemap reset quietly desynced the view).
   const firstFlyRef = useRef(true)
+  const lastFlownCityId = useRef<string | null>(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const flyCinematic = () => {
       if (firstFlyRef.current) {
         firstFlyRef.current = false
+        lastFlownCityId.current = city.id
         return
       }
+      // If the active city ID is the same as the last flown city, AND the map
+      // is already within ~1° of the city's center, skip — user is panning
+      // around within the same city. Otherwise force the fly.
+      const c = map.getCenter()
+      const dx = c.lng - city.center[0]
+      const dy = c.lat - city.center[1]
+      const distFromCity = Math.sqrt(dx * dx + dy * dy)
+      const sameCity = lastFlownCityId.current === city.id
+      if (sameCity && distFromCity < 1) return
       // Distance-aware easing: bigger jumps get a wider arc and longer duration
       const from = map.getCenter()
       const to = city.center
-      const dx = to[0] - from.lng
-      const dy = to[1] - from.lat
-      const distDeg = Math.sqrt(dx * dx + dy * dy)
+      const dxF = to[0] - from.lng
+      const dyF = to[1] - from.lat
+      const distDeg = Math.sqrt(dxF * dxF + dyF * dyF)
       // For nearby cities (Bangkok ↔ Chiang Mai = ~5°) keep it quick; for
       // far jumps (Bangkok ↔ Singapore = ~13°) sweep wider.
       const duration = Math.min(3200, Math.max(1400, distDeg * 200))
@@ -396,6 +410,7 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
         curve: distDeg > 3 ? 1.6 : 1.2,   // bigger arc for longer hauls
         speed: 0.9,
       })
+      lastFlownCityId.current = city.id
     }
     if (map.isStyleLoaded()) {
       flyCinematic()
