@@ -5018,9 +5018,13 @@
 }
 
 /* ── Time Scrubber ───────────────────────────────────────────────────────── */
+/* Pushed below the CounterpartStrip (top: 66px, height ~28px) so the
+   24h forecast walk doesn't crash into the TOP DISTRICTS row.
+   Was top: 80px — overlapped both the rail of districts AND the
+   right panel's TEMPORAL ENGINE / TIMELINE NOW headers in 3D. */
 .time-scrubber {
   position: fixed;
-  top: 80px;  /* below topbar (44) + ribbon (22) + 14 gap */
+  top: 110px;
   left: 50%;
   transform: translateX(-50%);
   width: min(640px, calc(100% - 240px));
@@ -7088,8 +7092,11 @@
 }
 
 /* ── Timeline Slider (Temporal Engine) ─────────────────────────────────────── */
+/* position: fixed (not absolute) so it always sits at the bottom of the
+   viewport regardless of which #root child is currently scrolled. The
+   absolute positioning was racing the right panel's alert-scroll. */
 .timeline-slider-container {
-  position: absolute;
+  position: fixed;
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);

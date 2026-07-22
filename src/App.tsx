@@ -309,7 +309,7 @@ export default function App() {
 
       {bangkokMode && <FreshnessPanel />}
       <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
-      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={(temporalBasemapActive || (bangkokMode && governorMode)) && !selectedDistrict && !showComparison} />
+      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={temporalBasemapActive && !selectedDistrict && !showComparison} />
       {bangkokMode && governorMode && !showComparison && (
         <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
       )}
