@@ -977,7 +977,9 @@ async function addRail(map: MapLibre) {
  *  live.iticfoundation.org renders (verified: plain XYZ tiles work; the old
  *  "SDK-only" assumption was wrong). Opaque map+traffic imagery, so it inserts
  *  below data annotations like the other ground rasters. */
-function addIticTraffic(map: MapLibre) {
+async function addIticTraffic(map: MapLibre) {
+  // async: the reconcile loop calls loadLayer(...).then(...) — every loader
+  // must return a Promise or the chain throws and wedges the layer in loading.
   const tiles = longdoTrafficTiles()
   if (!tiles) return
   addRasterLayer(map, {
