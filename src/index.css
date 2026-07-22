@@ -13,29 +13,38 @@
 }
 
 /* ── MapLibre overrides ──────────────────────────────────────────────────── */
-.mapboxgl-ctrl-attrib {
+/* The project migrated from Mapbox to MapLibre (maplibre-gl 5.x, May 2026
+   migration). The DOM class prefix is now `.maplibregl-*`, not `.mapboxgl-*`.
+   The selectors below target BOTH for safety — older components / vendor CSS
+   might still emit the old prefix in some browsers. */
+.mapboxgl-ctrl-attrib,
+.maplibregl-ctrl-attrib {
   background: rgba(0, 0, 0, 0.6) !important;
   color: rgba(245, 245, 240, 0.5) !important;
   font-size: 10px;
   border-radius: 0;
 }
 
-.mapboxgl-ctrl-attrib a {
+.mapboxgl-ctrl-attrib a,
+.maplibregl-ctrl-attrib a {
   color: var(--amber) !important;
 }
 
-.mapboxgl-ctrl-group {
+.mapboxgl-ctrl-group,
+.maplibregl-ctrl-group {
   border-radius: 0;
   background: rgba(0, 0, 0, 0.85) !important;
   border: 1px solid var(--line) !important;
   box-shadow: none !important;
 }
 
-.mapboxgl-ctrl-group button {
+.mapboxgl-ctrl-group button,
+.maplibregl-ctrl-group button {
   border-radius: 0;
 }
 
-.mapboxgl-ctrl button .mapboxgl-ctrl-icon {
+.mapboxgl-ctrl button .mapboxgl-ctrl-icon,
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
   filter: invert(0.85);
 }
 
@@ -2758,7 +2767,12 @@
 }
 
 /* ── MapLibre popup overrides for our dark theme ─────────────────────────── */
-.mapboxgl-popup.city-popup .mapboxgl-popup-content {
+/* The project uses maplibre-gl 5.x. The actual DOM class prefix is
+   `.maplibregl-*`; `.mapboxgl-*` is matched as a fallback. Bug: when the
+   popup showed white on the satellite basemap, it was because the selectors
+   were stuck on the old mapboxgl prefix and the dark theme never applied. */
+.mapboxgl-popup.city-popup .mapboxgl-popup-content,
+.maplibregl-popup.city-popup .maplibregl-popup-content {
   background: #0a0a0a !important;
   border: var(--border);
   border-radius: 0;
@@ -2768,12 +2782,14 @@
   font-family: var(--font-body);
 }
 
-.mapboxgl-popup.city-popup .mapboxgl-popup-tip {
+.mapboxgl-popup.city-popup .mapboxgl-popup-tip,
+.maplibregl-popup.city-popup .maplibregl-popup-tip {
   border-top-color: #0a0a0a !important;
   border-bottom-color: #0a0a0a !important;
 }
 
-.mapboxgl-popup-close-button {
+.mapboxgl-popup-close-button,
+.maplibregl-popup-close-button {
   color: var(--dim) !important;
   font-size: 18px !important;
   padding: 4px 8px !important;
@@ -4726,7 +4742,30 @@
   color: var(--amber);
 }
 
-.topbar-cmdk-icon { font-size: 12px; }
+/* Search icon — solid geometric mark (no unicode glyph, no font dependency).
+   A small square with a 45°-rotated inner stroke evokes a magnifying glass
+   without relying on the ⌕ glyph that most browsers don't ship. */
+.topbar-cmdk-icon {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid currentColor;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.topbar-cmdk-icon::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 4px;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+
 .topbar-cmdk-key  { font-size: 9px; opacity: 0.7; }
 
 @media (max-width: 720px) {

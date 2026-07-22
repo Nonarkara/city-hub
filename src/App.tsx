@@ -599,11 +599,11 @@ export default function App() {
         <button
           className="topbar-cmdk"
           onClick={() => setCmdkOpen(true)}
-          title="Search · Cmd+K"
+          title="Search · Cmd/Ctrl + K"
           aria-label="Open command palette"
         >
-          <span className="topbar-cmdk-icon">⌕</span>
-          <span className="topbar-cmdk-key">⌘K</span>
+          <span className="topbar-cmdk-icon" aria-hidden />
+          <span className="topbar-cmdk-key">CMD&nbsp;K</span>
         </button>
       </header>
 
