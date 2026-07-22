@@ -20,6 +20,7 @@ import { firmsThailand24h, gibsAerosolTileTemplate } from '../../data/nasa'
 import { gibsTrueColorTiles, gibsNightLightsTiles, gibsLstTiles, gibsNdviTiles, esriWorldImageryTiles, sentinel2CloudlessTiles } from '../../data/nasa-gibs'
 import { bangkokWAQIStations } from '../../data/waqi'
 import { longdoBasemapTiles, longdoKeyAvailable } from '../../data/longdo'
+import { longdoTrafficTiles, fetchLongdoEvents, eventsToGeoJSON } from '../../data/longdo-traffic'
 import { fetchEETiles } from '../../data/alphaearth'
 import { loadBangkokRail, loadBangkokKhet } from '../../data/bma'
 import { fetchTraffyGeoJSON } from '../../data/traffy'
@@ -155,6 +156,10 @@ export function useBangkokLayers(
               state.popups.push(wirePm25Popup(map))
               state.wiredPopups.add('pm25')
             }
+            if (id === 'itic-incidents' && !state.wiredPopups.has('itic-incidents')) {
+              state.popups.push(wireIticPopup(map))
+              state.wiredPopups.add('itic-incidents')
+            }
             if (id === 'traffy-issues' && !state.wiredPopups.has('traffy')) {
               state.popups.push(wireTraffyPopup(map))
               state.wiredPopups.add('traffy')
@@ -211,7 +216,7 @@ export function useBangkokLayers(
 
 // ── Layer ID maps ─────────────────────────────────────────────────────────
 
-const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'dynamic-world', 'sentinel1-sar', 'landsat-thermal', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events']
+const MANAGED_IDS = ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'dynamic-world', 'sentinel1-sar', 'landsat-thermal', 'longdo-basemap', 'longdo-traffic', 'itic-incidents', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events']
 
 // MapLibre source IDs (one per toggle)
 const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
@@ -245,6 +250,8 @@ const SOURCE_ID_FOR_TOGGLE: Record<string, string> = {
   'sentinel1-sar':    'src-sentinel1',
   'landsat-thermal':  'src-landsat-thermal',
   'longdo-basemap':   'src-longdo',
+  'longdo-traffic':   'src-itic-traffic',
+  'itic-incidents':   'src-itic-events',
   'traffy-issues':    'src-traffy',
   'traffy-heatmap':   'src-traffy-heatmap',
   'buildings-3d':     'composite',
@@ -291,6 +298,8 @@ const LAYER_IDS_FOR_TOGGLE: Record<string, string[]> = {
   'sentinel1-sar':    ['ly-sentinel1'],
   'landsat-thermal':  ['ly-landsat-thermal'],
   'longdo-basemap':   ['ly-longdo'],
+  'longdo-traffic':   ['ly-itic-traffic'],
+  'itic-incidents':   ['ly-itic-events'],
   'traffy-issues':    ['ly-traffy-issues', 'ly-traffy-clusters', 'ly-traffy-cluster-count'],
   'traffy-heatmap':   ['ly-traffy-heatmap'],
   'buildings-3d':     ['ly-buildings-3d'],
@@ -358,6 +367,8 @@ async function loadLayer(id: string, map: MapLibre, activeDate: string) {
     case 'sentinel1-sar':    return addSentinel1Sar(map, activeDate)
     case 'landsat-thermal':  return addLandsatThermal(map, activeDate)
     case 'longdo-basemap':   return addLongdoBasemap(map)
+    case 'longdo-traffic':   return addIticTraffic(map)
+    case 'itic-incidents':   return addIticIncidents(map)
     case 'traffy-issues':    return addTraffyIssues(map)
     case 'traffy-heatmap':   return addTraffyHeatmap(map)
     case 'buildings-3d':     return addBuildings3D(map)
@@ -961,6 +972,69 @@ async function addRail(map: MapLibre) {
   })
 }
 
+
+/** iTIC-grade live traffic — Longdo's measured traffic tiles, the exact layer
+ *  live.iticfoundation.org renders (verified: plain XYZ tiles work; the old
+ *  "SDK-only" assumption was wrong). Opaque map+traffic imagery, so it inserts
+ *  below data annotations like the other ground rasters. */
+function addIticTraffic(map: MapLibre) {
+  const tiles = longdoTrafficTiles()
+  if (!tiles) return
+  addRasterLayer(map, {
+    sourceId: 'src-itic-traffic',
+    layerId:  'ly-itic-traffic',
+    tiles,
+    maxzoom: 19,
+    opacity: 0.95,
+  })
+}
+
+/** Live iTIC / Longdo incidents — accidents, breakdowns, closures, diversions.
+ *  The same feed as iTIC Live's incident rail (Thai + English). */
+async function addIticIncidents(map: MapLibre) {
+  const events = await fetchLongdoEvents()
+  map.addSource('src-itic-events', { type: 'geojson', data: eventsToGeoJSON(events), generateId: true })
+  map.addLayer({
+    id: 'ly-itic-events',
+    type: 'circle',
+    source: 'src-itic-events',
+    paint: {
+      'circle-radius': [
+        'case',
+        ['in', ['get', 'kind'], ['literal', ['accident', 'roadclosed']]], 8,
+        6,
+      ],
+      'circle-color': ['get', 'color'],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 1.5,
+      'circle-opacity': 0.92,
+    },
+  })
+}
+
+function wireIticPopup(map: MapLibre): MapLibrePopup {
+  const popup = new Popup({ closeButton: true, closeOnClick: true, className: 'city-popup' })
+  map.on('click', 'ly-itic-events', (e) => {
+    const f = e.features?.[0]
+    if (!f || f.geometry.type !== 'Point') return
+    const props = f.properties ?? {}
+    const coords = (f.geometry.coordinates as [number, number]).slice() as [number, number]
+    const desc = String(props.description ?? '').slice(0, 260)
+    const html = `
+      <div class="popup-pm25">
+        <div class="popup-station" style="color:${escape(String(props.color ?? '#fff'))}">${escape(String(props.kindTh ?? ''))} · ${escape(String(props.kind ?? '')).toUpperCase()}</div>
+        <div class="popup-row"><span class="popup-val">${escape(String(props.title ?? ''))}</span></div>
+        ${props.titleEn ? `<div class="popup-row popup-meta"><span>${escape(String(props.titleEn))}</span></div>` : ''}
+        ${desc ? `<div class="popup-row popup-meta"><span>${escape(desc)}</span></div>` : ''}
+        <div class="popup-row popup-meta"><span class="popup-label">WINDOW</span><span>${escape(String(props.start ?? ''))} → ${escape(String(props.stop ?? ''))}</span></div>
+        <div class="popup-row popup-meta"><span class="popup-label">SOURCE</span><span>iTIC / Longdo Events</span></div>
+      </div>`
+    popup.setLngLat(coords).setHTML(html).addTo(map)
+  })
+  map.on('mouseenter', 'ly-itic-events', () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', 'ly-itic-events', () => { map.getCanvas().style.cursor = '' })
+  return popup
+}
 
 async function addTraffyIssues(map: MapLibre) {
   const data = await fetchTraffyGeoJSON(500)
