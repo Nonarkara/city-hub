@@ -5,6 +5,7 @@
  */
 import { cachedFetch } from '../lib/cached-fetch'
 import { aqiToRisk, type RiskLevel } from '../lib/risk'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 30 * 60_000
 
@@ -36,7 +37,7 @@ export async function fetchAQIForecast(lng: number, lat: number, timezone = 'Asi
       // Request UTC so hourly.time strings align with Date.toISOString() below;
       // the city timezone is only used to render peakHour for display.
       '&timezone=UTC'
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Open-Meteo Forecast ${res.status}`)
     const d = await res.json()
 
@@ -102,11 +103,11 @@ export async function fetchTempForecast(lng: number, lat: number, _timezone = 'A
       '&models=ecmwf_ifs04' +
       // UTC so hourly.time strings align with Date.toISOString() below.
       '&timezone=UTC'
-    let res = await fetch(url)
+    let res = await fetch(url, { signal: timeoutSignal(15_000) })
     // Fallback: ECMWF may not cover all lat/lng — retry without model spec
     if (!res.ok) {
       const fallbackUrl = url.replace('&models=ecmwf_ifs04', '')
-      res = await fetch(fallbackUrl)
+      res = await fetch(fallbackUrl, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`Open-Meteo temp ${res.status}`)
     }
     const d = await res.json()

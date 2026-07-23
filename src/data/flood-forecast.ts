@@ -18,6 +18,7 @@
  * Source: Near real-time flood forecasting for Chao Phraya, ScienceDirect 2024
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 3 * 60 * 60_000  // 3 hours — GloFAS updates 4× daily
 
@@ -65,7 +66,7 @@ export async function fetchChaoPrayaForecast(days = 30): Promise<FloodForecast> 
       `&daily=river_discharge` +
       `&forecast_days=${Math.min(46, days)}` +
       `&models=seamless`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`GloFAS ${res.status}`)
     const data = await res.json() as {
       daily: { time: string[]; river_discharge: (number | null)[] }

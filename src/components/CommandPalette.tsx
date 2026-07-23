@@ -146,7 +146,7 @@ export function CommandPalette({
     ]
 
     return [...modeItems, ...cityItems, ...actionItems, ...lensItems, ...layerItems, ...districtItems]
-  }, [activeLayers, districts, governorMode])
+  }, [activeLayers, districts, governorMode, globeView, forecastOpen, splitOpen, chatOpen, basemap, activeCity, allCities])
 
   // Filter by query — district items match either Thai or English
   const filtered = useMemo(() => {

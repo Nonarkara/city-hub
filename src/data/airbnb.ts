@@ -13,6 +13,7 @@
  * and neighborhood character change — completely invisible in current dashboards.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 24 * 60 * 60 * 1000 // 24 hours — quarterly data, no need to re-fetch
 
@@ -39,7 +40,7 @@ export async function fetchAirbnbBangkok(): Promise<AirbnbListing[]> {
     // Inside Airbnb provides a summary CSV with essential fields
     const url = 'https://data.insideairbnb.com/thailand/central-thailand/bangkok/2025-06-24/visualisations/listings.csv'
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(30_000) })
       if (!res.ok) {
         // Fallback to demo data if download fails (CORS, network, etc.)
         return getAirbnbFallback()

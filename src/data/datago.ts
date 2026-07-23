@@ -4,6 +4,7 @@
  * Proxied through Cloudflare Worker to bypass CORS.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/data-go-th` : 'https://data.go.th/api/3/action'
@@ -28,7 +29,7 @@ export async function searchBangkokDatasets(): Promise<DataGoItem[]> {
       '&rows=12&sort=' +
       encodeURIComponent('metadata_modified desc')
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`data.go.th ${res.status}`)
       const json = await res.json()
       const results = json?.result?.results ?? []

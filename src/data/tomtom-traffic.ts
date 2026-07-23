@@ -13,6 +13,7 @@
  * traffic flow, since TomTom's flowSegmentData is point-based.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const API_KEY = import.meta.env.VITE_TOMTOM_KEY as string | undefined
 
@@ -68,7 +69,7 @@ async function fetchFlowAtPoint(lat: number, lng: number): Promise<TrafficFlowPo
   if (!API_KEY) return null
   const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?key=${API_KEY}&point=${lat},${lng}&unit=KMPH`
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) return null
     const data = await res.json()
     const f = data?.flowSegmentData
@@ -108,7 +109,7 @@ export async function fetchBangkokTrafficIncidents(): Promise<TrafficIncident[]>
     const bbox = '13.50,100.35:13.95,100.95'
     const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?key=${API_KEY}&bbox=${bbox}&fields={incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},startTime,endTime,from,to,length,delay,roadNumbers,timeValidity}}}&language=en-GB&t=1111&timezone=UTC`
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`TomTom incidents ${res.status}`)
       const data = await res.json()
       const incidents = data?.incidents ?? []

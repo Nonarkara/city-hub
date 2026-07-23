@@ -19,7 +19,12 @@ export function ActionCenter({ onClose }: Props) {
 
   const handleAction = async (id: string, status: 'approved' | 'dismissed') => {
     trackEvent('resolve_action', { action_id: id, status })
-    await updateActionStatus(id, status)
+    try {
+      await updateActionStatus(id, status)
+    } catch {
+      // db.ts already logged the Firestore error — keep the UI alive and
+      // leave the card in place so the user can retry.
+    }
   }
 
   return (

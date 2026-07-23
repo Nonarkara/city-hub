@@ -76,7 +76,7 @@ export function useFloodComplaintCorrelation(): FloodCorrelationResult | null {
       let floodCount = 0
       const districtCounts: Record<string, number> = {}
 
-      if (geo) {
+      if (geo && Array.isArray(geo.features)) {
         for (const f of geo.features) {
           const props = f.properties as Record<string, unknown>
           const desc  = String(props?.description ?? props?.note ?? '').toLowerCase()
@@ -121,8 +121,10 @@ export function useFloodComplaintCorrelation(): FloodCorrelationResult | null {
       })
     }
 
-    load()
-    const t = setInterval(load, POLL_MS)
+    load().catch((e) => console.error('[flood-correlation] load failed:', e))
+    const t = setInterval(() => {
+      load().catch((e) => console.error('[flood-correlation] poll failed:', e))
+    }, POLL_MS)
     return () => { cancelled = true; clearInterval(t) }
   }, [])
 

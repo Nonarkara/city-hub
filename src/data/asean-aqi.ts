@@ -4,6 +4,7 @@
  * context: where does Bangkok sit relative to its peers right now?
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL = 10 * 60_000
 
@@ -37,7 +38,7 @@ async function fetchCityAQI(city: ASEANCity): Promise<CityAQI | null> {
         `https://air-quality-api.open-meteo.com/v1/air-quality` +
         `?latitude=${city.lat}&longitude=${city.lng}` +
         `&current=us_aqi,pm2_5`
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`Open-Meteo AQ ${res.status}`)
       const d = await res.json()
       const c = d.current as { us_aqi: number; pm2_5: number }

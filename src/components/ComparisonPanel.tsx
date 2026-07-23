@@ -151,9 +151,10 @@ function AqiSparkline({ hours, color }: { hours: { usAqi: number }[]; color: str
   const vals  = hours.map((h) => h.usAqi)
   const lo    = Math.min(...vals)
   const hi    = Math.max(...vals) || 1
+  const span  = hi - lo || 1   // flat series → avoid 0/0 = NaN path
   const W = 56, H = 18
   const x = (i: number) => (i / (vals.length - 1)) * W
-  const y = (v: number) => H - ((v - lo) / (hi - lo)) * H
+  const y = (v: number) => H - ((v - lo) / span) * H
   const d = vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>

@@ -67,6 +67,10 @@ function buildSmokeCone(
 export function SmokeConeOverlay({ map, activeCity, visible }: Props) {
   const [forecast, setForecast] = useState<SmokeForecast | null>(null)
   const layersAdded = useRef(false)
+  // Cone layers/sources are added with per-source lat suffixes — track the
+  // exact IDs so cleanup removes what was actually added (previously the
+  // cleanup used unsuffixed IDs that never existed, leaking layers).
+  const coneIds = useRef<string[]>([])
 
   useEffect(() => {
     if (!visible || !map) return
@@ -86,12 +90,12 @@ export function SmokeConeOverlay({ map, activeCity, visible }: Props) {
       if (cancelled) return
       setForecast(result)
 
-      // Clear old smoke layers
-      for (const h of CONE_HOURS) {
-        const id = `smoke-cone-${h}`
+      // Clear old smoke layers — remove exactly the cone IDs we added
+      for (const id of coneIds.current) {
         if (map.getLayer(id)) map.removeLayer(id)
         if (map.getSource(id)) map.removeSource(id)
       }
+      coneIds.current = []
       if (map.getLayer('smoke-hotspots')) map.removeLayer('smoke-hotspots')
       if (map.getSource('smoke-hotspots')) map.removeSource('smoke-hotspots')
 
@@ -132,6 +136,7 @@ export function SmokeConeOverlay({ map, activeCity, visible }: Props) {
           if (map.getSource(coneId)) return
           const cone = buildSmokeCone(source.lat, source.lng, windSpeed, windDir, hours)
           map.addSource(coneId, { type: 'geojson', data: { type: 'Feature', geometry: cone, properties: {} } })
+          coneIds.current.push(coneId)
           map.addLayer({
             id:     coneId,
             type:   'fill',
@@ -152,10 +157,11 @@ export function SmokeConeOverlay({ map, activeCity, visible }: Props) {
       cancelled = true
       // Clean up on unmount
       if (map && layersAdded.current) {
-        for (const h of CONE_HOURS) {
-          if (map.getLayer(`smoke-cone-${h}`)) map.removeLayer(`smoke-cone-${h}`)
-          if (map.getSource(`smoke-cone-${h}`)) map.removeSource(`smoke-cone-${h}`)
+        for (const id of coneIds.current) {
+          if (map.getLayer(id)) map.removeLayer(id)
+          if (map.getSource(id)) map.removeSource(id)
         }
+        coneIds.current = []
         if (map.getLayer('smoke-hotspots')) map.removeLayer('smoke-hotspots')
         if (map.getSource('smoke-hotspots')) map.removeSource('smoke-hotspots')
         layersAdded.current = false

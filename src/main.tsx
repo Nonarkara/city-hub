@@ -27,8 +27,13 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault()
   const KEY = 'vite-preload-reload'
-  if (!sessionStorage.getItem(KEY)) {
-    sessionStorage.setItem(KEY, '1')
+  // sessionStorage throws in Safari private mode — degrade to always-reload
+  try {
+    if (!sessionStorage.getItem(KEY)) {
+      sessionStorage.setItem(KEY, '1')
+      location.reload()
+    }
+  } catch {
     location.reload()
   }
 })

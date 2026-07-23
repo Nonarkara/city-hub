@@ -6,6 +6,7 @@
  * Full CKAN API, zero auth. Proxied through Worker for CORS.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/data-bma` : 'https://data.bangkok.go.th/api/3/action'
@@ -35,7 +36,7 @@ export async function searchBMADatasets(topic?: string): Promise<BMADataItem[]> 
       `${BASE}/package_search?q=${q}&rows=12&sort=` +
       encodeURIComponent('metadata_modified desc')
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`data.bangkok.go.th ${res.status}`)
       const json = await res.json()
       const results = json?.result?.results ?? []
@@ -62,7 +63,7 @@ export async function searchBMADatasets(topic?: string): Promise<BMADataItem[]> 
 export async function bmaDatasetCount(): Promise<number> {
   return cachedFetch('data-bma/total-count', async () => {
     try {
-      const res = await fetch(`${BASE}/package_search?q=*&rows=0`)
+      const res = await fetch(`${BASE}/package_search?q=*&rows=0`, { signal: timeoutSignal(15_000) })
       if (!res.ok) return 0
       const json = await res.json()
       return Number(json?.result?.count ?? 0)

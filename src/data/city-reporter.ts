@@ -9,6 +9,7 @@
  * UNL has no equivalent — they're a basemap reseller, not a civic platform.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const ENDPOINT = 'https://city-reporter-v2.onrender.com/api/reports/geojson'
 const TTL = 2 * 60_000 // 2 min — citizen reports are time-sensitive
@@ -26,7 +27,7 @@ export async function fetchCitizenReports(): Promise<GeoJSON.FeatureCollection> 
   return cachedFetch('city-reporter/reports-geojson', async () => {
     const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
     try {
-      const res = await fetch(ENDPOINT)
+      const res = await fetch(ENDPOINT, { signal: timeoutSignal(15_000) })
       if (!res.ok) throw new Error(`City Reporter ${res.status}`)
       const data = (await res.json()) as GeoJSON.FeatureCollection
       return data && data.type === 'FeatureCollection' ? data : empty

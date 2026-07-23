@@ -43,6 +43,7 @@ export interface Env {
   WAQI_TOKEN?: string
   OPENAQ_KEY?: string
   OWM_KEY?: string
+  FIRMS_MAP_KEY?: string
 }
 
 // ── Origin allowlist ──────────────────────────────────────────────────────────
@@ -207,6 +208,12 @@ export default {
     }
     if (targetKey === 'owm' && env.OWM_KEY) {
       upstream.searchParams.set('appid', env.OWM_KEY)
+    }
+    // FIRMS takes its MAP_KEY in the URL path (…/csv/[MAP_KEY]/[source]/…),
+    // not a query param. Clients call without a key; insert the secret after
+    // the /csv/ segment here.
+    if (targetKey === 'firms' && env.FIRMS_MAP_KEY) {
+      upstream.pathname = upstream.pathname.replace('/csv/', `/csv/${env.FIRMS_MAP_KEY}/`)
     }
 
     try {

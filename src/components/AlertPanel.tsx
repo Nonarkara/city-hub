@@ -206,19 +206,24 @@ function AlertCard({ alert, onAction }: { alert: CityAlert; onAction: (a: CityAl
   const askWhy = useCallback(async () => {
     if (explain || loading) return
     setLoading(true)
-    const r = await narrate(
-      `Why is this alert active? What does it mean for Bangkok right now?`,
-      {
-        level: alert.level,
-        headline: alert.headline,
-        detail: alert.detail,
-        recommendedAction: alert.action,
-        time: new Date().toISOString(),
-      },
-      { style: 'brief', maxWords: 50 },
-    )
-    setExplain(r)
-    setLoading(false)
+    try {
+      const r = await narrate(
+        `Why is this alert active? What does it mean for Bangkok right now?`,
+        {
+          level: alert.level,
+          headline: alert.headline,
+          detail: alert.detail,
+          recommendedAction: alert.action,
+          time: new Date().toISOString(),
+        },
+        { style: 'brief', maxWords: 50 },
+      )
+      setExplain(r)
+    } catch (e) {
+      console.error('[AlertCard] narrate failed:', e)
+    } finally {
+      setLoading(false)
+    }
   }, [alert, explain, loading])
 
   return (

@@ -15,6 +15,7 @@
  * serves stale when available, and the layer loaders catch otherwise.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/ee/mapid` : null
@@ -36,6 +37,7 @@ export async function fetchEETiles(preset: EEPreset = 'alphaearth', startDate?: 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ preset, startDate, endDate }),
+      signal: timeoutSignal(15_000),
     })
     // Throw so cachedFetch can serve stale instead of caching a null result.
     if (!res.ok) throw new Error(`EE mapid ${res.status}`)

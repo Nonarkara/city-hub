@@ -5,19 +5,22 @@
  * Wave 2: direct BMA Open Data API (CCTV, drainage, citizen reports) — pending DEPA contact.
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL_STATIC = 24 * 60 * 60 * 1000
 
 export async function loadBangkokRail(): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('bma/rail', async () => {
-    const res = await fetch('/geo/bkk-rail.json')
+    const res = await fetch('/geo/bkk-rail.json', { signal: timeoutSignal(15_000) })
+    if (!res.ok) throw new Error(`BMA rail ${res.status}`)
     return res.json()
   }, TTL_STATIC)
 }
 
 export async function loadBangkokKhet(): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('bma/khet', async () => {
-    const res = await fetch('/geo/bangkok-khet.geojson')
+    const res = await fetch('/geo/bangkok-khet.geojson', { signal: timeoutSignal(15_000) })
+    if (!res.ok) throw new Error(`BMA khet ${res.status}`)
     return res.json()
   }, TTL_STATIC)
 }

@@ -3,23 +3,32 @@
  * + GIBS (Global Imagery Browse Services).
  */
 import { cachedFetch } from '../lib/cached-fetch'
+import { timeoutSignal } from './source-registry'
 
 const TTL_FIRES = 10 * 60 * 1000
 
+const PROXY    = import.meta.env.VITE_PROXY_URL as string | undefined
+const MAP_KEY  = import.meta.env.VITE_FIRMS_MAP_KEY as string | undefined
+
 /**
- * NASA FIRMS public CSV endpoint for last-24h fires in Thailand.
- * Note: The /api/area/csv/ endpoint requires no key for public area requests.
- * On CORS/rate-limit failure this throws so cachedFetch can serve stale data —
- * if there is no cache the layer simply doesn't appear (loaders catch), and
- * the GISTDA fires layer remains visible for the same data.
+ * NASA FIRMS CSV for last-24h fires in Thailand (VIIRS_SNPP_NRT, ~3h latency).
+ *
+ * FIRMS requires a free MAP_KEY (https://firms.modaps.eosdis.nasa.gov/api/map_key/)
+ * — the keyless endpoint returns HTTP 400, and the endpoint is CORS-blocked
+ * from the browser anyway. Two working paths:
+ *   1. Proxied (production): `${VITE_PROXY_URL}/firms/country/csv/...` — the
+ *      Worker injects its FIRMS_MAP_KEY secret into the URL path.
+ *   2. Direct (dev): needs VITE_FIRMS_MAP_KEY in .env.local.
+ * With neither configured this throws; loaders catch and the layer stays
+ * hidden (the GISTDA fires layer covers the same data).
  */
 export async function firmsThailand24h(): Promise<GeoJSON.FeatureCollection> {
   return cachedFetch('nasa/firms-th-24h', async () => {
-    // VIIRS_SNPP_NRT — best near-real-time fire data, ~3h latency
-    // Country code THA, 1-day window
-    const url =
-      'https://firms.modaps.eosdis.nasa.gov/api/country/csv/c/VIIRS_SNPP_NRT/THA/1'
-    const res = await fetch(url, { mode: 'cors' })
+    if (!PROXY && !MAP_KEY) throw new Error('FIRMS MAP key not configured')
+    const url = PROXY
+      ? `${PROXY}/firms/country/csv/VIIRS_SNPP_NRT/THA/1`
+      : `https://firms.modaps.eosdis.nasa.gov/api/country/csv/${MAP_KEY}/VIIRS_SNPP_NRT/THA/1`
+    const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`FIRMS ${res.status}`)
     const csv = await res.text()
     return csvToGeoJSON(csv)

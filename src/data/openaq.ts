@@ -2,6 +2,8 @@
  * OpenAQ v3 API Integration — harmonized global air quality data.
  */
 
+import { timeoutSignal } from './source-registry'
+
 // Bangkok Metro default bbox (kept for back-compat).
 const BKK_BBOX: [number, number, number, number] = [100.3, 13.5, 100.9, 14.0]
 const PROXY = import.meta.env.VITE_PROXY_URL ?? 'http://127.0.0.1:8787'
@@ -32,6 +34,7 @@ export async function fetchOpenAQLatest(
   const bboxStr = bbox.join(',')
   const res = await fetch(`${PROXY}/openaq/locations?bbox=${bboxStr}&limit=100`, {
     headers: { 'X-API-Key': key },
+    signal: timeoutSignal(15_000),
   })
 
   if (!res.ok) throw new Error(`OpenAQ error: ${res.status}`)
