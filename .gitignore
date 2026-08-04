@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Local OSM caches / scrape scratch (never commit)
+.cache/
+.firecrawl/
+
 # Build output
 dist/
 

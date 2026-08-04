@@ -760,7 +760,8 @@ export const CITIES: CityConfig[] = [
     nameLocal: 'Ljubljana',
     country: 'SI',
     center: [14.5058, 46.0569],
-    zoom: 11,
+    zoom: 14.2,
+    heading: 28,                 // face NNE — castle hill left, Alps beyond
     bbox: [14.40, 45.98, 14.62, 46.13],
     timezone: 'Europe/Ljubljana',
     hudClockLabel: 'LJU',
@@ -768,6 +769,9 @@ export const CITIES: CityConfig[] = [
     gdeltQuery: 'ljubljana slovenia',
     tier: 'lite',
     availableLayers: LITE_LAYERS,
+    basemapDefault: 'esri-imagery',        // tokenless satellite over 3D terrain (same as Kranj)
+    threeD: true,                          // terrain + baked OSM extrusions — 2nd EU city after Kranj
+    buildings3dUrl: '/geo/ljubljana-buildings.geojson',  // 16.9k OSM footprints, ODbL
     area_km2: 164,
     populationMillions: 0.29,
     founded: 'Roman Emona · 14 AD',

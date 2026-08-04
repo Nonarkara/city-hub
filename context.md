@@ -34,22 +34,21 @@ src/
 ```
 
 ## Adding a New City
-In `src/config/cities.ts`, add one object to `CITIES`:
-```ts
-{
-  id: 'singapore',
-  name: 'Singapore',
-  country: 'SG',
-  center: [103.8198, 1.3521],
-  zoom: 12,
-  kpis: [
-    { label: 'POPULATION', value: '5.9', unit: 'M' },
-    { label: 'SMART SCORE', value: '91.4' },
-    { label: 'IOC STATUS', value: 'LIVE' },
-  ],
-}
+In `src/config/cities.ts`, add one object to `CITIES` (bbox, timezone, tier, layers, facts). Lite cities inherit `LITE_LAYERS` (global AQ/fires/sat only).
+
+### Adding 3D (portable — proven Ljubljana 2026-08-04)
+Conservation law: `city.threeD ∧ city.buildings3dUrl` ⇒ MapView drapes Terrarium DEM + extrudes OSM footprints with `{h, real, base?}`. No invented heights.
+
+```bash
+python3 scripts/bake-city-buildings.py \
+  --city ljubljana \
+  --bbox 14.48,46.03,14.54,46.08 \
+  --output public/geo/ljubljana-buildings.geojson
 ```
-No other changes needed.
+
+Then set on the city config: `threeD: true`, `buildings3dUrl`, optional `heading` + `basemapDefault: 'esri-imagery'`. 3D cities today: Bangkok, Kranj, **Ljubljana**.
+
+BKKx Minecraft/Arnis is a separate deep tier — see `BKKx/worlds/ljubljana-centre-java/bkkx-manifest.json` (scaffold; world binary pending Arnis run).
 
 ## Deployment
 ```bash
