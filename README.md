@@ -47,7 +47,7 @@ Five tenets this public README is written to:
 2. **Forkable civic systems.** One codebase, many cities. `src/config/cities.ts` is the replicability layer. `scripts/bake-city-buildings.py` ports the 3D path (Bangkok, then Kranj, then Ljubljana). MIT, as stated in this file and `STORY.md`.
 3. **Bilingual.** Thai-first where the city is Thai: `nameLocal` (กรุงเทพฯ, เชียงใหม่, ภูเก็ต, ยะลา), IBM Plex Sans Thai, TMD descriptions in Thai and English, iTIC incident labels in Thai, UI aphorism *ทุกอย่างเกิดขึ้นเพราะมีเหตุ*. English for the rest of the operator chrome.
 4. **Honest sources.** Independent measurements of the same phenomenon sit side by side (five air feeds, official TMD next to Open-Meteo, Traffy next to GISTDA flood polygons). Static twin figures in `BangkokIntelligence` are cited. Empty, stale, pending, and mocked layers are labeled. The dashboard would rather show a gap than invent a number.
-5. **Independent of vendors — and not a government product.** This repo left the UNL “Location OS” tiles in May 2026 and runs MapLibre + optional Mapbox vector tiles + Cloudflare. See [STORY.md](STORY.md). **It is not a BMA, DEPA, PCD, TMD, or DEPA Smart City programme product** unless a file in this repository says so. None currently do. Credit lines that name “DEPA Thailand” are author affiliation / dedication in the UI and `STORY.md`, not an official endorsement.
+5. **Independent of vendors — and not a government product.** This repo left the UNL “Location OS” tiles in May 2026 and runs MapLibre + optional Mapbox vector tiles + Cloudflare. See [STORY.md](STORY.md). **It is not a BMA, DEPA, PCD, or TMD product** unless a file in this repository says so. None currently do. Credit lines that name “DEPA Thailand” are author affiliation / dedication in the UI and `STORY.md`, not an official endorsement.
 
 ---
 
@@ -159,7 +159,7 @@ Point the app at it:
 VITE_PROXY_URL=http://127.0.0.1:8787
 ```
 
-Production secrets (names only — set with `npx wrangler secret put <NAME>` inside `worker/`):
+Production secrets (names only — set with `npx wrangler secret put SECRET_NAME` inside `worker/`):
 
 `GEMINI_API_KEY`, `WAQI_TOKEN`, `OPENAQ_KEY`, `OWM_KEY`, `FIRMS_MAP_KEY`, `GCP_SERVICE_ACCOUNT_JSON`, optional `HF_API_TOKEN`, `TIMEFM_ENDPOINT_URL`.
 
