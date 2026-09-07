@@ -1,5 +1,8 @@
 # City Hub
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live](https://img.shields.io/badge/live-city--hub.pages.dev-0E4A5E.svg)](https://city-hub.pages.dev)
+
 ![Bangkok Smart City OS — เมืองที่เข้าใจเรา และเราเข้าใจเมือง](docs/hero-banner.png)
 
 **Bangkok civic intelligence / smart-city OS** — independent of vendors. Live air, water, traffic, satellite, civic reports, and a bilingual morning brief on one screen.
@@ -117,6 +120,8 @@ The Vite alias `@shared` → `../_shared` is used by `src/data/gistda.ts` for GI
 Requires Node.js and npm (lockfile is npm).
 
 ```bash
+git clone https://github.com/Nonarkara/city-hub.git
+cd city-hub
 npm install
 cp .env.example .env.local
 npm run dev
@@ -227,6 +232,9 @@ Documented public host — also the GitHub repository homepage:
 | Doc | What it is |
 | --- | --- |
 | [STORY.md](STORY.md) | Why the UNL tiles were dropped; vendor independence |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to run a fork and what pull requests we want |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
+| [LICENSE](LICENSE) | MIT — GitHub-detectable |
 | [docs/hero-banner.png](docs/hero-banner.png) | Public README hero (this banner) |
 | [docs/UNL-DEPENDENCY-INVENTORY.md](docs/UNL-DEPENDENCY-INVENTORY.md) | What UNL did vs what replaced it (historical; some env names in it are obsolete) |
 | [docs/IMPLEMENTATION-2026-05-26.md](docs/IMPLEMENTATION-2026-05-26.md) | Air4Thai, TMD seismic, Thaiwater, TomTom, Airbnb, correlation engine |
@@ -238,11 +246,22 @@ Documented public host — also the GitHub repository homepage:
 
 ## License
 
-**MIT**, as stated in this README and in `STORY.md`: use it, fork it, ship your own city’s version. Copyright named there: Non Arkaraprasertkul.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-There is not yet a `LICENSE` file on `main` (GitHub therefore shows no detected license). An in-app About panel currently prints a stricter “all rights reserved / written licence” paragraph; **this public repository text is MIT.** If you need a file GitHub can detect, add `LICENSE` — do not take the About modal as overriding the repo statement without the maintainer saying so.
+Released under the [MIT License](LICENSE). Copyright © 2026 **Non Arkaraprasertkul**.
 
-OpenStreetMap building extracts are **ODbL**. Upstream open-data providers keep their own terms.
+Use it, fork it, ship your own city’s version. Keep the copyright notice. This
+repository is independent civic software — not a vendor platform and not an
+official BMA, DEPA, or government product.
+
+An in-app About panel currently prints a stricter “all rights reserved / written
+licence” paragraph. **The public repository license is MIT** (`LICENSE` on
+`main`). Do not take the About modal as overriding that file.
+
+OpenStreetMap building extracts are **ODbL**. Upstream open-data providers keep
+their own terms.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ---
 
