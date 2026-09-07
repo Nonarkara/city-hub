@@ -129,8 +129,8 @@ const B = {
   baseStations5G:     24_000,  // nationwide · NBTC (Bangkok ≈ 30%)
   eGovServices:       1_800,   // services on etax / egp / egov · DGA
   smartCityRank:      'Top 50', // IMD Smart City Index 2023
-  creativeScore:      SLIC?.creativeScore ?? 71,
-  capabilityScore:    SLIC?.capabilityScore ?? 64,
+  creativeScore:      SLIC?.creativeScore ?? 0,
+  capabilityScore:    SLIC?.capabilityScore ?? 0,
 
   // ── Comparison: ASEAN capitals (NESDC + World Bank 2024) ──
   peers: {

@@ -5,6 +5,7 @@ import { fetchCityNews } from './gdelt'
 import { bangkokWAQIStations, waqiTokenIsReal } from './waqi'
 import { fetchLongdoEvents, longdoKeyAvailable } from './longdo-traffic'
 import { cacheTimestamp } from '../lib/cached-fetch'
+import { fetchChaoPrayaForecast } from './flood-forecast'
 
 export type SourceZone = 'DATA' | 'INTEL' | 'SATELLITE' | 'CIVIC'
 export type SourceStatus = 'checking' | 'live' | 'stale' | 'offline'
@@ -205,6 +206,19 @@ export const SOURCE_REGISTRY: SourceCheck[] = [
       } catch (e) {
         return { status: 'offline', note: e instanceof Error ? e.message : 'Events fetch failed' }
       }
+    },
+  },
+  {
+    id: 'glofas',
+    label: 'GloFAS Chao Phraya',
+    zone: 'DATA',
+    scope: 'global',
+    refreshLabel: '3 h',
+    timeoutMs: 12_000,
+    check: async () => {
+      const r = await fetchChaoPrayaForecast(30)
+      if (!r.usable) return { status: 'stale', note: 'No usable discharge' }
+      return { status: 'live', note: `${r.currentDischarge.toLocaleString()} m³/s · ${r.trend}` }
     },
   },
 ]

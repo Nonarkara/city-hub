@@ -1,16 +1,10 @@
 /**
- * SLICPanel — proprietary 5-pillar AMPI scoring panel.
+ * SLICPanel — published Smart and Liveable Cities Index (V3.4).
  *
- * Drops into any brief panel (Bangkok's AlertPanel + LiteCityPanel for the
- * other 4 cities). Shows:
- *
- *   - SLIC score (0–100) with peer ranking among the 5 City Hub cities
- *   - 5-pillar radar chart
- *   - Strongest + weakest pillar names
- *   - "WHERE TO FIX" recommendation grounded in the weak pillar
- *
- * This is the differentiator UNL fundamentally cannot match — they sell
- * basemap tiles, not structural intelligence.
+ * Drops into Bangkok's AlertPanel and LiteCityPanel. Shows the official
+ * score for cities on the ranked board, five pillars, and an operational
+ * "where to fix first" action. Cities not on the board get an honest gap —
+ * scores are never invented.
  */
 import { useMemo } from 'react'
 import type { CityConfig } from '../config/cities'
@@ -24,6 +18,8 @@ import {
   peerCities,
   scoreColor,
   PILLAR_DESCRIPTIONS,
+  PILLAR_ACTIONS,
+  SLIC_UPDATED,
   type CityScore,
 } from '../lib/slic'
 
@@ -46,7 +42,9 @@ export function SLICPanel({ activeCity }: Props) {
     return (
       <div className="slic-section">
         <div className="slic-header">SLIC INDEX</div>
-        <div className="slic-no-data">No SLIC coverage for this city.</div>
+        <div className="slic-no-data">
+          No published SLIC V3 rank for this city. Scores are not invented — see slic.nonarkara.org.
+        </div>
       </div>
     )
   }
@@ -76,7 +74,7 @@ export function SLICPanel({ activeCity }: Props) {
   return (
     <div className="slic-section">
       <div className="slic-header">
-        <span className="slic-title">SLIC INDEX · v3.4</span>
+        <span className="slic-title">SLIC INDEX · v3.4 · {SLIC_UPDATED}</span>
         <span className="slic-rank">#{g.rank} OF {g.total}</span>
       </div>
 
@@ -87,7 +85,7 @@ export function SLICPanel({ activeCity }: Props) {
           <span className="slic-score-unit">/100</span>
         </div>
         <div className="slic-score-meta">
-          <div className="slic-score-label">AMPI SCORE</div>
+          <div className="slic-score-label">SLIC SCORE</div>
           <div className="slic-region-rank">#{r.rank} in {r.region.toUpperCase()}</div>
           <div className="slic-coverage" title={`Methodology coverage: ${score.coverageGrade ?? '—'}`}>
             DATA {score.coverageGrade ?? '—'} · {Math.round((score.overallWeightedCoverage ?? 0) * 100)}%
@@ -183,14 +181,15 @@ export function SLICPanel({ activeCity }: Props) {
       {weakest && (
         <div className="slic-fix" title={PILLAR_DESCRIPTIONS[weakest.pillar]}>
           <span className="slic-fix-label">WHERE TO FIX FIRST</span>
-          <p className="slic-fix-detail">{PILLAR_DESCRIPTIONS[weakest.pillar]}</p>
+          <p className="slic-fix-detail">{PILLAR_ACTIONS[weakest.pillar]}</p>
+          <p className="slic-fix-why">{PILLAR_DESCRIPTIONS[weakest.pillar]}</p>
         </div>
       )}
 
-      {/* Peer comparison — the other 4 City Hub cities */}
+      {/* Peer comparison — nearest hub cities by published SLIC */}
       {peers.length > 0 && (
         <div className="slic-peers">
-          <div className="slic-peers-header">CITY HUB PEERS</div>
+          <div className="slic-peers-header">NEARBY SLIC PEERS</div>
           <div className="slic-peers-list">
             {peers
               .sort((a, b) => b.slicScore - a.slicScore)

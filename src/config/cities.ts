@@ -119,7 +119,7 @@ export const CITIES: CityConfig[] = [
     distinctiveness: 'Thailand\'s capital and largest city. Founded by Rama I after Ayutthaya\'s fall. Sits on the Chao Phraya delta — flat, river-veined, sinking ~2cm per year.',
     kpis: [
       { label: 'POPULATION', value: '10.5', unit: 'M' },
-      { label: 'SMART SCORE', value: '71.2' },
+      { label: 'SLIC', value: '54' },
       { label: 'IOC STATUS', value: 'ACTIVE' },
     ],
     demographics: {
@@ -157,7 +157,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '1.7', unit: 'M' },
       { label: 'BURNING RISK', value: 'HIGH' },
-      { label: 'SMART SCORE', value: '64.5' },
+      { label: 'SLIC', value: '44' },
     ],
     demographics: {
       gdpBillionUsd: 8,
@@ -193,7 +193,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '416K' },
       { label: 'TOURISM/YR', value: '9.9', unit: 'M' },
-      { label: 'SMART SCORE', value: '68.4' },
+      { label: 'SLIC', value: '45' },
     ],
     demographics: {
       gdpBillionUsd: 4,
@@ -227,7 +227,7 @@ export const CITIES: CityConfig[] = [
     distinctiveness: 'Southeast Asia\'s reference city for smart-city ambition. 1m residents on reclaimed land. data.gov.sg publishes more public datasets than any other ASEAN city.',
     kpis: [
       { label: 'POPULATION', value: '5.9', unit: 'M' },
-      { label: 'SMART SCORE', value: '91.4' },
+      { label: 'SLIC', value: '63' },
       { label: 'IOC STATUS', value: 'LIVE' },
     ],
     demographics: {
@@ -263,7 +263,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '750K' },
       { label: 'IOC STATUS', value: 'LIVE' },
-      { label: 'SMART SCORE', value: '63.1' },
+      { label: 'SLIC', value: '50' },
     ],
     demographics: {
       gdpBillionUsd: 5,
@@ -488,7 +488,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '1.36', unit: 'M' },
       { label: 'GREEN SPACE', value: '30%' },
-      { label: 'REGION', value: 'CENTRAL EU' },
+      { label: 'SLIC', value: '69' },
     ],
     demographics: {
       gdpBillionUsd: 95,
@@ -524,7 +524,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '1.75', unit: 'M' },
       { label: 'GREEN SPACE', value: '27%' },
-      { label: 'REGION', value: 'CENTRAL EU' },
+      { label: 'SLIC', value: '50' },
     ],
     demographics: {
       gdpBillionUsd: 90,
@@ -560,7 +560,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '1.72', unit: 'M' },
       { label: 'GREEN SPACE', value: '23%' },
-      { label: 'REGION', value: 'SE EUROPE' },
+      { label: 'SLIC', value: '55' },
     ],
     demographics: {
       gdpBillionUsd: 70,
@@ -596,7 +596,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '0.46', unit: 'M' },
       { label: 'E-GOV', value: '99%' },
-      { label: 'REGION', value: 'BALTIC' },
+      { label: 'SLIC', value: '64' },
     ],
     demographics: {
       gdpBillionUsd: 25,
@@ -632,7 +632,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '0.60', unit: 'M' },
       { label: 'GREEN SPACE', value: '50%' },
-      { label: 'REGION', value: 'BALTIC' },
+      { label: 'SLIC', value: '49' },
     ],
     demographics: {
       gdpBillionUsd: 22,
@@ -668,7 +668,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '0.61', unit: 'M' },
       { label: 'GREEN SPACE', value: '30%' },
-      { label: 'REGION', value: 'BALTIC' },
+      { label: 'SLIC', value: '50' },
     ],
     demographics: {
       gdpBillionUsd: 22,
@@ -740,7 +740,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '1.40', unit: 'M' },
       { label: 'RIVERS', value: '2' },
-      { label: 'REGION', value: 'BALKANS' },
+      { label: 'SLIC', value: '46' },
     ],
     demographics: {
       gdpBillionUsd: 35,
@@ -780,7 +780,7 @@ export const CITIES: CityConfig[] = [
     kpis: [
       { label: 'POPULATION', value: '0.29', unit: 'M' },
       { label: 'GREEN SPACE', value: '75%' },
-      { label: 'REGION', value: 'CENTRAL EU' },
+      { label: 'SLIC', value: '53' },
     ],
     demographics: {
       gdpBillionUsd: 25,

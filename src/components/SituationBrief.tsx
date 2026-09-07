@@ -29,6 +29,7 @@ import { generateText, ollamaReachable } from '../lib/ollama'
 import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
 import { fetchAllASEAN } from '../data/asean-aqi'
 import { getPrimaryHazard } from '../lib/seasonal-context'
+import { fetchChaoPrayaForecast } from '../data/flood-forecast'
 
 const REFRESH_MS = 30 * 60_000
 
@@ -45,7 +46,7 @@ interface CitySnapshot {
 }
 
 // ── Build a deterministic brief from snapshots (fallback — always works) ──────
-function templateBrief(snaps: CitySnapshot[], patterns: string[]): string {
+function templateBrief(snaps: CitySnapshot[], patterns: string[], floodLine = ''): string {
   if (snaps.length === 0) return 'No city data available.'
 
   // Air quality summary
@@ -81,7 +82,7 @@ function templateBrief(snaps: CitySnapshot[], patterns: string[]): string {
     ? `${exposed.join(', ')} breathing polluted air.`
     : ''
 
-  return [aqiText, wxText, newsText, patternText, exposureText].filter(Boolean).join(' ')
+  return [aqiText, wxText, floodLine, newsText, patternText, exposureText].filter(Boolean).join(' ')
 }
 
 export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
@@ -100,7 +101,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
     setLoading(true)
     try {
       // Gather snapshots in parallel
-      const [snapshotResults, patterns, aseanData] = await Promise.all([
+      const [snapshotResults, patterns, aseanData, flood] = await Promise.all([
         Promise.allSettled(cities.map(async (city): Promise<CitySnapshot> => {
           const [lng, lat] = city.center
           const [aqiData, wxData, newsData] = await Promise.allSettled([
@@ -127,6 +128,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
         })),
         detectCrossCityPatterns(cities[0]).catch(() => []),
         fetchAllASEAN().catch(() => []),
+        fetchChaoPrayaForecast(30).catch(() => null),
       ])
 
       const snaps = snapshotResults
@@ -170,9 +172,22 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
           : null,
         seasonalHazard: primaryHazard ? { label: primaryHazard.label, urgency: primaryHazard.urgency, detail: primaryHazard.detail.slice(0, 100) } : null,
         populationExposure: exposedPop,
+        chaoPhrayaFlood: flood?.usable
+          ? {
+              gauge: flood.gauge,
+              dischargeM3s: flood.currentDischarge,
+              peakM3s: flood.peakDischarge,
+              trend: flood.trend,
+              peakDate: flood.peakDate,
+            }
+          : null,
       }
 
-      const fallback = templateBrief(snaps, patternTexts)
+      const floodLine = flood?.usable
+        ? `Chao Phraya GloFAS: ${flood.currentDischarge.toLocaleString()} m³/s at Nakhon Sawan (${flood.trend}; peak ${flood.peakDischarge?.toLocaleString() ?? '—'}).`
+        : ''
+
+      const fallback = templateBrief(snaps, patternTexts, floodLine)
 
       // Tier 1: Gemini via Worker
       let text = ''
@@ -180,7 +195,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
 
       try {
         const result = await narrate(
-          'Give a 3-sentence operational situation brief for a city intelligence operator. Cover: overall air quality status across all cities, notable weather or environmental conditions, and any cross-city intelligence patterns. Be factual and precise. No greetings or sign-off.',
+          'Give a 3-sentence operational situation brief for a city intelligence operator. Cover: overall air quality status across all cities, Chao Phraya flood watch if present, notable weather, and any cross-city intelligence patterns. Be factual and precise. No greetings or sign-off.',
           context,
           { style: 'brief', maxWords: 80 },
         )
@@ -198,7 +213,7 @@ export function SituationBrief({ allCities }: { allCities?: CityConfig[] }) {
           try {
             const prompt = [
               'You are a city intelligence operator. Write exactly 3 sentences as a factual operational brief.',
-              'Cover: (1) air quality across monitored cities, (2) notable weather or environmental conditions, (3) any cross-city patterns.',
+              'Cover: (1) air quality across monitored cities, (2) Chao Phraya flood watch if present, (3) weather or cross-city patterns.',
               'Be specific with numbers. No greetings. No markdown.',
               '',
               'Current data:',

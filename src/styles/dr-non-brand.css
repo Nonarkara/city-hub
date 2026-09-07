@@ -1,0 +1,27 @@
+/* Design tokens — vendored from the shared brand sheet so this repo builds alone. */
+:root {
+  --bg: #04060b;
+  --fg: #f5f5f0;
+  --fg-dim: rgba(245, 245, 240, 0.62);
+  --dim: rgba(245, 245, 240, 0.45);
+  --muted: rgba(245, 245, 240, 0.28);
+  --line: rgba(245, 245, 240, 0.12);
+  --amber: #f59e0b;
+  --ok: #34d399;
+  --border: 1px solid var(--line);
+  --font-thai: 'IBM Plex Sans Thai', 'Source Sans 3', sans-serif;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --text-micro: 9px;
+  --text-small: 11px;
+  --text-body: 13px;
+  --text-display: 18px;
+  --tap-min: 44px;
+  --sab: env(safe-area-inset-bottom, 0px);
+  --z-frame: 10;
+  --z-overlay: 20;
+  --z-drawer: 30;
+  --z-modal: 40;
+}

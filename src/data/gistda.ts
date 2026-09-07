@@ -1,9 +1,8 @@
 /**
- * GISTDA wrappers — thin Bangkok-focused shims over _shared/lib/gistda.js.
+ * GISTDA wrappers — Bangkok-focused shims over src/lib/gistda-client.ts.
  * All fetches go through cachedFetch for TTL + concurrent dedup.
  */
-// @ts-expect-error — _shared/lib/gistda.js has no .d.ts (ESM named exports)
-import * as G from '@shared/lib/gistda.js'
+import * as G from '../lib/gistda-client'
 import { cachedFetch } from '../lib/cached-fetch'
 import { timeoutSignal } from './source-registry'
 

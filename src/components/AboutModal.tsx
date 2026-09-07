@@ -7,9 +7,9 @@ import { useUIStore } from '../store/uiStore'
 import { CITIES } from '../config/cities'
 
 const SOURCES = [
-  'NASA GIBS', 'USGS', 'Open-Meteo', 'WAQI', 'OpenAQ',
-  'GISTDA', 'BMA', 'Traffy Fondue', 'TMD', 'GDELT',
-  'NASA FIRMS', 'RainViewer',
+  'NASA GIBS', 'USGS', 'Open-Meteo', 'GloFAS', 'WAQI', 'OpenAQ',
+  'GISTDA', 'HII ThaiWater', 'BMA', 'Traffy Fondue', 'TMD', 'GDELT',
+  'NASA FIRMS', 'RainViewer', 'SLIC Index',
 ]
 
 export function AboutModal() {
@@ -80,7 +80,7 @@ export function AboutModal() {
         <div className="about-sources-label">KEYBOARD SHORTCUTS</div>
         <div className="about-keys-grid">
           {[
-            ['1–5', 'Switch city'],
+            ['1–5', 'First five cities'],
             ['G', 'Toggle globe'],
             ['F', 'Forecast'],
             ['S', 'Split compare'],
@@ -100,18 +100,19 @@ export function AboutModal() {
         <div className="about-sources-label">LEGAL · IP · DATA</div>
         <div className="about-legal">
           <p>
-            <strong>Intellectual property.</strong> Dr Non's City Hub — its concept,
-            the SLIC / AMPI indexing methodology, the data architecture, the design
-            system, and the source code — is the intellectual property of
-            Non&nbsp;Arkaraprasertkul (Dr&nbsp;Non&nbsp;Arkara).
-            © 2026. All rights reserved. Reuse, white-labelling, or redeployment for a
-            city or client requires a written licence.
+            <strong>Intellectual property.</strong> Source code is MIT
+            (see <code>LICENSE</code> in this repository) © 2026
+            Non&nbsp;Arkaraprasertkul. SLIC V3 scores are the published
+            Smart and Liveable Cities Index (Arkara &amp; Thiengburanathum) —
+            cite the method, do not sell ranks as paid placement. Forks must
+            not impersonate BMA, DEPA, or any government product.
           </p>
           <p>
             <strong>Privacy — GDPR &amp; PDPA.</strong> This dashboard renders publicly
-            available open data only. It collects no personal data, sets no advertising
-            cookies, and runs no third-party analytics or tracking. Compliant by design
-            with the EU GDPR and Thailand's PDPA — there is no personal data to process.
+            available open data. It sets no advertising cookies. Firebase Analytics
+            may run in production if <code>VITE_FIREBASE_*</code> is configured —
+            that is usage telemetry, not an ad network. Traffy tickets are public
+            civic reports; do not use them to identify people.
           </p>
           <p>
             <strong>Systems.</strong> Built and self-hosted by Dr&nbsp;Non — a static

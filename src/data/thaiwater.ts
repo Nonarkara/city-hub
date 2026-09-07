@@ -15,6 +15,7 @@ import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
 const BASE = PROXY ? `${PROXY}/thaiwater` : 'https://www.thaiwater.net'
+const V3_BASE = PROXY ? `${PROXY}/thaiwater-v3` : 'https://api-v3.thaiwater.net'
 
 const TTL = 30 * 60 * 1000 // 30 min
 
@@ -111,13 +112,88 @@ export async function fetchThaiwaterQuality(): Promise<WaterQualityStation[]> {
   }, TTL)
 }
 
-/** Parse water level data for Bangkok canals/rivers */
-export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
-  return cachedFetch('thaiwater/levels', async () => {
+function situationToStatus(level: unknown): WaterLevelStation['status'] {
+  const n = Number(level)
+  if (n >= 5) return 'critical'
+  if (n >= 4) return 'warning'
+  return 'normal'
+}
+
+/** HII province codes for City Hub Thai cities that have measured gauges. */
+export const THAIWATER_PROVINCE_CODE: Record<string, string> = {
+  bangkok: '10',
+  'chiang-mai': '50',
+  phuket: '83',
+  yala: '95',
+}
+
+export function thaiwaterProvinceCode(cityId: string): string | null {
+  return THAIWATER_PROVINCE_CODE[cityId] ?? null
+}
+
+function mapV3Station(raw: unknown, provinceCode: string): WaterLevelStation | null {
+  const rec = raw as Record<string, unknown>
+  const geo = rec.geocode as Record<string, unknown> | undefined
+  if (String(geo?.province_code ?? '') !== provinceCode) return null
+  const st = rec.station as Record<string, unknown> | undefined
+  const lat = Number(st?.tele_station_lat ?? 0)
+  const lng = Number(st?.tele_station_long ?? 0)
+  if (!lat || !lng) return null
+  const nameObj = st?.tele_station_name as Record<string, string> | undefined
+  const msl = Number(rec.waterlevel_msl)
+  const bank = Number(st?.min_bank ?? st?.left_bank ?? 0)
+  return {
+    id: String(st?.tele_station_oldcode ?? rec.id ?? ''),
+    name: String(nameObj?.en ?? nameObj?.th ?? ''),
+    nameTH: String(nameObj?.th ?? nameObj?.en ?? ''),
+    lat,
+    lng,
+    river: String((rec.river_name as string | undefined) ?? ''),
+    waterLevelM: Number.isFinite(msl) ? msl : 0,
+    bankLevelM: Number.isFinite(bank) ? bank : 0,
+    flowRate: rec.discharge != null ? Number(rec.discharge) : undefined,
+    status: situationToStatus(rec.situation_level),
+    lastUpdate: String(rec.waterlevel_datetime ?? ''),
+    isFallback: false,
+  }
+}
+
+/** National HII dump — cached once, then filtered per province. ~2 MB. */
+async function fetchThaiwaterLevelsV3Raw(): Promise<unknown[]> {
+  return cachedFetch('thaiwater/v3/waterlevel-raw', async () => {
+    const url = `${V3_BASE}/api/v1/thaiwater30/public/waterlevel`
+    const res = await fetch(url, { signal: timeoutSignal(20_000) })
+    if (!res.ok) throw new Error(`ThaiWater v3 ${res.status}`)
+    const data = await res.json() as { result?: string; data?: unknown[] }
+    return Array.isArray(data?.data) ? data.data : []
+  }, TTL)
+}
+
+/** HII ThaiWater v3 — measured gauges for one province. */
+async function fetchThaiwaterLevelsV3(provinceCode: string): Promise<WaterLevelStation[] | null> {
+  const arr = await fetchThaiwaterLevelsV3Raw()
+  const stations: WaterLevelStation[] = []
+  for (const raw of arr) {
+    const mapped = mapV3Station(raw, provinceCode)
+    if (mapped) stations.push(mapped)
+  }
+  return stations.length > 0 ? stations : null
+}
+
+/** Parse water level data. Default province 10 = Bangkok. Frozen fallback is Bangkok-only. */
+export async function fetchThaiwaterLevels(provinceCode = '10'): Promise<WaterLevelStation[]> {
+  return cachedFetch(`thaiwater/levels/${provinceCode}`, async () => {
+    try {
+      const live = await fetchThaiwaterLevelsV3(provinceCode)
+      if (live && live.length > 0) return live
+    } catch {
+      /* fall through — Bangkok may use legacy URL / frozen fallback; others return empty */
+    }
+    if (provinceCode !== '10') return []
     const url = `${BASE}/api/v1/waterlevel?province=กรุงเทพมหานคร`
     try {
       const res = await fetch(url, { signal: timeoutSignal(15_000) })
-      if (!res.ok) return fallbackOrThrow('thaiwater/levels', new Error(`Thaiwater levels ${res.status}`), getBangkokWaterLevelFallback())
+      if (!res.ok) return fallbackOrThrow(`thaiwater/levels/${provinceCode}`, new Error(`Thaiwater levels ${res.status}`), getBangkokWaterLevelFallback())
       const data = await res.json()
       const raw = data?.data ?? data?.stations ?? data ?? []
       const arr = Array.isArray(raw) ? raw : []
@@ -151,7 +227,7 @@ export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
 
       return stations.length > 0 ? stations : getBangkokWaterLevelFallback()
     } catch (err) {
-      return fallbackOrThrow('thaiwater/levels', err, getBangkokWaterLevelFallback())
+      return fallbackOrThrow(`thaiwater/levels/${provinceCode}`, err, getBangkokWaterLevelFallback())
     }
   }, TTL)
 }
@@ -180,6 +256,7 @@ export async function fetchWaterQualityGeoJSON(): Promise<GeoJSON.FeatureCollect
         salinity: s.salinity ?? null,
         wqi: s.wqi ?? null,
         lastUpdate: s.lastUpdate,
+        isFallback: Boolean(s.isFallback),
         // Color by WQI: good(>80)=green, fair(50-80)=yellow, poor(<50)=red
         color: s.wqi != null
           ? s.wqi > 80 ? '#4caf50' : s.wqi > 50 ? '#ff9800' : '#f44336'
@@ -212,6 +289,7 @@ export async function fetchWaterLevelGeoJSON(): Promise<GeoJSON.FeatureCollectio
         rainfall24h: s.rainfall24h ?? null,
         status: s.status,
         lastUpdate: s.lastUpdate,
+        isFallback: Boolean(s.isFallback),
         // Color by status
         color: s.status === 'normal' ? '#4caf50'
           : s.status === 'warning' ? '#ff9800'

@@ -17,7 +17,7 @@ This is **not** an official product of BMA, DEPA, or any government. It is indep
 
 City Hub is a replicable **civic intelligence dashboard**. Bangkok is the full-tier city (`tier: 'full'` in `src/config/cities.ts`). Other cities in that same registry — Chiang Mai, Phuket, Singapore, Kuching, Kranj, Ljubljana, and more — run on global open sources (`tier: 'lite'`). Adding a city is one config object; pointing the map at a typed name uses OpenStreetMap Nominatim for a session-only view.
 
-It exists so a resident, journalist, or city operator can open one tab and see **what the sensors say next to what the press says**, with every figure cited. It is not a brochure dashboard. Layers that are pending, historical, mocked, or key-gated say so in `src/config/bangkok-layers.ts`.
+It exists so a resident, journalist, or city operator can open one tab and see **what the sensors say next to what the press says**, with every figure cited. It is not a brochure dashboard. Layers that are pending, historical, mocked, or key-gated say so in `src/config/bangkok-layers.ts`. Published **SLIC V3.4** scores (13 of 20 hub cities) sit on the brief as structural intelligence — cities not on that board show a gap, not a made-up number.
 
 The product name in the UI is **Dr Non's City Hub**. `package.json` version is `0.9.4`. GitHub description: *Bangkok civic intelligence hub — live PM2.5, satellite, alerts. Independent of any vendor platform.*
 
@@ -28,7 +28,7 @@ Drawn from the layer catalog and data modules — not from marketing copy:
 | Domain | Sources in this repo |
 | --- | --- |
 | Air | GISTDA PM2.5, Air4Thai (PCD), Open-Meteo AQI, WAQI, OpenAQ |
-| Water / flood | GISTDA live + historical flood polygons, Thaiwater quality and levels |
+| Water / flood | GISTDA live + historical flood polygons (Bangkok). **HII ThaiWater v3** measured gauges for Bangkok, Chiang Mai, Phuket, and Yala. **GloFAS** via Open-Meteo: Chao Phraya at Nakhon Sawan (published 2k/3.5k/5k m³/s bands) for Bangkok; other cities use a relative surge vs that cell’s recent 45-day p90 — never Chao Phraya bands on a foreign river. Each city brief has a FloodDash-style verb (ALL CLEAR / STAY INFORMED / PREPARE / ACT NOW / NO DATA). Frozen ThaiWater fallback is labelled and never drives ALL CLEAR. |
 | Fire | NASA FIRMS (needs Worker `FIRMS_MAP_KEY` or `VITE_FIRMS_MAP_KEY`); GISTDA hotspots are a **historical 2023 snapshot**, not live |
 | Traffic | Longdo / iTIC live tiles + incidents (default-on); TomTom flow/incidents if `VITE_TOMTOM_KEY` is set |
 | Civic | Traffy Fondue citizen reports (points + heatmap) |
@@ -109,7 +109,7 @@ flowchart TB
 - Optional Firebase (SitRep drafts / ASK cloud toggle) and optional Supabase cache
 - Zustand stores; city registry in `src/config/cities.ts`
 
-The Vite alias `@shared` → `../_shared` is used by `src/data/gistda.ts` for GISTDA helpers. **That sibling folder is not in this repository.** A clone of *only* `city-hub` will not resolve those imports until `_shared/lib/gistda.js` exists next to the checkout (or you change the alias). Other layers do not go through that file.
+GISTDA air/flood helpers live in `src/lib/gistda-client.ts`. A clone of this repository builds without a sibling `_shared` folder.
 
 ---
 
@@ -254,9 +254,8 @@ Use it, fork it, ship your own city’s version. Keep the copyright notice. This
 repository is independent civic software — not a vendor platform and not an
 official BMA, DEPA, or government product.
 
-An in-app About panel currently prints a stricter “all rights reserved / written
-licence” paragraph. **The public repository license is MIT** (`LICENSE` on
-`main`). Do not take the About modal as overriding that file.
+The in-app About panel matches this file: MIT, with SLIC citation rules and
+honest Firebase Analytics wording when `VITE_FIREBASE_*` is configured.
 
 OpenStreetMap building extracts are **ODbL**. Upstream open-data providers keep
 their own terms.
