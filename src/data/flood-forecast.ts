@@ -90,7 +90,6 @@ export async function fetchGlofasForecast(
       `&daily=river_discharge` +
       `&forecast_days=${forecastDays}` +
       (past > 0 ? `&past_days=${past}` : '') +
-      `&models=seamless` +
       `&cell_selection=nearest`
     const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`GloFAS ${res.status}`)
@@ -164,9 +163,9 @@ export async function fetchGlofasForecast(
 }
 
 /**
- * Chao Phraya at Nakhon Sawan confluence (15.7°N, 100.0°E) —
- * the standard upstream indicator for Bangkok flood risk.
+ * Chao Phraya at Nakhon Sawan confluence —
+ * GloFAS cell 15.67°N, 100.08°E (the 15.7, 100.0 cell is a dry neighbour).
  */
 export async function fetchChaoPrayaForecast(days = 30): Promise<FloodForecast> {
-  return fetchGlofasForecast(15.7, 100.0, 'Nakhon Sawan (Chao Phraya confluence)', days, 'chao-phraya')
+  return fetchGlofasForecast(15.67, 100.08, 'Nakhon Sawan (Chao Phraya confluence)', days, 'chao-phraya')
 }
