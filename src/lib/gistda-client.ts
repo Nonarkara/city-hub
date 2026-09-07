@@ -85,10 +85,10 @@ export async function fetchPm25AllProvinces(): Promise<Array<{ pv_tn: string; pm
 }
 
 export async function fetchFloodPolygonsGeoJSON(region = 'central') {
-  const path = region === 'central'
-    ? 'FL_Flood/flood_freq_central/MapServer/0/query'
-    : 'FL_Flood/flood_daily/MapServer/0/query'
-  return queryGeoJSON(path, { where: '1=1', outFields: '*' })
+  // Live daily extent — NOT flood_freq_central (that is a multi-year frequency
+  // layer with >1M polygons; treating it as "active zones" made the IOC lie).
+  void region
+  return queryGeoJSON('FL_Flood/flood_daily/MapServer/0/query', { where: '1=1', outFields: '*' })
 }
 
 export async function fetchRecurringFloodZones() {

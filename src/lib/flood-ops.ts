@@ -81,7 +81,9 @@ function actionFor(verb: FloodVerb, city: CityConfig): string {
     case 'STAY INFORMED':
       return 'Discharge is elevated versus this cell’s recent baseline (or Chao Phraya watch bands). Recheck this panel tonight. Do not treat a watch as an all-clear.'
     case 'NO DATA':
-      return 'No usable flood signal. Do not assume ALL CLEAR. Check TMD / DDPM (TH) or your local hydro service.'
+      return city.country === 'TH'
+        ? 'No usable flood signal. Do not assume ALL CLEAR. Check TMD / DDPM.'
+        : 'No usable flood signal. Do not assume ALL CLEAR. Check your local hydro or civil-protection service.'
     default:
       return 'No flood action from this watch. Keep GloFAS and (where present) HII levels on a timer.'
   }

@@ -109,8 +109,23 @@ export async function thailandFires24h(): Promise<FiresFeatureCollection> {
 
 export async function centralFloods() {
   return cachedFetch('gistda/floods-central', async () => {
-    const geojson = await G.fetchFloodPolygonsGeoJSON('central')
-    return geojson as GeoJSON.FeatureCollection
+    const geojson = await G.fetchFloodPolygonsGeoJSON('central') as GeoJSON.FeatureCollection
+    // Daily layer is national; keep polygons that touch the Bangkok bbox.
+    const [west, south, east, north] = [100.30, 13.50, 100.95, 14.00]
+    const features = (geojson.features ?? []).filter((f) => {
+      const g = f.geometry
+      if (!g) return false
+      const ring =
+        g.type === 'Point' ? [g.coordinates] :
+        g.type === 'Polygon' ? g.coordinates[0] :
+        g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] :
+        []
+      return (ring ?? []).some((c) => {
+        const lng = Number(c[0]); const lat = Number(c[1])
+        return lng >= west && lng <= east && lat >= south && lat <= north
+      })
+    })
+    return { type: 'FeatureCollection' as const, features }
   }, TTL_FLOOD)
 }
 
