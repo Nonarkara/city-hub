@@ -26,7 +26,8 @@
  *   /owm/*          → OpenWeatherMap 3.0    (key injected server-side)
  *   /firms/*        → NASA FIRMS fire data
  *   /traffy/*       → Traffy Fondue civic issues
- *   /gdelt/*        → GDELT news/sentiment API
+ *   /thaiwater/*    → thaiwater.net (legacy)
+ *   /thaiwater-v3/* → HII api-v3.thaiwater.net (measured gauges)
  *   /forecast       → TimeFM / Gemini / Holt-Winters forecasting
  *   /narrate        → Gemini situation narration
  *   /ee/mapid       → Earth Engine tile token minting
@@ -115,6 +116,7 @@ const TARGETS: Record<string, { origin: string; cacheSeconds: number }> = {
   'traffy':        { origin: 'https://publicapi.traffy.in.th',      cacheSeconds: 120 },
   'gdelt':         { origin: 'https://api.gdeltproject.org/api/v2', cacheSeconds: 300 },
   'thaiwater':     { origin: 'https://www.thaiwater.net',           cacheSeconds: 600 },
+  'thaiwater-v3':  { origin: 'https://api-v3.thaiwater.net',        cacheSeconds: 600 },
   'openaq':        { origin: 'https://api.openaq.org/v3',           cacheSeconds: 300 },
   'owm':           { origin: 'https://api.openweathermap.org/data/3.0', cacheSeconds: 300 },
   'cems':          { origin: 'https://emergency.copernicus.eu',     cacheSeconds: 3600 },

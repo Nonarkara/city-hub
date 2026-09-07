@@ -34,6 +34,7 @@ import { SLICPanel } from './SLICPanel'
 import { PatternsSection } from './PatternsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { PrepareCard } from './PrepareCard'
+import { FloodOpsCard } from './FloodOpsCard'
 import { InsightCardsGrid } from './InsightCardsGrid'
 import { PopulationRealityPanel } from './PopulationRealityPanel'
 import { CityIntelligence } from './CityIntelligence'
@@ -691,6 +692,7 @@ export function AlertPanel() {
           <CityIntelligence activeCity={BANGKOK_CITY} />
           <BriefSection brief={brief} onAction={handleBriefAction} />
           <PrepareCard activeCity={BANGKOK_CITY} forecast={forecast} />
+          <FloodOpsCard activeCity={BANGKOK_CITY} />
           <SLICPanel activeCity={BANGKOK_CITY} />
           <PatternsSection activeCity={BANGKOK_CITY} />
           <RankSection rank={pm25Rank} />

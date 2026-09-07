@@ -1,5 +1,5 @@
 /* Design tokens — single source of truth */
-@import url('../../_shared/design-tokens/dr-non-brand.css');
+@import url('./styles/dr-non-brand.css');
 
 /* ── v3.0 typography override ────────────────────────────────────────────── */
 /* Space Grotesk replaces Josefin Sans: same geometric lineage, more assertive.
@@ -5500,7 +5500,7 @@
   margin-top: 4px;
 }
 
-/* ── SLIC Index Panel (Non's proprietary 5-pillar AMPI scoring) ──────────── */
+/* ── SLIC Index Panel (published V3.4 board — not a proprietary score) ── */
 .slic-section {
   padding: var(--space-md);
   border-top: var(--border);
@@ -5737,6 +5737,127 @@
 .slic-peer-score {
   font-weight: 500;
   text-align: right;
+}
+
+.slic-fix-why {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── FloodDash-style ops card ────────────────────────────────────────────── */
+.flood-ops {
+  padding: var(--space-md);
+  border-top: var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  background: rgba(52, 211, 153, 0.03);
+}
+
+.flood-ops-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.flood-ops-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+}
+
+.flood-ops-verb {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: 1px solid;
+}
+
+.flood-ops-loading {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+
+.flood-ops-action {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--fg);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.flood-ops-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flood-ops-reasons li {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+  line-height: 1.4;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.flood-ops-kind {
+  flex-shrink: 0;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.flood-ops-kind--measured { color: var(--emerald); border-color: rgba(52, 211, 153, 0.4); }
+.flood-ops-kind--modelled { color: var(--amber); border-color: rgba(245, 158, 11, 0.4); }
+.flood-ops-kind--derived { color: var(--dim); }
+
+.flood-ops-hotlines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flood-ops-tel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+.flood-ops-tel:hover { background: rgba(245, 158, 11, 0.08); }
+
+.flood-ops-disclaimer {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.flood-ops .flood-panel {
+  width: 100%;
+  border: none;
+  background: transparent;
 }
 
 /* ── Cross-City Patterns Section ─────────────────────────────────────────── */

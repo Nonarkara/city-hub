@@ -1,7 +1,7 @@
 /**
- * LiteCityPanel — governor brief for lite-tier cities (Chiang Mai, Phuket,
- * Singapore, Kuching). Uses only global data sources: Open-Meteo (weather +
- * AQI + forecast), GDELT (news), NASA FIRMS (fires, where applicable).
+ * LiteCityPanel — governor brief for lite-tier cities. Uses global sources
+ * (Open-Meteo, GDELT, FIRMS) plus FloodDash-style GloFAS watch. Thai cities
+ * with an HII province code also get measured ThaiWater gauges.
  *
  * Same right-panel chrome as AlertPanel so the mobile drawer + peek strip
  * from v0.5.1 keep working without modification.
@@ -20,6 +20,7 @@ import { CitizenReportsSection } from './CitizenReportsSection'
 import { OpenDataInventory } from './OpenDataInventory'
 import { SingaporeDataSection } from './SingaporeDataSection'
 import { PrepareCard } from './PrepareCard'
+import { FloodOpsCard } from './FloodOpsCard'
 import { CityIntelligence } from './CityIntelligence'
 
 interface Props {
@@ -165,6 +166,8 @@ export const LiteCityPanel = memo(function LiteCityPanel({ activeCity }: Props) 
           </div>
 
           <PrepareCard activeCity={activeCity} forecast={forecast} />
+
+          <FloodOpsCard activeCity={activeCity} />
 
           <SLICPanel activeCity={activeCity} />
 

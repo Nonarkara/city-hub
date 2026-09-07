@@ -23,7 +23,7 @@ import { cachedFetch } from '../lib/cached-fetch'
 import {
   getCityScore, getPillarBreakdown, globalRank,
   PILLAR_ORDER, PILLAR_LABELS, PILLAR_WEIGHTS,
-  SLIC_VERSION, type CityScore, type PillarId,
+  SLIC_VERSION, SLIC_UPDATED, type CityScore, type PillarId,
 } from '../lib/slic'
 import { pm25ToRisk, aqiToRisk, RISK_COLOR, type RiskLevel } from '../lib/risk'
 import { fetchAQIHistory, type AQIHistory } from '../lib/historical-aqi'
@@ -400,7 +400,7 @@ export function ComparisonPanel() {
         {/* ── SLIC Index ─────────────────────────────────────────────────── */}
         {anyHasSlic && (
           <section className="cmp-section">
-            <div className="cmp-section-label">SLIC INDEX · {SLIC_VERSION}</div>
+            <div className="cmp-section-label">SLIC INDEX · {SLIC_VERSION} · {SLIC_UPDATED}</div>
 
             {/* Global rank summary row */}
             <div className="cmp-rank-row">
@@ -418,9 +418,9 @@ export function ComparisonPanel() {
               })}
             </div>
 
-            {/* Overall AMPI score */}
+            {/* Overall SLIC score */}
             <MetricRows
-              label="OVERALL AMPI SCORE"
+              label="OVERALL SLIC SCORE"
               unit="/100"
               cities={cities}
               maxOverride={100}

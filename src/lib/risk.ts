@@ -90,10 +90,10 @@ export function computeVitals(
     {
       id: 'flood',
       label: 'FLOOD',
-      value: floodCount > 0 ? String(floodCount) : 'CLEAR',
+      value: floodCount > 0 ? String(floodCount) : '—',
       unit: floodCount > 0 ? 'ZONES' : undefined,
       level: floodToRisk(floodCount),
-      sub: floodCount > 0 ? 'CENTRAL REGION' : 'ALL CLEAR',
+      sub: floodCount > 0 ? 'GISTDA DAILY' : 'NO DAILY POLYGONS',
     },
     {
       id: 'heat',

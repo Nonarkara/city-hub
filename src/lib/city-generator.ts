@@ -126,7 +126,7 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
     distinctiveness: `${name}, ${country}. Auto-generated global city config from OpenStreetMap. Local civic feeds can be attached later.`,
     kpis: [
       { label: 'POPULATION', value: '—' },
-      { label: 'SMART SCORE', value: '—' },
+      { label: 'SLIC', value: '—' },
       { label: 'IOC STATUS', value: 'LIVE' },
     ],
   }

@@ -5,7 +5,7 @@
  * so typing in the chatbot or command palette never triggers these.
  *
  * Keys:
- *   1–5      → switch to city by index (BKK=1, CNX=2, HKT=3, SIN=4, KCH=5)
+ *   1–5      → switch to city by index (first five in CITIES: BKK, CNX, HKT, SIN, KCH)
  *   g        → toggle globe projection
  *   f        → toggle forecast panel
  *   s        → toggle split compare
