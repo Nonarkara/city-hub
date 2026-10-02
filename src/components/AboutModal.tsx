@@ -3,8 +3,10 @@
  * Opens from the ABOUT button in the topbar.
  * Follows §12 Nonism: concrete first, philosophy last, no corporate copy.
  */
+import { useEffect } from 'react'
 import { useUIStore } from '../store/uiStore'
 import { CITIES } from '../config/cities'
+import { InstallWebAppPanel } from './InstallWebAppPanel'
 
 const SOURCES = [
   'NASA GIBS', 'USGS', 'Open-Meteo', 'WAQI', 'OpenAQ',
@@ -16,19 +18,35 @@ export function AboutModal() {
   const aboutOpen  = useUIStore((s) => s.aboutOpen)
   const setAboutOpen = useUIStore((s) => s.setAboutOpen)
 
+  useEffect(() => {
+    if (!aboutOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAboutOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [aboutOpen, setAboutOpen])
+
   if (!aboutOpen) return null
 
   return (
     <div className="about-overlay" onClick={() => setAboutOpen(false)}>
-      <div className="about-card" onClick={(e) => e.stopPropagation()}>
+      <div className="about-card" role="dialog" aria-modal="true" aria-labelledby="about-title" onClick={(e) => e.stopPropagation()}>
         <button className="about-close" onClick={() => setAboutOpen(false)} aria-label="Close" title="Close About Modal">✕</button>
 
+        <div className="about-brand-plate">
+          <img
+            className="about-brand-lockup"
+            src="/brand/city-hub-lockup.png"
+            alt="Dr Non's City Hub — City Intelligence"
+          />
+        </div>
         <div className="about-eyebrow">OPEN CIVIC INTELLIGENCE</div>
-        <div className="about-name">DR NON'S CITY HUB</div>
+        <div id="about-title" className="about-name">DR NON'S CITY HUB</div>
         <div className="about-version-line">
           <span className="about-ver">v6</span>
           <span className="about-sep">·</span>
-          <span className="about-status-chip">SYSTEM NOMINAL</span>
+          <span className="about-status-chip">BUILD VERIFIED</span>
         </div>
 
         <div className="about-divider" />
@@ -40,7 +58,7 @@ export function AboutModal() {
           </div>
           <div className="about-stat">
             <div className="about-stat-val">{SOURCES.length}+</div>
-            <div className="about-stat-label">LIVE SOURCES</div>
+            <div className="about-stat-label">SOURCE CATALOG</div>
           </div>
           <div className="about-stat">
             <div className="about-stat-val">0</div>
@@ -65,6 +83,10 @@ export function AboutModal() {
           ex-ASEAN smart-city adviser. The point is not the dashboard.
           The point is what the data reveals when you put it all on one screen.
         </p>
+
+        <div className="about-divider" />
+
+        <InstallWebAppPanel />
 
         <div className="about-divider" />
 
@@ -108,10 +130,11 @@ export function AboutModal() {
             city or client requires a written licence.
           </p>
           <p>
-            <strong>Privacy — GDPR &amp; PDPA.</strong> This dashboard renders publicly
-            available open data only. It collects no personal data, sets no advertising
-            cookies, and runs no third-party analytics or tracking. Compliant by design
-            with the EU GDPR and Thailand's PDPA — there is no personal data to process.
+            <strong>Privacy — GDPR &amp; PDPA.</strong> The city layers use public and
+            aggregate data. The app sets no advertising cookies and does not sell user
+            data. When Firebase is configured, selected product interactions may be
+            recorded as aggregate usage events; deployment operators remain responsible
+            for consent, retention, and access controls.
           </p>
           <p>
             <strong>Systems.</strong> Built and self-hosted by Dr&nbsp;Non — a static

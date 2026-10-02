@@ -113,12 +113,12 @@ export const CITIES: CityConfig[] = [
     buildings3dUrl: '/geo/bkk-buildings.geojson',  // central Bangkok 0.06°×0.08° extract, ODbL
     availableLayers: ['pm25-stations', 'pm25-heatmap', 'aqi-live', 'air4thai-stations', 'waqi-stations', 'openaq-stations', 'fires-gistda', 'fires-firms', 'floods-historical', 'floods', 'districts', 'owm-weather', 'rail', 'gtfs-transit-live', 'gibs-aod', 'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi', 'sat-esri', 'sat-sentinel2', 'alphaearth-embeddings', 'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'longdo-basemap', 'traffy-issues', 'traffy-heatmap', 'buildings-3d', 'osm-emergency', 'osm-education', 'water-quality', 'water-level', 'earthquake-tmd', 'tomtom-traffic', 'tomtom-incidents', 'airbnb-density', 'historical-events'],
     area_km2: 1568,
-    populationMillions: 10.5,
+    populationMillions: 5.455,
     founded: '1782',
     climate: 'Tropical savanna · monsoon-driven',
     distinctiveness: 'Thailand\'s capital and largest city. Founded by Rama I after Ayutthaya\'s fall. Sits on the Chao Phraya delta — flat, river-veined, sinking ~2cm per year.',
     kpis: [
-      { label: 'POPULATION', value: '10.5', unit: 'M' },
+      { label: 'BMA REGISTERED', value: '5.46', unit: 'M' },
       { label: 'SMART SCORE', value: '71.2' },
       { label: 'IOC STATUS', value: 'ACTIVE' },
     ],

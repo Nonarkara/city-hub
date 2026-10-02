@@ -26,7 +26,7 @@ const CITY_SOURCES: Record<string, DataSource[]> = {
     { name: 'Traffy Fondue',  org: 'NECTEC',                                url: 'https://www.traffy.in.th',         language: 'TH',    status: 'active',     notes: '1.3M+ citizen reports' },
     { name: 'BMA Open Data',  org: 'Bangkok Metropolitan Admin',            url: 'https://data.bangkok.go.th',       language: 'TH',    status: 'active',     notes: '1,431 datasets' },
     { name: 'TMD',            org: 'Thai Meteorological Department',        url: 'https://www.tmd.go.th',            language: 'EN/TH', status: 'active',     notes: '7-day forecast, earthquakes' },
-    { name: 'Thaiwater',      org: 'Hydro-Informatics Institute',           url: 'https://www.thaiwater.net',        language: 'EN/TH', status: 'active',     notes: 'Canal water quality + levels' },
+    { name: 'Thaiwater',      org: 'Hydro-Informatics Institute',           url: 'https://www.thaiwater.net',        language: 'EN/TH', status: 'available',  notes: 'Portal verified; public station API needs a stable integration endpoint' },
     { name: 'data.go.th',     org: 'Digital Government Development Agency', url: 'https://data.go.th',               language: 'EN/TH', status: 'active',     notes: 'National open-data portal' },
     { name: 'DEQP',           org: 'Department of Environmental Quality',   url: 'https://www.deqp.go.th',           language: 'TH',    status: 'available',  notes: 'Burning-season alerts (seasonal)' },
   ],
@@ -74,7 +74,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  active:    'LIVE',
+  active:    'IN APP',
   available: 'READY',
   discovery: 'KNOWN',
 }
@@ -83,13 +83,13 @@ export function OpenDataInventory({ activeCity }: Props) {
   const sources = CITY_SOURCES[activeCity.id] ?? []
   if (sources.length === 0) return null
 
-  const activeCount = sources.filter((s) => s.status === 'active').length
+  const integratedCount = sources.filter((s) => s.status === 'active').length
 
   return (
     <div className="odi-section">
       <div className="odi-header">
         <span className="odi-title">OPEN DATA · {activeCity.country}</span>
-        <span className="odi-count">{activeCount}/{sources.length} LIVE</span>
+        <span className="odi-count">{integratedCount}/{sources.length} IN APP</span>
       </div>
 
       <p className="odi-intro">

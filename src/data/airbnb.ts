@@ -42,20 +42,20 @@ export async function fetchAirbnbBangkok(): Promise<AirbnbListing[]> {
     try {
       const res = await fetch(url, { signal: timeoutSignal(30_000) })
       if (!res.ok) {
-        // Fallback to demo data if download fails (CORS, network, etc.)
-        return getAirbnbFallback()
+        throw new Error(`Inside Airbnb ${res.status}`)
       }
       const text = await res.text()
       return parseAirbnbCSV(text)
-    } catch {
-      return getAirbnbFallback()
+    } catch (error) {
+      const detail = error instanceof Error ? `: ${error.message}` : ''
+      throw new Error(`Inside Airbnb data unavailable${detail}`)
     }
   }, TTL)
 }
 
 function parseAirbnbCSV(csv: string): AirbnbListing[] {
   const lines = csv.trim().split('\n')
-  if (lines.length < 2) return getAirbnbFallback()
+  if (lines.length < 2) throw new Error('Inside Airbnb CSV is empty')
 
   const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
   const idx: Record<string, number> = {}
@@ -85,7 +85,8 @@ function parseAirbnbCSV(csv: string): AirbnbListing[] {
     })
   }
 
-  return listings.length > 0 ? listings : getAirbnbFallback()
+  if (listings.length === 0) throw new Error('Inside Airbnb CSV contains no valid Bangkok listings')
+  return listings
 }
 
 /** Very simple CSV parser — handles quoted fields with commas */
@@ -109,7 +110,7 @@ function parseCSVLine(line: string): string[] {
 
 /** Convert to GeoJSON for map heatmap */
 export async function fetchAirbnbGeoJSON(): Promise<GeoJSON.FeatureCollection> {
-  const listings = await fetchAirbnbBangkok()
+  const listings = (await fetchAirbnbBangkok()).filter((listing) => !listing.isFallback)
   return {
     type: 'FeatureCollection',
     features: listings.map((l) => ({
@@ -177,7 +178,8 @@ export async function fetchAirbnbSummary(): Promise<{
 
 // ── Fallback data — representative Bangkok Airbnb distribution ─────────────
 
-function getAirbnbFallback(): AirbnbListing[] {
+/** @deprecated Demo fixture only. Production fetches must fail closed. */
+export function getAirbnbFallback(): AirbnbListing[] {
   // Representative sample of high-density Airbnb neighborhoods in Bangkok.
   // Marked isFallback so analytics (correlations) never treat it as real data.
   return [

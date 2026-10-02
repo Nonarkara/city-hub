@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^12.15.0",
-    "maplibre-gl": "^5.24.0",
+    "firebase": "^12.19.0",
+    "maplibre-gl": "^6.11.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tz-lookup": "^6.1.25",

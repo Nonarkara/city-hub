@@ -19,17 +19,21 @@ interface Props {
   activeCity: CityConfig
 }
 
+function shouldStartMinimized(): boolean {
+  return window.matchMedia('(max-width: 767px)').matches
+}
+
 export function CityFactsCard({ activeCity }: Props) {
   const [visible, setVisible] = useState(true)
-  const [minimized, setMinimized] = useState(false)
+  const [minimized, setMinimized] = useState(shouldStartMinimized)
   const [introCityId, setIntroCityId] = useState(activeCity.id)
 
-  // Re-show expanded on every city change
+  // Re-show on every city change, docked on small screens so the map stays visible.
   useEffect(() => {
     if (introCityId !== activeCity.id) {
       setIntroCityId(activeCity.id)
       setVisible(true)
-      setMinimized(false)
+      setMinimized(shouldStartMinimized())
     }
   }, [activeCity.id, introCityId])
 

@@ -8,6 +8,7 @@
  *   1–5      → switch to city by index (BKK=1, CNX=2, HKT=3, SIN=4, KCH=5)
  *   g        → toggle globe projection
  *   f        → toggle forecast panel
+ *   i        → toggle intel drawer
  *   s        → toggle split compare
  *   a  or /  → toggle ASK chatbot
  *   Escape   → close any open panel (forecast → split → chat in priority order)
@@ -23,6 +24,8 @@ interface Handlers {
   setGlobeView:   (v: boolean) => void
   forecastOpen:   boolean
   setForecastOpen:(v: boolean) => void
+  intelOpen?:     boolean
+  setIntelOpen?:  (v: boolean) => void
   splitOpen:      boolean
   setSplitOpen:   (v: boolean) => void
   chatOpen:       boolean
@@ -75,6 +78,14 @@ export function useKeyboardShortcuts(h: Handlers) {
           e.preventDefault()
           break
 
+        // Intel drawer
+        case 'i': case 'I':
+          if (h.setIntelOpen) {
+            h.setIntelOpen(!h.intelOpen)
+            e.preventDefault()
+          }
+          break
+
         // Split compare
         case 's': case 'S':
           h.setSplitOpen(!h.splitOpen)
@@ -106,6 +117,7 @@ export function useKeyboardShortcuts(h: Handlers) {
         // Escape: close panels in priority order
         case 'Escape':
           if (h.settingsOpen && h.setSettingsOpen) { h.setSettingsOpen(false); e.preventDefault() }
+          else if (h.intelOpen && h.setIntelOpen) { h.setIntelOpen(false); e.preventDefault() }
           else if (h.forecastOpen) { h.setForecastOpen(false); e.preventDefault() }
           else if (h.splitOpen)   { h.setSplitOpen(false);   e.preventDefault() }
           else if (h.chatOpen)    { h.setChatOpen(false);    e.preventDefault() }
@@ -117,7 +129,7 @@ export function useKeyboardShortcuts(h: Handlers) {
     return () => window.removeEventListener('keydown', onKey)
   }, [
     h.allCities, h.activeCity, h.globeView,
-    h.forecastOpen, h.splitOpen, h.chatOpen, h.cmdkOpen,
+    h.forecastOpen, h.intelOpen, h.splitOpen, h.chatOpen, h.cmdkOpen,
     h.settingsOpen, h.setSettingsOpen, h.onRunInsightScan,
   ])
 }

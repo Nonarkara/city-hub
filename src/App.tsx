@@ -52,6 +52,7 @@ import { DataSourceStatus, DataStatusChip } from './components/DataSourceStatus'
 import { sourceCountForCity } from './data/source-registry'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { cityHasTwin } from './components/CityIntelligence'
+import { IntelDrawer } from './components/IntelDrawer'
 
 const ComparisonPanel = lazy(() => import('./components/ComparisonPanel').then((m) => ({ default: m.ComparisonPanel })))
 const CityOnboardingModal = lazy(() => import('./components/CityOnboardingModal').then((m) => ({ default: m.CityOnboardingModal })))
@@ -63,6 +64,14 @@ const ForecastPanel = lazy(() => import('./components/ForecastPanel').then((m) =
 const LIVE_OVERLAYS: { id: string; label: string }[] = [
   { id: 'quakes', label: 'Earthquakes · 24h' },
   { id: 'radar',  label: 'Rain Radar' },
+]
+
+// NASA GIBS rasters — global, so they work on every city, not only Bangkok.
+const INTEL_OVERLAYS: { id: string; label: string }[] = [
+  { id: 'night', label: 'Night lights · VIIRS' },
+  { id: 'heat',  label: 'Surface heat · MODIS' },
+  { id: 'green', label: 'Vegetation · NDVI' },
+  { id: 'haze',  label: 'Aerosol haze · MODIS' },
 ]
 
 export default function App() {
@@ -115,6 +124,8 @@ export default function App() {
   const setGlobeView = useUIStore((s) => s.setGlobeView)
   const forecastOpen = useUIStore((s) => s.forecastOpen)
   const setForecastOpen = useUIStore((s) => s.setForecastOpen)
+  const intelOpen = useUIStore((s) => s.intelOpen)
+  const setIntelOpen = useUIStore((s) => s.setIntelOpen)
   const setAboutOpen = useUIStore((s) => s.setAboutOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
@@ -234,6 +245,7 @@ export default function App() {
     allCities, activeCity, setActiveCity,
     globeView, setGlobeView,
     forecastOpen, setForecastOpen,
+    intelOpen, setIntelOpen,
     splitOpen, setSplitOpen,
     chatOpen, setChatOpen,
     cmdkOpen, setCmdkOpen,
@@ -283,6 +295,16 @@ export default function App() {
         activeLayerCount={bangkokMode ? activeLayers.size : 0}
         sourceCount={sourceCount}
       />
+
+      {!splitOpen && (
+        <IntelDrawer
+          map={map}
+          activeCity={activeCity}
+          allCities={allCities}
+          open={intelOpen}
+          onToggle={() => setIntelOpen(!intelOpen)}
+        />
+      )}
 
       <CommandPalette
         open={cmdkOpen}
@@ -337,6 +359,7 @@ export default function App() {
 
       <header className="topbar">
         <span className="topbar-wordmark" title="Dr Non's City Hub — Open Civic Intelligence">
+          <img className="topbar-brand-mark" src="/brand/city-hub-mark.png" alt="" aria-hidden />
           <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB
         </span>
 
@@ -400,9 +423,6 @@ export default function App() {
         {actionCenterOpen && (
           <ActionCenter onClose={() => setActionCenterOpen(false)} />
         )}
-
-        {/* About dossier */}
-        <AboutModal />
 
         {/* Mobile dropdown */}
         <div className="md-hidden">
@@ -498,6 +518,30 @@ export default function App() {
                   </li>
                 ))}
 
+                {/* INTEL rasters — NASA products that work on every city */}
+                <li role="presentation">
+                  <div className="basemap-menu-group">intel</div>
+                  <ul className="basemap-menu-sublist" role="group" aria-label="intel overlays">
+                    {INTEL_OVERLAYS.map((ov) => {
+                      const on = activeOverlays.has(ov.id)
+                      return (
+                        <li key={ov.id} role="none">
+                          <button
+                            role="menuitemcheckbox"
+                            aria-checked={on}
+                            className={`basemap-menu-item ${on ? 'basemap-menu-item--active' : ''}`}
+                            onClick={() => toggleOverlay(ov.id)}
+                          >
+                            <span className="basemap-menu-dot" style={{ background: on ? 'var(--amber)' : 'transparent' }} aria-hidden />
+                            <span className="basemap-menu-label">{ov.label}</span>
+                            {on && <span className="basemap-menu-temporal" aria-hidden>●</span>}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </li>
+
                 {/* LIVE overlays — real-time layers on top of any lens */}
                 <li role="presentation">
                   <div className="basemap-menu-group">live</div>
@@ -559,6 +603,18 @@ export default function App() {
           </button>
         )}
 
+        {/* INTEL — live frame, open-web dossier, peer study */}
+        <button
+          className={`topbar-insight-btn ${intelOpen ? 'topbar-insight-btn--active' : ''}`}
+          onClick={() => setIntelOpen(!intelOpen)}
+          title="Live frame math, what the open web knows, city comparison (I)"
+          aria-label="Toggle city intelligence"
+          aria-pressed={intelOpen}
+        >
+          <span className="topbar-insight-icon" aria-hidden>◈</span>
+          <span className="topbar-insight-label">INTEL</span>
+        </button>
+
         {/* FORECAST — 48h AQI + temp outlook */}
         <button
           className={`topbar-insight-btn ${forecastOpen ? 'topbar-insight-btn--active' : ''}`}
@@ -606,6 +662,10 @@ export default function App() {
           <span className="topbar-cmdk-key">CMD&nbsp;K</span>
         </button>
       </header>
+
+      {/* Keep the fixed dialog outside the blurred topbar. Backdrop filters
+          create a containing block that would otherwise pin it to 44px. */}
+      <AboutModal />
 
       <InsightPanel
         open={insightOpen}

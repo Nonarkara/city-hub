@@ -1,8 +1,14 @@
 import { createRoot } from 'react-dom/client'
+import { setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import './index.css'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
+
+// MapLibre v6 is ESM-only. Vite must bundle the worker and its shared module
+// into one self-contained asset or production maps mount without requesting tiles.
+setWorkerUrl(mapLibreWorkerUrl)
 
 // StrictMode intentionally omitted — imperative map libraries (Mapbox GL JS)
 // do not tolerate the double-mount dev behaviour and produce duplicate canvas instances.

@@ -47,20 +47,18 @@ const B = {
   popMillions:       BANGKOK.populationMillions,
   areaKm2:           BANGKOK.area_km2,
   whoGreenTarget:    9,                            // WHO urban green-space m²/person
-  liveSources:       7,                            // OpenDataInventory bangkok active count
+  liveSources:       6,                            // OpenDataInventory Bangkok integrations
   totalSources:      8,
 
   // ── Demographics deep-dive (NESDC + UN-DESA + World Bank) ──
-  popMetro:          16.7,    // M · Bangkok Metropolitan Region (BMR) · UN-DESA 2024
-  popRegistered:     10.5,    // M · civil registration · DOPA 2568 (we are here)
-  popShadow:         6.2,     // M · unregistered estimate (BMR minus registered)
-  densityKm2:        6_700,   // people / km² · NESDC 2024
-  densityBangkokMetro: 1_900, // people / km² over BMR area
+  popMetro:          10.907,  // M · Bangkok + five surrounding provinces · NSO 2024
+  popRegistered:     5.455,   // M · BMA registration · NSO/BORA 2024
+  densityKm2:        3_477,   // people / km² · BMA · NSO 2024
+  densityBangkokMetro: 1_405, // people / km² · Bangkok and vicinities · NSO 2024
   medianAge:         39.2,    // yrs · NESDC 2024
   workingAge:        71,      // % aged 15–64 · NESDC 2024
   elderly:           14,      // % aged 65+ · NESDC 2024
   netMigration:      -0.4,    // per 1k/yr · BMR losing residents to provinces · NESDC
-  foreignResidents:  3.2,     // M · long-stay (work + retirement) · Thai PBS / immigration
   avgHousehold:      2.7,     // persons · NESDC
   households:        3.9,     // M · NESDC
 
@@ -123,7 +121,7 @@ const B = {
   rainyDays:          128,     // days/yr · TMD
 
   // ── Innovation & digital (DEPA / NBTC) ──
-  trueDigitalPark:    1,        // Thailand's first digital park · Chon Buri (counted as BMR proxy)
+  trueDigitalPark:    1,        // major innovation campus at Punnawithi, Bangkok
   startupsRegistered: 2_400,   // DEPA + Techsauce
   ventureCapital:     8.5,     // B THB 2023 deals · DEPA / Techsauce
   baseStations5G:     24_000,  // nationwide · NBTC (Bangkok ≈ 30%)
@@ -134,7 +132,7 @@ const B = {
 
   // ── Comparison: ASEAN capitals (NESDC + World Bank 2024) ──
   peers: {
-    bangkok:    { gdp: 175,  gpc: 16_000, pop: 10.5, density: 6_700, aqi: 64, greenM2: 4.2 },
+    bangkok:    { gdp: 175,  gpc: 16_000, pop: 10.9, density: 1_405, aqi: 64, greenM2: 4.2 },
     jakarta:    { gdp: 220,  gpc: 9_500,  pop: 10.6, density: 16_000, aqi: 156, greenM2: 3.0 },
     manila:     { gdp: 175,  gpc: 11_500, pop: 13.5, density: 43_000, aqi: 88, greenM2: 4.5 },
     kualalumpur:{ gdp: 110,  gpc: 18_000, pop: 1.8,  density: 7_500, aqi: 68, greenM2: 8.0 },
@@ -183,7 +181,7 @@ const GAPS: { label: string; score: number; note: string }[] = [
   {
     label: 'Shadow population',
     score: 38,
-    note: `${B.shadowDistricts}/${B.totalDistricts} districts shrinking · VIIRS all brighter (+${B.viirsTrendMin}–${B.viirsTrendMax}% YoY) · est. ${B.popShadow}M unregistered`,
+    note: `${B.shadowDistricts}/${B.totalDistricts} districts shrinking · VIIRS all brighter (+${B.viirsTrendMin}–${B.viirsTrendMax}% YoY) · citywide shadow population not quantified`,
   },
   {
     label: 'Mobility & congestion',
@@ -350,7 +348,6 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
   const cong = useCountUp(B.congestionPct)
   const pop = useCountUp(B.popMillions)
   const age = useCountUp(B.medianAge)
-  const foreign = useCountUp(B.popShadow, 1)
   const truePop = useCountUp(B.popMetro, 1)
 
   const weak = SLIC ? weakestPillar(SLIC) : null
@@ -391,20 +388,20 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
     <section className="bkk-intel" id="city-twin-bangkok" aria-label="Bangkok economic and digital twin intelligence">
       <div className="ki-head">
         <span className="ki-title">BANGKOK DIGITAL TWIN · ECONOMIC &amp; CIVIC</span>
-        <span className="ki-live"><span className="ki-live-dot" aria-hidden />LIVE {clock}</span>
+        <span className="ki-live">LOCAL TIME {clock}</span>
       </div>
 
       {/* ── Hero stats: 6-cell grid (was 3) ── */}
       <div className="ki-stats ki-stats--6">
         <div className="ki-stat">
-          <span className="ki-stat-val">{pop.toFixed(1)}<span className="ki-unit">M</span></span>
-          <span className="ki-stat-lbl">REGISTERED</span>
-          <span className="ki-stat-sub">DOPA 2568</span>
+          <span className="ki-stat-val">{pop.toFixed(2)}<span className="ki-unit">M</span></span>
+          <span className="ki-stat-lbl">BMA REGISTERED</span>
+          <span className="ki-stat-sub">NSO/BORA 2024</span>
         </div>
         <div className="ki-stat">
           <span className="ki-stat-val">{truePop.toFixed(1)}<span className="ki-unit">M</span></span>
-          <span className="ki-stat-lbl">METRO BMR</span>
-          <span className="ki-stat-sub">+{foreign.toFixed(1)}M shadow</span>
+          <span className="ki-stat-lbl">BKK + VICINITIES</span>
+          <span className="ki-stat-sub">NSO 2024 · 6 provinces</span>
         </div>
         <div className="ki-stat">
           <span className="ki-stat-val">${Math.round(gdp)}<span className="ki-unit">B</span></span>
@@ -432,7 +429,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
       <div className="ki-block">
         <div className="ki-block-head">
           <span>DEMOGRAPHICS · โครงสร้างประชากร</span>
-          <span className="ki-block-val">{B.popMillions}/{B.popMetro}<span className="ki-vs"> M reg/BMR</span></span>
+          <span className="ki-block-val">{B.popRegistered}/{B.popMetro}<span className="ki-vs"> M BMA/region</span></span>
         </div>
         <div className="ki-block-grid">
           <div className="ki-mini-stat">
@@ -444,8 +441,8 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
             <span className="ki-mini-val">{B.elderly}<span className="ki-unit">%</span></span>
           </div>
           <div className="ki-mini-stat">
-            <span className="ki-mini-lbl">FOREIGN</span>
-            <span className="ki-mini-val">{B.foreignResidents}<span className="ki-unit">M</span></span>
+            <span className="ki-mini-lbl">REGION DENSITY</span>
+            <span className="ki-mini-val">{B.densityBangkokMetro.toLocaleString()}<span className="ki-unit">/km²</span></span>
           </div>
           <div className="ki-mini-stat">
             <span className="ki-mini-lbl">HH SIZE</span>
@@ -453,7 +450,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
           </div>
         </div>
         <div className="ki-block-note">
-          Net migration {B.netMigration}/1k/yr — BMR is a net donor to provinces. The shadow population ({B.popShadow}M unregistered) is the real Bangkok that never shows in the registry.
+          These figures are not interchangeable: BMA is one province; “Bangkok and vicinities” adds Samut Prakan, Nonthaburi, Pathum Thani, Nakhon Pathom, and Samut Sakhon. Neither figure is an estimate of unregistered residents.
         </div>
       </div>
 
@@ -643,7 +640,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
           Bangkok Metropolitan Administration (BMA) · annual budget ฿{B.bmaBudget}B · {B.bmaEmployees.toLocaleString()} civil servants · {B.bmaRevenueSource}% own-source revenue (balance from central government).
         </div>
         <div className="ki-block-note">
-          Governor: <strong>{B.governorName}</strong> (direct election since {B.governorSince}) · Cabinet-appointed Permanent Secretary still holds parallel authority — the BMA is the only world capital I know of with this dual structure.
+          Governor: <strong>{B.governorName}</strong> (elected {B.governorSince}) · BMA also has permanent civil-service leadership under Bangkok's special local-administration structure.
         </div>
       </div>
 
@@ -709,7 +706,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
           </div>
         </div>
         <div className="ki-block-note">
-          TRUE Digital Park (Chon Buri, BMR proxy) anchors the innovation corridor. 5G stands at {B.fiveGCoverage}% of population. SLIC creative {B.creativeScore.toFixed(0)}/100 · capability {B.capabilityScore.toFixed(0)}/100.
+          TRUE Digital Park at Punnawithi anchors a Bangkok innovation corridor. 5G stands at {B.fiveGCoverage}% of population. SLIC creative {B.creativeScore.toFixed(0)}/100 · capability {B.capabilityScore.toFixed(0)}/100.
         </div>
       </div>
 
@@ -798,7 +795,7 @@ export const BangkokIntelligence = memo(function BangkokIntelligence() {
           <div className="ki-block-note">
             Strongest: {strong?.label ?? '—'} ({strong?.value ?? '—'}).
             Weakest: {weak?.label ?? '—'} ({weak?.value ?? '—'}).
-            Open data live: {B.liveSources}/{B.totalSources} (GISTDA · Air4Thai · Traffy · BMA · TMD · Thaiwater · data.go.th).
+            Integrated sources: {B.liveSources}/{B.totalSources}. Runtime health is shown separately; Thaiwater remains catalogued but paused until a stable station endpoint is verified.
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@
  *
  * No API key required for basic data.
  */
-import { cachedFetch, cacheTimestamp } from '../lib/cached-fetch'
+import { cachedFetch } from '../lib/cached-fetch'
 import { timeoutSignal } from './source-registry'
 
 const PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
@@ -55,14 +55,9 @@ export interface WaterLevelStation {
   isFallback?: boolean
 }
 
-/**
- * On fetch failure: throw when cachedFetch holds a (stale) copy so it can serve
- * real data; only use the fabricated fallback when there is no cache at all.
- */
-function fallbackOrThrow<T>(cacheKey: string, err: unknown, fallback: T): T {
-  if (cacheTimestamp(cacheKey) > 0) throw err
-  console.warn('[thaiwater] fetch failed — serving marked fallback data:', err)
-  return fallback
+function unavailable(message: string, cause?: unknown): never {
+  const detail = cause instanceof Error ? `: ${cause.message}` : ''
+  throw new Error(`${message}${detail}`)
 }
 
 /** Parse water quality data from Thaiwater API */
@@ -74,7 +69,7 @@ export async function fetchThaiwaterQuality(): Promise<WaterQualityStation[]> {
     try {
       const res = await fetch(url, { signal: timeoutSignal(15_000) })
       if (!res.ok) {
-        return fallbackOrThrow('thaiwater/quality', new Error(`Thaiwater quality ${res.status}`), getBangkokWaterQualityFallback())
+        return unavailable(`Thaiwater quality ${res.status}`)
       }
       const data = await res.json()
       const stations: WaterQualityStation[] = []
@@ -104,9 +99,10 @@ export async function fetchThaiwaterQuality(): Promise<WaterQualityStation[]> {
         })
       }
 
-      return stations.length > 0 ? stations : getBangkokWaterQualityFallback()
+      if (stations.length === 0) return unavailable('Thaiwater quality returned no valid stations')
+      return stations
     } catch (err) {
-      return fallbackOrThrow('thaiwater/quality', err, getBangkokWaterQualityFallback())
+      return unavailable('Thaiwater quality unavailable', err)
     }
   }, TTL)
 }
@@ -117,7 +113,7 @@ export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
     const url = `${BASE}/api/v1/waterlevel?province=กรุงเทพมหานคร`
     try {
       const res = await fetch(url, { signal: timeoutSignal(15_000) })
-      if (!res.ok) return fallbackOrThrow('thaiwater/levels', new Error(`Thaiwater levels ${res.status}`), getBangkokWaterLevelFallback())
+      if (!res.ok) return unavailable(`Thaiwater levels ${res.status}`)
       const data = await res.json()
       const raw = data?.data ?? data?.stations ?? data ?? []
       const arr = Array.isArray(raw) ? raw : []
@@ -149,16 +145,17 @@ export async function fetchThaiwaterLevels(): Promise<WaterLevelStation[]> {
         })
       }
 
-      return stations.length > 0 ? stations : getBangkokWaterLevelFallback()
+      if (stations.length === 0) return unavailable('Thaiwater levels returned no valid stations')
+      return stations
     } catch (err) {
-      return fallbackOrThrow('thaiwater/levels', err, getBangkokWaterLevelFallback())
+      return unavailable('Thaiwater levels unavailable', err)
     }
   }, TTL)
 }
 
 /** Convert water quality to GeoJSON */
 export async function fetchWaterQualityGeoJSON(): Promise<GeoJSON.FeatureCollection> {
-  const stations = await fetchThaiwaterQuality()
+  const stations = (await fetchThaiwaterQuality()).filter((station) => !station.isFallback)
   return {
     type: 'FeatureCollection',
     features: stations.map((s) => ({
@@ -191,7 +188,7 @@ export async function fetchWaterQualityGeoJSON(): Promise<GeoJSON.FeatureCollect
 
 /** Convert water levels to GeoJSON */
 export async function fetchWaterLevelGeoJSON(): Promise<GeoJSON.FeatureCollection> {
-  const stations = await fetchThaiwaterLevels()
+  const stations = (await fetchThaiwaterLevels()).filter((station) => !station.isFallback)
   return {
     type: 'FeatureCollection',
     features: stations.map((s) => ({
@@ -224,7 +221,8 @@ export async function fetchWaterLevelGeoJSON(): Promise<GeoJSON.FeatureCollectio
 
 // ── Fallback data — known Bangkok water monitoring points ──────────────────
 
-function getBangkokWaterQualityFallback(): WaterQualityStation[] {
+/** @deprecated Demo fixture only. Production fetches must fail closed. */
+export function getBangkokWaterQualityFallback(): WaterQualityStation[] {
   // Known monitoring stations from BMA and RID
   return [
     { id: 'bma-01', name: 'Chao Phraya @ Rama VIII', nameTH: 'เจ้าพระยา สะพานพระราม 8', lat: 13.7659, lng: 100.4954, agency: 'BMA', ph: 7.2, do: 4.1, conductivity: 320, turbidity: 15, temperature: 29.5, wqi: 62, lastUpdate: '2026-05-26', isFallback: true },
@@ -235,7 +233,8 @@ function getBangkokWaterQualityFallback(): WaterQualityStation[] {
   ]
 }
 
-function getBangkokWaterLevelFallback(): WaterLevelStation[] {
+/** @deprecated Demo fixture only. Production fetches must fail closed. */
+export function getBangkokWaterLevelFallback(): WaterLevelStation[] {
   return [
     { id: 'bma-wl-01', name: 'Chao Phraya @ Sathon', nameTH: 'เจ้าพระยา สาทร', lat: 13.7180, lng: 100.5139, river: 'Chao Phraya', waterLevelM: 1.85, bankLevelM: 2.50, rainfall1h: 0, rainfall24h: 12, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },
     { id: 'bma-wl-02', name: 'Khlong Saen Saep @ Pratu Nam', nameTH: 'คลองแสนแสบ ประตูน้ำ', lat: 13.7513, lng: 100.5407, river: 'Saen Saep', waterLevelM: 1.20, bankLevelM: 1.80, rainfall1h: 0, rainfall24h: 8, status: 'normal', lastUpdate: '2026-05-26', isFallback: true },

@@ -138,7 +138,7 @@ export const KranjIntelligence = memo(function KranjIntelligence({ activeCity }:
     <section className="kranj-intel" id="city-twin-kranj" aria-label="Kranj economic and digital intelligence">
       <div className="ki-head">
         <span className="ki-title">ECONOMIC &amp; DIGITAL INTELLIGENCE</span>
-        <span className="ki-live"><span className="ki-live-dot" aria-hidden />LIVE {clock}</span>
+        <span className="ki-live">LOCAL TIME {clock}</span>
       </div>
 
       {/* Economic vitals */}

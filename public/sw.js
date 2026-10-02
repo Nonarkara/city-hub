@@ -20,11 +20,18 @@
  *   in-flight lazy-chunk requests to be intercepted mid-React-boot and
  *   returned from an empty cache as opaque errors.
  */
-const VERSION = 'v23-2026-06-01'
+const VERSION = 'v24-2026-10-02'
 const SHELL_CACHE = `shell-${VERSION}`
 const RUNTIME_CACHE = `runtime-${VERSION}`
 
-const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest']
+const SHELL_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
+]
 
 self.addEventListener('install', (event) => {
   // Wait until shell is cached, THEN skip waiting.
@@ -76,7 +83,9 @@ self.addEventListener('fetch', (event) => {
   // Static assets — cache-first (content-hashed by Vite, staleness harmless)
   if (url.origin === self.location.origin &&
       (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') ||
-       url.pathname.endsWith('.svg') || url.pathname === '/manifest.webmanifest')) {
+       url.pathname.endsWith('.svg') || url.pathname.endsWith('.png') ||
+       url.pathname.endsWith('.jpg') || url.pathname.endsWith('.webp') ||
+       url.pathname === '/manifest.webmanifest')) {
     event.respondWith(
       caches.match(req).then((cached) => {
         if (cached) {

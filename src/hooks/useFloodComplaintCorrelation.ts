@@ -53,7 +53,9 @@ export function useFloodComplaintCorrelation(): FloodCorrelationResult | null {
 
       if (cancelled) return
 
-      const stations = wl.status === 'fulfilled' ? wl.value : []
+      const stations = wl.status === 'fulfilled'
+        ? wl.value.filter((station) => !station.isFallback)
+        : []
       const geo      = traffy.status === 'fulfilled' ? traffy.value : null
 
       if (stations.length === 0) return

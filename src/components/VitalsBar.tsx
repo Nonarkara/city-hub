@@ -107,8 +107,9 @@ function BangkokVitals() {
         }
       }
       // Worst water level station (highest % of bank level)
-      if (wl.length > 0) {
-        const sorted = [...wl].sort((a, b) => {
+      const verifiedWater = wl.filter((station) => !station.isFallback)
+      if (verifiedWater.length > 0) {
+        const sorted = [...verifiedWater].sort((a, b) => {
           const pctA = a.bankLevelM > 0 ? a.waterLevelM / a.bankLevelM : 0
           const pctB = b.bankLevelM > 0 ? b.waterLevelM / b.bankLevelM : 0
           return pctB - pctA

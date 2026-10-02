@@ -2,23 +2,38 @@
  * useGlobalOverlays — real-time planetary layers that ride on top of ANY
  * basemap lens, for ANY city. Independent of the Bangkok layer engine.
  *
+ *   - night / heat / green / haze : NASA GIBS rasters, any city
  *   - quakes : USGS earthquakes, last 24h, magnitude-scaled, click for detail
  *   - radar  : RainViewer precipitation radar, latest frame
  *
- * Survives lens switches by re-adding on 'style.load' (setStyle wipes sources).
- * Popup handlers are wired once; layer-scoped map.on() is a no-op when the
- * layer is absent, so re-adds never duplicate listeners.
+ * Intel rasters are inserted under the live point layers so quakes and radar
+ * stay readable on top. Survives lens switches by re-adding on 'style.load'
+ * (setStyle wipes sources). Popup handlers are wired once; layer-scoped
+ * map.on() is a no-op when the layer is absent, so re-adds never duplicate listeners.
  */
 import { useEffect, useRef } from 'react'
 import type { Map as MapLibre, GeoJSONSource, ExpressionSpecification } from 'maplibre-gl'
 import { Popup } from 'maplibre-gl'
 import { fetchEarthquakes24h } from '../../data/usgs'
 import { fetchRadarTileTemplate } from '../../data/rainviewer'
+import { gibsLstTiles, gibsNdviTiles, gibsNightLightsTiles } from '../../data/nasa-gibs'
+import { gibsAerosolTileTemplate } from '../../data/nasa'
 
-const OVERLAY_IDS = ['quakes', 'radar'] as const
+const OVERLAY_IDS = ['night', 'heat', 'green', 'haze', 'radar', 'quakes'] as const
 
-const SOURCE: Record<string, string> = { quakes: 'src-quakes', radar: 'src-radar' }
+const INTEL_RASTER: Record<string, { tiles: () => string; maxzoom: number; opacity: number; attribution: string }> = {
+  night: { tiles: () => gibsNightLightsTiles(), maxzoom: 8, opacity: 0.9, attribution: 'NASA GIBS VIIRS Black Marble' },
+  heat:  { tiles: () => gibsLstTiles(),          maxzoom: 7, opacity: 0.7, attribution: 'NASA GIBS MODIS land surface temperature' },
+  green: { tiles: () => gibsNdviTiles(),         maxzoom: 9, opacity: 0.72, attribution: 'NASA GIBS MODIS NDVI' },
+  haze:  { tiles: () => gibsAerosolTileTemplate(), maxzoom: 6, opacity: 0.8, attribution: 'NASA GIBS MODIS aerosol optical depth' },
+}
+
+const SOURCE: Record<string, string> = {
+  night: 'src-ov-night', heat: 'src-ov-heat', green: 'src-ov-green', haze: 'src-ov-haze',
+  quakes: 'src-quakes', radar: 'src-radar',
+}
 const LAYERS: Record<string, string[]> = {
+  night: ['ly-ov-night'], heat: ['ly-ov-heat'], green: ['ly-ov-green'], haze: ['ly-ov-haze'],
   quakes: ['ly-quakes-halo', 'ly-quakes-core'],
   radar:  ['ly-radar'],
 }
@@ -47,6 +62,7 @@ export function useGlobalOverlays(map: MapLibre | null, active: Set<string>) {
         if (wanted && !present) {
           if (id === 'quakes') await addQuakes(map)
           else if (id === 'radar') await addRadar(map)
+          else if (INTEL_RASTER[id]) addIntelRaster(map, id)
         } else if (!wanted && present) {
           for (const lid of LAYERS[id]) if (map.getLayer(lid)) map.removeLayer(lid)
           if (map.getSource(SOURCE[id])) map.removeSource(SOURCE[id])
@@ -71,6 +87,28 @@ export function useGlobalOverlays(map: MapLibre | null, active: Set<string>) {
 
     return () => { map.off('style.load', onStyleLoad); window.clearInterval(timer) }
   }, [map, active])
+}
+
+/** Satellite intel under quakes and radar, so the live marks stay on top. */
+function addIntelRaster(map: MapLibre, id: string) {
+  const spec = INTEL_RASTER[id]
+  const sourceId = SOURCE[id]
+  const layerId = LAYERS[id][0]
+  if (!spec || map.getSource(sourceId)) return
+  map.addSource(sourceId, {
+    type: 'raster',
+    tiles: [spec.tiles()],
+    tileSize: 256,
+    maxzoom: spec.maxzoom,
+    attribution: spec.attribution,
+  })
+  const beforeId = ['ly-quakes-halo', 'ly-radar'].find((lid) => map.getLayer(lid))
+  map.addLayer({
+    id: layerId,
+    type: 'raster',
+    source: sourceId,
+    paint: { 'raster-opacity': spec.opacity },
+  }, beforeId)
 }
 
 async function addQuakes(map: MapLibre) {
