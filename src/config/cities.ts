@@ -224,11 +224,11 @@ export const CITIES: CityConfig[] = [
     populationMillions: 5.9,
     founded: '1819',
     climate: 'Tropical rainforest · equatorial',
-    distinctiveness: 'Southeast Asia\'s reference city for smart-city ambition. 1m residents on reclaimed land. data.gov.sg publishes more public datasets than any other ASEAN city.',
+    distinctiveness: 'A dense island city-state shaped by coordinated transport, public housing, water management, and extensive land reclamation. data.gov.sg provides a broad national open-data catalog.',
     kpis: [
       { label: 'POPULATION', value: '5.9', unit: 'M' },
       { label: 'SMART SCORE', value: '91.4' },
-      { label: 'IOC STATUS', value: 'LIVE' },
+      { label: 'DATA TIER', value: 'GLOBAL' },
     ],
     demographics: {
       gdpBillionUsd: 466,
@@ -262,7 +262,7 @@ export const CITIES: CityConfig[] = [
     distinctiveness: 'Sarawak\'s capital, on the south bank of the Sarawak River. Cat-named in Malay. Multicultural by design — Iban, Bidayuh, Malay, Chinese, Indian — and the only Malaysian city where Mandarin signage rivals Malay.',
     kpis: [
       { label: 'POPULATION', value: '750K' },
-      { label: 'IOC STATUS', value: 'LIVE' },
+      { label: 'DATA TIER', value: 'GLOBAL' },
       { label: 'SMART SCORE', value: '63.1' },
     ],
     demographics: {

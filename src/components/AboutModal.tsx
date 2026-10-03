@@ -122,12 +122,13 @@ export function AboutModal() {
         <div className="about-sources-label">LEGAL · IP · DATA</div>
         <div className="about-legal">
           <p>
-            <strong>Intellectual property.</strong> Dr Non's City Hub — its concept,
-            the SLIC / AMPI indexing methodology, the data architecture, the design
-            system, and the source code — is the intellectual property of
-            Non&nbsp;Arkaraprasertkul (Dr&nbsp;Non&nbsp;Arkara).
-            © 2026. All rights reserved. Reuse, white-labelling, or redeployment for a
-            city or client requires a written licence.
+            <strong>Licence and intellectual property.</strong> The software source
+            code is available under the MIT License in the repository. The Dr Non's
+            City Hub name, logo, original research methods, written material, and
+            design assets remain the intellectual property of
+            Non&nbsp;Arkaraprasertkul (Dr&nbsp;Non&nbsp;Arkara) unless separately
+            licensed. Third-party data and map content retain their providers'
+            respective terms.
           </p>
           <p>
             <strong>Privacy — GDPR &amp; PDPA.</strong> The city layers use public and

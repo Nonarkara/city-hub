@@ -10,6 +10,7 @@ export interface LayerSpec {
   description: string            // Tooltip / detail
   source: SourceKey
   defaultOn: boolean
+  // Technical availability only. Use layerDataTier() for the data contract.
   status: 'live' | 'pending'     // pending = disabled tile, no fetch
   category: 'air' | 'fire' | 'water' | 'admin' | 'transit' | 'satellite' | 'civic'
 }
@@ -24,7 +25,7 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'gibs-aod',        label: 'AEROSOL (GIBS)',  description: 'NASA MODIS aerosol optical depth, max zoom 6 — best viewed zoomed-out over Thailand', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'fires-gistda',    label: 'FIRES · GISTDA',  description: 'VIIRS hotspots from GISTDA. Service last refreshed Apr 2023 — historical 2023 fire-season snapshot, not live.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'fire' },
   { id: 'fires-firms',     label: 'FIRES · FIRMS',   description: 'NASA FIRMS live hotspots via Cloudflare Worker proxy.', source: 'NASA', defaultOn: false, status: 'live', category: 'fire' },
-  { id: 'floods',          label: 'FLOODS · LIVE',   description: 'GISTDA real-time flood polygons, central region',       source: 'GISTDA',     defaultOn: false, status: 'live',    category: 'water' },
+  { id: 'floods',          label: 'FLOODS · GISTDA', description: 'GISTDA flood polygons for the central region. Runtime status and freshness are reported separately.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'water' },
   { id: 'floods-historical', label: 'FLOOD RISK HISTORY', description: 'GISTDA recurring flood zones 2005–2016 — areas that flood every year. Context layer for risk vs. unusual event.', source: 'GISTDA', defaultOn: false, status: 'live', category: 'water' },
   { id: 'traffy-issues',   label: 'CIVIC ISSUES',    description: 'Traffy Fondue real-time citizen reports: roads, floods, broken lights, garbage, buildings. 1.3M+ tickets.', source: 'Traffy', defaultOn: false, status: 'live', category: 'civic' },
   { id: 'traffy-heatmap',  label: 'CIVIC HEATMAP',   description: 'Continuous density field of Traffy citizen reports — shows where complaints concentrate as a smooth gradient, not point markers. Where the city is loudest.', source: 'Traffy', defaultOn: false, status: 'live', category: 'civic' },
@@ -48,8 +49,8 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'sentinel1-sar',    label: 'SENTINEL-1 SAR',  description: 'Copernicus Sentinel-1 Synthetic Aperture Radar (SAR) — pierces clouds to map flooding and urban structures. Requires GCP_SERVICE_ACCOUNT_JSON.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'landsat-thermal',  label: 'LANDSAT THERMAL', description: 'Landsat 8/9 Thermal Infrared Sensor — high-resolution (30m) surface temperature for urban heat islands. Requires GCP_SERVICE_ACCOUNT_JSON.', source: 'NASA', defaultOn: false, status: 'live', category: 'satellite' },
   { id: 'longdo-basemap',  label: 'LONGDO BASEMAP',  description: 'Thai-native cartography from longdo.com — soi-level street detail, Thai POIs, Thai-language labels that global basemaps miss. Alt basemap for Bangkok-specific work.', source: 'Longdo', defaultOn: false, status: 'live', category: 'admin' },
-  { id: 'longdo-traffic',  label: 'TRAFFIC · iTIC LIVE', description: 'Measured road-segment congestion from Longdo\'s live traffic tiles — the same rendering behind iTIC Live (live.iticfoundation.org). Every road painted green/amber/red; tiles re-keyed every 5 minutes so each visit sees current state. (Earlier "SDK-only" note was wrong — plain XYZ tiles verified working.)', source: 'Longdo', defaultOn: true, status: 'live', category: 'transit' },
-  { id: 'itic-incidents',  label: 'INCIDENTS · iTIC LIVE', description: 'Live accidents, breakdowns, road closures and diversions from the iTIC / Longdo Events feed — Thai + English descriptions, click any marker for detail. The same incident rail iTIC Live shows, refreshed every visit.', source: 'Longdo', defaultOn: true, status: 'live', category: 'transit' },
+  { id: 'longdo-traffic',  label: 'TRAFFIC · iTIC', description: 'Road-segment congestion from Longdo/iTIC traffic tiles. Requires operator configuration; runtime health is reported separately.', source: 'Longdo', defaultOn: true, status: 'live', category: 'transit' },
+  { id: 'itic-incidents',  label: 'INCIDENTS · iTIC', description: 'Accidents, breakdowns, road closures and diversions from the iTIC / Longdo Events feed. Requires operator configuration; runtime health is reported separately.', source: 'Longdo', defaultOn: true, status: 'live', category: 'transit' },
   { id: 'jaxa-himawari',   label: 'HIMAWARI-9',      description: 'JAXA geostationary weather imagery — needs free Earth API registration', source: 'JAXA', defaultOn: false, status: 'pending', category: 'satellite' },
   { id: 'osm-emergency',   label: 'EMERGENCY SVCS',  description: 'Hospitals, clinics, fire stations, and police stations from OpenStreetMap. Critical infrastructure overlay for emergency response planning. Shows nearest facilities to any incident.', source: 'OSM', defaultOn: false, status: 'live', category: 'admin' },
   { id: 'osm-education',   label: 'SCHOOLS & UNIV',  description: 'Schools, universities, and kindergartens from OpenStreetMap. Education density by district. Useful for evacuation planning, air quality vulnerability assessment, and demographic analysis.', source: 'OSM', defaultOn: false, status: 'live', category: 'admin' },
@@ -62,6 +63,34 @@ export const BANGKOK_LAYERS: LayerSpec[] = [
   { id: 'bma-open',        label: 'BMA OPEN DATA',   description: '1,431 BMA datasets via data.bangkok.go.th — drainage, traffic, public works, parks, citizen services, budget. Browse in the Data Feed panel (Analyst mode).', source: 'BMA', defaultOn: false, status: 'live', category: 'admin' },
   { id: 'historical-events', label: 'HISTORICAL EVENTS', description: 'Curated archive: WWII Allied bombing targets (1942–45, USSBS Pacific), post-1945 industrial fires, major floods, civil-unrest sites. Stack with MODIS Aerosol Optical Depth to test the carbon-saturation hypothesis — does the aerosol pattern still anchor to historical heat-event geography?', source: 'Historical', defaultOn: false, status: 'live', category: 'admin' },
 ]
+
+export type LayerDataTier = 'feed' | 'reference' | 'simulation' | 'configured' | 'pending'
+
+const REFERENCE_LAYER_IDS = new Set([
+  'gibs-aod', 'fires-gistda', 'floods-historical', 'rail', 'buildings-3d',
+  'sat-true-color', 'sat-night-lights', 'sat-surface-temp', 'sat-ndvi',
+  'sat-esri', 'sat-sentinel2', 'osm-emergency', 'osm-education',
+  'airbnb-density', 'bma-open', 'historical-events',
+])
+
+const CONFIGURED_LAYER_IDS = new Set([
+  'waqi-stations', 'openaq-stations', 'owm-weather', 'alphaearth-embeddings',
+  'sat-s5p-no2', 'sat-s5p-co', 'sat-s5p-so2', 'sat-ghsl-pop', 'dynamic-world',
+  'sentinel1-sar', 'landsat-thermal', 'longdo-basemap', 'longdo-traffic',
+  'itic-incidents', 'tomtom-traffic', 'tomtom-incidents',
+])
+
+/**
+ * Honest data tier for the catalog. This deliberately does not claim that a
+ * feed is healthy right now; runtime health belongs to DataSourceStatus.
+ */
+export function layerDataTier(layer: LayerSpec): LayerDataTier {
+  if (layer.status === 'pending') return 'pending'
+  if (layer.id === 'gtfs-transit-live') return 'simulation'
+  if (REFERENCE_LAYER_IDS.has(layer.id)) return 'reference'
+  if (CONFIGURED_LAYER_IDS.has(layer.id)) return 'configured'
+  return 'feed'
+}
 
 export const ALL_SOURCES: SourceKey[] = ['GISTDA', 'NASA', 'BMA', 'data.go.th', 'JAXA', 'Traffy', 'Open-Meteo', 'WAQI', 'TMD', 'Longdo', 'PCD', 'OSM', 'Thaiwater', 'TomTom', 'InsideAirbnb', 'OpenAQ', 'OpenWeatherMap', 'GTFS', 'Historical']
 

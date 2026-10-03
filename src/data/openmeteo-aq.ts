@@ -3,7 +3,7 @@
  * Provides US AQI + individual pollutant readings for any city by lat/lng.
  */
 import { cachedFetch } from '../lib/cached-fetch'
-import { timeoutSignal } from './source-registry'
+import { timeoutSignal } from '../lib/request-timeout'
 
 const TTL = 10 * 60_000
 
@@ -30,6 +30,45 @@ function aqiToLevel(aqi: number): CityAQI['level'] {
   return 'hazardous'
 }
 
+function finiteField(record: Record<string, unknown>, key: string): number {
+  const value = record[key]
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Open-Meteo AQ invalid field: current.${key}`)
+  }
+  return value
+}
+
+/** Validate the external response before any value reaches the UI or cache. */
+export function parseOpenMeteoAQ(payload: unknown): CityAQI {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Open-Meteo AQ response is not an object')
+  }
+  const current = (payload as Record<string, unknown>).current
+  if (!current || typeof current !== 'object') {
+    throw new Error('Open-Meteo AQ response is missing current')
+  }
+  const record = current as Record<string, unknown>
+  const usAqi = Math.round(finiteField(record, 'us_aqi'))
+  if (usAqi < 0 || usAqi > 1_000) {
+    throw new Error('Open-Meteo AQ current.us_aqi is out of range')
+  }
+  const pollutant = (key: string) => {
+    const value = finiteField(record, key)
+    if (value < 0) throw new Error(`Open-Meteo AQ invalid field: current.${key}`)
+    return Math.round(value * 10) / 10
+  }
+  return {
+    usAqi,
+    pm25: pollutant('pm2_5'),
+    pm10: pollutant('pm10'),
+    no2: pollutant('nitrogen_dioxide'),
+    o3: pollutant('ozone'),
+    so2: pollutant('sulphur_dioxide'),
+    co: pollutant('carbon_monoxide'),
+    level: aqiToLevel(usAqi),
+  }
+}
+
 /** Generic — fetch current AQI for any [lng, lat]. */
 export async function fetchAQI(lng: number, lat: number, timezone = 'Asia/Bangkok'): Promise<CityAQI> {
   const cacheKey = `openmeteo/aqi/${lat.toFixed(3)},${lng.toFixed(3)}`
@@ -41,27 +80,7 @@ export async function fetchAQI(lng: number, lat: number, timezone = 'Asia/Bangko
       `&timezone=${encodeURIComponent(timezone)}`
     const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Open-Meteo AQ ${res.status}`)
-    const d = await res.json()
-    const c = d.current as {
-      us_aqi: number
-      pm10: number
-      pm2_5: number
-      carbon_monoxide: number
-      nitrogen_dioxide: number
-      sulphur_dioxide: number
-      ozone: number
-    }
-    const usAqi = Math.round(c.us_aqi)
-    return {
-      usAqi,
-      pm25: Math.round(c.pm2_5 * 10) / 10,
-      pm10: Math.round(c.pm10 * 10) / 10,
-      no2: Math.round(c.nitrogen_dioxide * 10) / 10,
-      o3: Math.round(c.ozone * 10) / 10,
-      so2: Math.round(c.sulphur_dioxide * 10) / 10,
-      co: Math.round(c.carbon_monoxide * 10) / 10,
-      level: aqiToLevel(usAqi),
-    }
+    return parseOpenMeteoAQ(await res.json())
   }, TTL)
 }
 

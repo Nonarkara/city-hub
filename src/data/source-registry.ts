@@ -5,6 +5,9 @@ import { fetchCityNews } from './gdelt'
 import { bangkokWAQIStations, waqiTokenIsReal } from './waqi'
 import { fetchLongdoEvents, longdoKeyAvailable } from './longdo-traffic'
 import { cacheTimestamp } from '../lib/cached-fetch'
+import { timeoutSignal } from '../lib/request-timeout'
+
+export { timeoutSignal } from '../lib/request-timeout'
 
 export type SourceZone = 'DATA' | 'INTEL' | 'SATELLITE' | 'CIVIC'
 export type SourceStatus = 'checking' | 'live' | 'stale' | 'offline'
@@ -22,15 +25,6 @@ export interface SourceCheck {
   refreshLabel: string
   timeoutMs: number
   check: () => Promise<SourceHealthResult>
-}
-
-export function timeoutSignal(ms: number): AbortSignal {
-  if (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
-    return AbortSignal.timeout(ms)
-  }
-  const controller = new AbortController()
-  globalThis.setTimeout(() => controller.abort(), ms)
-  return controller.signal
 }
 
 function ok(ok: boolean, note?: string): SourceHealthResult {

@@ -3,7 +3,7 @@
  * Current weather + wind for heat vital + PM2.5 drift advisory.
  */
 import { cachedFetch } from '../lib/cached-fetch'
-import { timeoutSignal } from './source-registry'
+import { timeoutSignal } from '../lib/request-timeout'
 
 export interface CityWeather {
   temp: number
@@ -39,6 +39,41 @@ function toCardinal(deg: number): string {
   return dirs[Math.round(deg / 22.5) % 16]
 }
 
+function finiteField(record: Record<string, unknown>, key: string): number {
+  const value = record[key]
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Open-Meteo weather invalid field: current.${key}`)
+  }
+  return value
+}
+
+/** Validate the external response before any value reaches the UI or cache. */
+export function parseOpenMeteoWeather(payload: unknown): CityWeather {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Open-Meteo weather response is not an object')
+  }
+  const current = (payload as Record<string, unknown>).current
+  if (!current || typeof current !== 'object') {
+    throw new Error('Open-Meteo weather response is missing current')
+  }
+  const record = current as Record<string, unknown>
+  const windSpeed = finiteField(record, 'wind_speed_10m')
+  if (windSpeed < 0) throw new Error('Open-Meteo weather wind speed is out of range')
+  const windDirection = finiteField(record, 'wind_direction_10m')
+  if (windDirection < 0 || windDirection > 360) {
+    throw new Error('Open-Meteo weather wind direction is out of range')
+  }
+  const weatherCode = finiteField(record, 'weather_code')
+  return {
+    temp: Math.round(finiteField(record, 'temperature_2m')),
+    feelsLike: Math.round(finiteField(record, 'apparent_temperature')),
+    windSpeed: Math.round(windSpeed),
+    windDir: Math.round(windDirection),
+    windCardinal: toCardinal(windDirection),
+    condition: wmoToCondition(weatherCode),
+  }
+}
+
 /**
  * Generic — fetch current weather for any [lng, lat] center.
  * cacheKey uniqueness derived from coords so each city is cached independently.
@@ -52,22 +87,7 @@ export async function fetchWeather(lng: number, lat: number, timezone = 'Asia/Ba
       `&timezone=${encodeURIComponent(timezone)}`
     const res = await fetch(url, { signal: timeoutSignal(15_000) })
     if (!res.ok) throw new Error(`Open-Meteo ${res.status}`)
-    const d = await res.json()
-    const c = d.current as {
-      temperature_2m: number
-      apparent_temperature: number
-      wind_speed_10m: number
-      wind_direction_10m: number
-      weather_code: number
-    }
-    return {
-      temp: Math.round(c.temperature_2m),
-      feelsLike: Math.round(c.apparent_temperature),
-      windSpeed: Math.round(c.wind_speed_10m),
-      windDir: Math.round(c.wind_direction_10m),
-      windCardinal: toCardinal(c.wind_direction_10m),
-      condition: wmoToCondition(c.weather_code ?? 0),
-    }
+    return parseOpenMeteoWeather(await res.json())
   }, TTL)
 }
 

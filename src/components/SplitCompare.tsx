@@ -21,7 +21,8 @@ import { useCityStore } from '../store/cityStore'
 import { useUIStore } from '../store/uiStore'
 import { fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
-import { cachedFetch } from '../lib/cached-fetch'
+import { cachedFetch, cacheTimestamp } from '../lib/cached-fetch'
+import { freshnessLabel } from '../lib/freshness'
 import { pearson } from '../lib/stats'
 import {
   getBasemapDef, BASEMAP_GROUPS, isTemporalBasemap, hasMapboxToken,
@@ -80,6 +81,8 @@ interface PaneState {
 interface CompareSnapshot {
   aqi: CityAQI | null
   weather: CityWeather | null
+  aqiFetchedAt: number | null
+  weatherFetchedAt: number | null
 }
 
 type CompareMetricId =
@@ -158,19 +161,19 @@ const COMPARE_METRICS: CompareMetric[] = [
   },
   {
     id: 'aqi', label: 'Current US AQI', shortLabel: 'AQI', unit: 'index',
-    source: 'Open-Meteo Air Quality; live',
+    source: 'Open-Meteo Air Quality feed',
     value: (_, live) => live?.aqi?.usAqi ?? null,
     format: (v) => `${v.toFixed(0)}`,
   },
   {
     id: 'pm25', label: 'Current PM2.5', shortLabel: 'PM2.5', unit: 'µg/m³',
-    source: 'Open-Meteo Air Quality; live',
+    source: 'Open-Meteo Air Quality feed',
     value: (_, live) => live?.aqi?.pm25 ?? null,
     format: (v) => `${v.toFixed(1)}`,
   },
   {
     id: 'temperature', label: 'Current temperature', shortLabel: 'TEMP', unit: '°C',
-    source: 'Open-Meteo Weather; live',
+    source: 'Open-Meteo Weather feed',
     value: (_, live) => live?.weather?.temp ?? null,
     format: (v) => `${v.toFixed(0)}°`,
   },
@@ -226,6 +229,21 @@ function CorrelationPlot({ points }: { points: Array<{ city: CityConfig; x: numb
 }
 
 function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: CompareSnapshot | null; loading: boolean }) {
+  const feedEnvelope = (fetchedAt: number | null | undefined, ttlMs: number): string => {
+    if (!fetchedAt) return 'OPEN-METEO · NO DATA'
+    const tier = Date.now() - fetchedAt <= ttlMs ? 'FEED' : 'CACHE'
+    return `OPEN-METEO · ${tier} · ${freshnessLabel(fetchedAt)}`
+  }
+  const envelopeFor = (id: CompareMetricId): string => {
+    if (id === 'aqi' || id === 'pm25') {
+      return feedEnvelope(live?.aqiFetchedAt, 5 * 60_000)
+    }
+    if (id === 'temperature') {
+      return feedEnvelope(live?.weatherFetchedAt, 10 * 60_000)
+    }
+    return 'REFERENCE · MIXED YEARS'
+  }
+
   return (
     <div className="split-pane-stats" aria-label={`${city.name} comparison metrics`}>
       {PANE_METRICS.map((id) => {
@@ -237,6 +255,7 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
             <span className="split-pane-stat-value">
               {value != null ? metric.format(value) : loading && (id === 'aqi' || id === 'temperature') ? '…' : '—'}
             </span>
+            <span className="split-pane-stat-envelope">{envelopeFor(id)}</span>
           </div>
         )
       })}
@@ -454,15 +473,19 @@ export function SplitCompare() {
     const loadingTimer = setTimeout(() => { if (!cancelled && !done) setLiveLoading(true) }, 0)
     Promise.all(selectedCities.map(async (city) => {
       const [lng, lat] = city.center
+      const aqiKey = `split/aqi/${city.id}`
+      const weatherKey = `split/weather/${city.id}`
       const [aqiResult, weatherResult] = await Promise.allSettled([
-        cachedFetch(`split/aqi/${city.id}`, () => fetchAQI(lng, lat, city.timezone), 5 * 60_000),
-        cachedFetch(`split/weather/${city.id}`, () => fetchWeather(lng, lat, city.timezone), 10 * 60_000),
+        cachedFetch(aqiKey, () => fetchAQI(lng, lat, city.timezone), 5 * 60_000),
+        cachedFetch(weatherKey, () => fetchWeather(lng, lat, city.timezone), 10 * 60_000),
       ])
       return {
         cityId: city.id,
         snapshot: {
           aqi: aqiResult.status === 'fulfilled' ? aqiResult.value : null,
           weather: weatherResult.status === 'fulfilled' ? weatherResult.value : null,
+          aqiFetchedAt: aqiResult.status === 'fulfilled' ? cacheTimestamp(aqiKey) || null : null,
+          weatherFetchedAt: weatherResult.status === 'fulfilled' ? cacheTimestamp(weatherKey) || null : null,
         } satisfies CompareSnapshot,
       }
     })).then((rows) => {
@@ -588,7 +611,7 @@ export function SplitCompare() {
             <span>{xMetric === yMetric ? 'Choose two different metrics' : 'Four cities with both values are required'}</span>
           </div>
         )}
-        <span className="split-analysis-caveat">association only · static + live sources</span>
+        <span className="split-analysis-caveat">association only · reference profiles use mixed years · feeds show fetch age</span>
       </div>
 
       <div className="split-toolbar">

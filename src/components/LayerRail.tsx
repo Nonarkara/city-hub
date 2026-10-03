@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { BANGKOK_LAYERS, ALL_SOURCES, type SourceKey, type LayerSpec } from '../config/bangkok-layers'
+import {
+  BANGKOK_LAYERS,
+  ALL_SOURCES,
+  layerDataTier,
+  type SourceKey,
+  type LayerSpec,
+} from '../config/bangkok-layers'
 import { cacheTimestamp } from '../lib/cached-fetch'
 import { freshnessLabel } from '../lib/freshness'
 
@@ -109,6 +115,14 @@ function LayerToggleItem({
   onToggle: () => void
 }) {
   const isPending = spec.status === 'pending'
+  const tier = layerDataTier(spec)
+  const tierLabel = {
+    feed: 'FEED',
+    reference: 'REF',
+    simulation: 'SIM',
+    configured: 'CONFIG',
+    pending: 'PENDING',
+  }[tier]
   return (
     <button
       className={`layer-item ${active ? 'layer-item--active' : ''} ${isPending ? 'layer-item--pending' : ''}`}
@@ -118,7 +132,7 @@ function LayerToggleItem({
     >
       <span className="layer-dot" aria-hidden="true" />
       <span className="layer-label">{spec.label}</span>
-      {isPending && <span className="layer-pending-chip">PENDING</span>}
+      <span className={`layer-tier-chip layer-tier-chip--${tier}`}>{tierLabel}</span>
       <span className="layer-source">{spec.source}</span>
     </button>
   )
