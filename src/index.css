@@ -7383,6 +7383,14 @@
   animation: brief-ai-pulse 1.5s infinite;
 }
 
+.onboarding-attribution {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  margin: 8px 0 0;
+}
+
 .onboarding-error {
   font-family: var(--font-mono);
   font-size: 11px;
