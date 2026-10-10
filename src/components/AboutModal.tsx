@@ -11,7 +11,7 @@ import { InstallWebAppPanel } from './InstallWebAppPanel'
 const SOURCES = [
   'NASA GIBS', 'USGS', 'Open-Meteo', 'WAQI', 'OpenAQ',
   'GISTDA', 'BMA', 'Traffy Fondue', 'TMD', 'GDELT',
-  'NASA FIRMS', 'RainViewer',
+  'NASA FIRMS', 'RainViewer', 'OpenStreetMap',
 ]
 
 export function AboutModal() {
@@ -142,7 +142,8 @@ export function AboutModal() {
             client (React + Vite) delivered at the edge via Cloudflare Pages, with live
             data proxied through a single Cloudflare Worker. The open data sources listed
             above remain the property of their respective providers and are used under
-            their public terms.
+            their public terms. Map labels and searched places use OpenStreetMap data
+            © OpenStreetMap contributors, with labels served by CARTO.
           </p>
         </div>
 
