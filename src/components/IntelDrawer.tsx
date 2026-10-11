@@ -294,9 +294,9 @@ export function IntelDrawer({ map, activeCity, allCities, open, onToggle }: Prop
         <section className="intel-panel" aria-label="City intelligence">
           <div className="intel-tabs" role="tablist">
             {([
-              ['frame', 'Frame'],
-              ['dossier', 'Dossier'],
-              ['study', 'Study'],
+              ['frame', 'This view'],
+              ['dossier', 'The web'],
+              ['study', 'Compare'],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -314,7 +314,7 @@ export function IntelDrawer({ map, activeCity, allCities, open, onToggle }: Prop
           {tab === 'frame' && frame && (
             <div className="intel-body" role="tabpanel">
               <div className="intel-grid">
-                <Stat k="Frame" v={frame.wide ? 'wide' : fmtKm2(frame.areaKm2)} />
+                <Stat k="Area" v={frame.wide ? 'wide' : fmtKm2(frame.areaKm2)} />
                 <Stat k="Span" v={frame.wide ? '—' : `${fmtSpanKm(frame.widthKm)} × ${fmtSpanKm(frame.heightKm)} km`} />
                 <Stat k="Ground" v={fmtGsd(frame.metersPerPixel)} />
                 <Stat k="Residents" v={frame.wide ? '—' : fmtPeople(frame.peopleEst)} />
@@ -445,7 +445,7 @@ export function IntelDrawer({ map, activeCity, allCities, open, onToggle }: Prop
         aria-expanded={open}
         title="Live frame math, open-web dossier, city comparison"
       >
-        <span className="intel-bar-k">FRAME</span>
+        <span className="intel-bar-k">THIS VIEW</span>
         <span>{frame ? (frame.wide ? 'WIDE' : fmtKm2(frame.areaKm2)) : '—'}</span>
         <span className="intel-bar-dim">{barPeople}</span>
         <span>{frame ? fmtGsd(frame.metersPerPixel) : '—'}</span>

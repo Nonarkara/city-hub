@@ -5,7 +5,7 @@
  */
 import { useState } from 'react'
 
-export function ShareButton() {
+export function ShareButton({ menu = false }: { menu?: boolean }) {
   const [copied, setCopied] = useState(false)
 
   const share = async () => {
@@ -16,6 +16,14 @@ export function ShareButton() {
     } catch {
       // Clipboard blocked (insecure context / permissions) — no-op.
     }
+  }
+
+  if (menu) {
+    return (
+      <button type="button" className="basemap-menu-item topbar-more-item" onClick={share}>
+        <span className="basemap-menu-label">{copied ? 'Link copied' : 'Copy a link to this view'}</span>
+      </button>
+    )
   }
 
   return (

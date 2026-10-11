@@ -1,13 +1,16 @@
 /**
- * Tactical HUD overlay — corner brackets, center reticle, live telemetry ribbon.
- * Sits above the map, below the topbar and panels. Pointer-events: none except
- * where the ribbon explicitly enables them.
+ * The reading line under the title, plus the corner marks.
+ * The line states the finding for this city, then what the current frame is.
+ * Pointer-events stay off except on the reading itself, which opens Research.
  */
 import { useEffect, useState } from 'react'
 import type { Map as MapLibre } from 'maplibre-gl'
 import type { CityConfig } from '../config/cities'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
 import { cachedFetch } from '../lib/cached-fetch'
+import { useUIStore } from '../store/uiStore'
+import { cityClaim, viewClause } from '../lib/city-reading'
+import { frameFromBounds, type FrameStats } from '../lib/viewport-math'
 
 interface HUDProps {
   map: MapLibre | null
@@ -33,17 +36,7 @@ function fmtCoord(lng: number, lat: number): string {
   return `${latStr}  ${lngStr}`
 }
 
-const SESSION_START = Date.now()
-
-function fmtUptime(): string {
-  const secs = Math.floor((Date.now() - SESSION_START) / 1000)
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = secs % 60
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-
-export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps) {
+export function HUD({ map, activeCity }: HUDProps) {
   const [now, setNow] = useState(new Date())
   const [center, setCenter] = useState<{ lng: number; lat: number; zoom: number }>({
     lng: activeCity.center[0],
@@ -51,6 +44,8 @@ export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps
     zoom: activeCity.zoom,
   })
   const [wx, setWx] = useState<CityWeather | null>(null)
+  const [frame, setFrame] = useState<FrameStats | null>(null)
+  const setResearchOpen = useUIStore((s) => s.setResearchOpen)
 
   // Fetch weather for the active city, refresh every 15 min
   useEffect(() => {
@@ -70,71 +65,65 @@ export function HUD({ map, activeCity, activeLayerCount, sourceCount }: HUDProps
     return () => clearInterval(t)
   }, [])
 
-  // Map center tracker
+  // Map center + frame. The reading line updates while the camera moves.
   useEffect(() => {
     if (!map) return
+    let raf = 0
     const update = () => {
       const c = map.getCenter()
       setCenter({ lng: c.lng, lat: c.lat, zoom: map.getZoom() })
+      try {
+        const b = map.getBounds()
+        const next = frameFromBounds(
+          b.getWest(), b.getSouth(), b.getEast(), b.getNorth(),
+          map.getZoom(), map.getBearing(), c.lng, c.lat, activeCity,
+        )
+        setFrame((prev) => {
+          if (!prev) return next
+          const same =
+            prev.peopleEst === next.peopleEst &&
+            Math.abs(prev.areaKm2 - next.areaKm2) < Math.max(0.05, prev.areaKm2 * 0.02)
+          return same ? prev : next
+        })
+      } catch { /* globe bounds can throw */ }
+    }
+    const onMove = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => { raf = 0; update() })
     }
     update()
-    map.on('move', update)
-    return () => { map.off('move', update) }
-  }, [map])
+    map.on('move', onMove)
+    return () => {
+      map.off('move', onMove)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [map, activeCity])
 
   return (
     <>
-      {/* Corner brackets — 4 tactical crosshairs at viewport corners */}
-      <svg className="hud-bracket hud-bracket-tl" viewBox="0 0 32 32" aria-hidden>
-        <path d="M0 12 L0 0 L12 0" fill="none" stroke="currentColor" strokeWidth="1" />
-      </svg>
-      <svg className="hud-bracket hud-bracket-tr" viewBox="0 0 32 32" aria-hidden>
-        <path d="M20 0 L32 0 L32 12" fill="none" stroke="currentColor" strokeWidth="1" />
-      </svg>
-      <svg className="hud-bracket hud-bracket-bl" viewBox="0 0 32 32" aria-hidden>
-        <path d="M0 20 L0 32 L12 32" fill="none" stroke="currentColor" strokeWidth="1" />
-      </svg>
-      <svg className="hud-bracket hud-bracket-br" viewBox="0 0 32 32" aria-hidden>
-        <path d="M20 32 L32 32 L32 20" fill="none" stroke="currentColor" strokeWidth="1" />
-      </svg>
-
-      {/* Center reticle — tiny crosshair at viewport center */}
-      <svg className="hud-reticle" viewBox="0 0 24 24" aria-hidden>
-        <line x1="12" y1="0" x2="12" y2="7" stroke="currentColor" strokeWidth="1" />
-        <line x1="12" y1="17" x2="12" y2="24" stroke="currentColor" strokeWidth="1" />
-        <line x1="0" y1="12" x2="7" y2="12" stroke="currentColor" strokeWidth="1" />
-        <line x1="17" y1="12" x2="24" y2="12" stroke="currentColor" strokeWidth="1" />
-        <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="0.8" />
-      </svg>
-
-      {/* Telemetry ribbon — under topbar */}
+      {/* Reading line — the finding, then what this frame is. Click opens Research. */}
       <div className="hud-ribbon">
         <span className="hud-pulse" aria-hidden />
-        <span className="hud-cell hud-cell-strong">LIVE</span>
+        <button
+          type="button"
+          className="hud-reading"
+          onClick={() => setResearchOpen(true)}
+          title={`${cityClaim(activeCity)} ${viewClause(frame)}`}
+        >
+          <span className="hud-reading-k">Read</span>
+          <span className="hud-reading-text">{cityClaim(activeCity)}</span>
+        </button>
         <span className="hud-sep" />
-        <span className="hud-cell">UTC {fmtClock(now, 'UTC')}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell">{activeCity.hudClockLabel} {fmtClock(now, activeCity.timezone)}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell hud-cell-coord">{fmtCoord(center.lng, center.lat)}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell">Z{center.zoom.toFixed(2)}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell">LAYERS {activeLayerCount.toString().padStart(2, '0')}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell">FEEDS {sourceCount.toString().padStart(2, '0')}</span>
-        <span className="hud-sep" />
-        <span className="hud-cell hud-cell-uptime">UP {fmtUptime()}</span>
+        <span className="hud-cell">{viewClause(frame) || fmtCoord(center.lng, center.lat)}</span>
         {wx && (
           <>
             <span className="hud-sep" />
-            <span className="hud-cell hud-cell-wx">{wx.temp}° {wx.condition} {wx.windSpeed}km/h {wx.windCardinal}</span>
+            <span className="hud-cell hud-cell-wx">{wx.temp}° {wx.condition}</span>
           </>
         )}
+        <span className="hud-sep" />
+        <span className="hud-cell">{activeCity.hudClockLabel} {fmtClock(now, activeCity.timezone)}</span>
       </div>
-
-      {/* CRT scanlines — full viewport texture */}
-      <div className="hud-scanlines" aria-hidden />
     </>
   )
 }

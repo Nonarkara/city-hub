@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { useUIStore } from '../store/uiStore'
 import { CITIES } from '../config/cities'
 import { InstallWebAppPanel } from './InstallWebAppPanel'
+import { PRODUCT_VERSION } from '../lib/city-reading'
 
 const SOURCES = [
   'NASA GIBS', 'USGS', 'Open-Meteo', 'WAQI', 'OpenAQ',
@@ -44,7 +45,7 @@ export function AboutModal() {
         <div className="about-eyebrow">OPEN CIVIC INTELLIGENCE</div>
         <div id="about-title" className="about-name">DR NON'S CITY HUB</div>
         <div className="about-version-line">
-          <span className="about-ver">v6</span>
+          <span className="about-ver">{PRODUCT_VERSION}</span>
           <span className="about-sep">·</span>
           <span className="about-status-chip">BUILD VERIFIED</span>
         </div>
@@ -73,10 +74,9 @@ export function AboutModal() {
         <div className="about-divider" />
 
         <p className="about-text">
-          A replicable city intelligence platform. Any city. Any operator.
-          The data layers that took years to assemble for Bangkok —
-          air quality, fires, floods, civic reports, satellite imagery,
-          forecasting — can be pointed at any city in an afternoon.
+          Version 7 reads the city, not the photograph. The line under the
+          title is the finding. Compare, Look, and Research are the actions.
+          The argument is in Research.
         </p>
         <p className="about-text">
           Built by <strong>Non Arkara</strong> — architect, urbanist,

@@ -33,7 +33,8 @@ import { ActionCenter } from './components/ActionCenter'
 import { ShareButton } from './components/ShareButton'
 import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
-import { NewsTicker } from './components/NewsTicker'
+import { ResearchPanel } from './components/ResearchPanel'
+import { lookLabel, PRODUCT_VERSION } from './lib/city-reading'
 import { useCityRisk } from './hooks/useCityRisk'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { CounterpartStrip } from './components/CounterpartStrip'
@@ -62,17 +63,32 @@ const ForecastPanel = lazy(() => import('./components/ForecastPanel').then((m) =
 
 // Real-time global overlays that ride on top of any lens, any city.
 const LIVE_OVERLAYS: { id: string; label: string }[] = [
-  { id: 'quakes', label: 'Earthquakes · 24h' },
-  { id: 'radar',  label: 'Rain Radar' },
+  { id: 'quakes', label: 'Earthquakes, last 24 hours' },
+  { id: 'radar',  label: 'Rain' },
 ]
 
-// NASA GIBS rasters — global, so they work on every city, not only Bangkok.
+// NASA GIBS rasters — the same reading on every city, not only Bangkok.
 const INTEL_OVERLAYS: { id: string; label: string }[] = [
-  { id: 'night', label: 'Night lights · VIIRS' },
-  { id: 'heat',  label: 'Surface heat · MODIS' },
-  { id: 'green', label: 'Vegetation · NDVI' },
-  { id: 'haze',  label: 'Aerosol haze · MODIS' },
+  { id: 'night', label: 'Night lights — where the city is awake' },
+  { id: 'heat',  label: 'Surface heat' },
+  { id: 'green', label: 'Vegetation' },
+  { id: 'haze',  label: 'Haze' },
 ]
+
+const LOOK_GROUPS: Record<string, string> = {
+  imagery: 'Photos of the ground',
+  spectral: 'What the sensors measure',
+}
+
+function MoreItem({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <li role="none">
+      <button type="button" role="menuitem" className="basemap-menu-item" onClick={onClick}>
+        <span className="basemap-menu-label">{label}</span>
+      </button>
+    </li>
+  )
+}
 
 export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -127,9 +143,11 @@ export default function App() {
   const intelOpen = useUIStore((s) => s.intelOpen)
   const setIntelOpen = useUIStore((s) => s.setIntelOpen)
   const setAboutOpen = useUIStore((s) => s.setAboutOpen)
+  const setResearchOpen = useUIStore((s) => s.setResearchOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   // ── Settings panel ──────────────────────────────────────────────────────────
   const [settingsOpen, setSettingsOpen]       = useState(false)
@@ -281,8 +299,6 @@ export default function App() {
 
       {forecastOpen && <ErrorBoundary fallback={null}><ForecastPanel activeCity={activeCity} /></ErrorBoundary>}
 
-      {!splitOpen && <NewsTicker activeCity={activeCity} />}
-
       {!splitOpen && <SituationBrief allCities={allCities} />}
       {!splitOpen && <CopernicusAlert />}
       {!splitOpen && <DisasterAlerts />}
@@ -358,9 +374,10 @@ export default function App() {
       <ActiveInsightBanner active={activeInsight} activeCity={activeCity} onClear={clearInsight} />
 
       <header className="topbar">
-        <span className="topbar-wordmark" title="Dr Non's City Hub — Open Civic Intelligence">
+        <span className="topbar-wordmark" title="Dr Non's City Hub — read the city, not the photo">
           <img className="topbar-brand-mark" src="/brand/city-hub-mark.png" alt="" aria-hidden />
           <span className="topbar-wordmark-prefix">DR NON'S</span> CITY HUB
+          <span className="topbar-version">{PRODUCT_VERSION}</span>
         </span>
 
         <div className="topbar-zone-sep" aria-hidden />
@@ -376,46 +393,29 @@ export default function App() {
           cityStress={cityStress}
         />
 
-        {/* TWIN — context-aware affordance. Only renders for cities that ship
-            a full economic/civic twin brief. Click → jump to the twin section
-            in the right panel. */}
-        {activeHasTwin && (
+        <div className="topbar-spacer" />
+
+        {compareMode && (
           <button
-            type="button"
-            className="topbar-twin-btn"
-            onClick={scrollToTwin}
-            title={`Open ${activeCity.name} digital twin — economic, civic, digital brief`}
-            aria-label={`Open ${activeCity.name} digital twin`}
+            className="topbar-mode-btn"
+            onClick={() => { useCityStore.getState().clearCompareSet() }}
+            title="Stop comparing these cities"
+            aria-label="Stop comparing"
           >
-            <span className="topbar-twin-marker" aria-hidden />
-            <span className="topbar-twin-label">TWIN</span>
+            Comparing {compareSet.length}
           </button>
         )}
 
-        {/* SPLIT — side-by-side satellite compare (primary action, always visible) */}
         <button
           type="button"
           className={`topbar-split-btn ${splitOpen ? 'topbar-split-btn--active' : ''}`}
           onClick={() => setSplitOpen(!splitOpen)}
-          title="Split-screen compare — any city / lens / date vs any other (S)"
-          aria-label={splitOpen ? 'Close split compare' : 'Open split compare'}
+          title="Compare cities side by side (S)"
+          aria-label={splitOpen ? 'Close compare' : 'Compare cities'}
           aria-pressed={splitOpen}
         >
-          <span className="topbar-split-icon" aria-hidden>◫</span>
-          <span className="topbar-split-label">SPLIT</span>
+          <span className="topbar-split-label">Compare</span>
         </button>
-
-        <div className="topbar-spacer" />
-
-        <div className="topbar-right">
-          <DataStatusChip onClick={() => setDataStatusOpen((v) => !v)} />
-          <button
-            className="topbar-chat-btn"
-            onClick={() => setAboutOpen(true)}
-            title="About this dashboard"
-            aria-label="About"
-          >ABOUT</button>
-        </div>
 
         {dataStatusOpen && <DataSourceStatus onClose={() => setDataStatusOpen(false)} />}
 
@@ -433,62 +433,25 @@ export default function App() {
           />
         </div>
 
-        {compareMode && (
-          <button
-            className="topbar-mode-btn"
-            onClick={() => {
-              useCityStore.getState().clearCompareSet()
-            }}
-            title="Exit comparison mode"
-            aria-label="Exit comparison mode"
-          >
-            COMPARE · {compareSet.length}
-          </button>
-        )}
-
-        {bangkokMode && !compareMode && (
-          <>
-            <button
-              className="topbar-mode-btn"
-              onClick={() => toggleGovernorMode()}
-              title={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
-              aria-label={governorMode ? 'Switch to analyst layer view' : 'Switch to governor briefing'}
-            >
-              <span className="topbar-btn-label">{governorMode ? 'SIT ROOM' : 'ANALYST'}</span>
-            </button>
-            <button
-              className="topbar-mode-btn topbar-sitrep-btn"
-              onClick={() => setActionCenterOpen(!actionCenterOpen)}
-              title="Review Global SitRep Actions"
-              aria-label="Review Global SitRep Actions"
-            >
-              <span className="topbar-btn-label">ACTION CENTER</span>
-            </button>
-          </>
-        )}
-
-        <div className="topbar-spacer" />
-
         {/* Basemap menu */}
         <div className="basemap-wrap">
           <button
             className="topbar-basemap-btn"
-            onClick={() => setBasemapMenuOpen(!basemapMenuOpen)}
-            title="Switch basemap"
-            aria-label="Switch basemap"
+            title={`Look — ${getBasemapDef(basemap).label}`}
+            aria-label="Choose how you're looking"
             aria-expanded={basemapMenuOpen}
+            onClick={() => { setBasemapMenuOpen(!basemapMenuOpen); setMoreOpen(false) }}
           >
-            <span className="topbar-basemap-icon" aria-hidden>◐</span>
-            <span className="topbar-basemap-label">{getBasemapDef(basemap).label.toUpperCase()}</span>
+            <span className="topbar-basemap-label">Look · {lookLabel(basemap)}</span>
           </button>
           {basemapMenuOpen && (
             <>
               <div className="basemap-menu-backdrop" onClick={() => setBasemapMenuOpen(false)} aria-hidden />
               <ul className="basemap-menu" role="menu">
-                <li className="basemap-menu-title" role="presentation">SATELLITE STACK</li>
+                <li className="basemap-menu-title" role="presentation">How you’re looking</li>
                 {BASEMAP_GROUPS.map((group) => (
                   <li key={group.label} role="presentation">
-                    <div className="basemap-menu-group">{group.label}</div>
+                    <div className="basemap-menu-group">{LOOK_GROUPS[group.label] ?? group.label}</div>
                     <ul className="basemap-menu-sublist" role="group" aria-label={group.label}>
                       {group.ids.map((id) => {
                         const def = getBasemapDef(id)
@@ -520,7 +483,7 @@ export default function App() {
 
                 {/* INTEL rasters — NASA products that work on every city */}
                 <li role="presentation">
-                  <div className="basemap-menu-group">intel</div>
+                  <div className="basemap-menu-group">On any city</div>
                   <ul className="basemap-menu-sublist" role="group" aria-label="intel overlays">
                     {INTEL_OVERLAYS.map((ov) => {
                       const on = activeOverlays.has(ov.id)
@@ -544,7 +507,7 @@ export default function App() {
 
                 {/* LIVE overlays — real-time layers on top of any lens */}
                 <li role="presentation">
-                  <div className="basemap-menu-group">live</div>
+                  <div className="basemap-menu-group">Happening now</div>
                   <ul className="basemap-menu-sublist" role="group" aria-label="live overlays">
                     {LIVE_OVERLAYS.map((ov) => {
                       const on = activeOverlays.has(ov.id)
@@ -568,7 +531,7 @@ export default function App() {
 
                 {/* VIEW — projection */}
                 <li role="presentation">
-                  <div className="basemap-menu-group">view</div>
+                  <div className="basemap-menu-group">The map itself</div>
                   <ul className="basemap-menu-sublist" role="group" aria-label="projection">
                     <li role="none">
                       <button
@@ -578,7 +541,7 @@ export default function App() {
                         onClick={() => setGlobeView(!globeView)}
                       >
                         <span className="basemap-menu-dot" style={{ background: globeView ? 'var(--amber)' : 'transparent' }} aria-hidden />
-                        <span className="basemap-menu-label">Globe (3D)</span>
+                        <span className="basemap-menu-label">Globe</span>
                         {globeView && <span className="basemap-menu-temporal" aria-hidden>●</span>}
                       </button>
                     </li>
@@ -589,83 +552,64 @@ export default function App() {
           )}
         </div>
 
-        {/* SMOKE — fire smoke trajectory forecast */}
-        {bangkokMode && (
+        <button
+          type="button"
+          className="topbar-mode-btn topbar-research-btn"
+          onClick={() => setResearchOpen(true)}
+          title="Why this is not a satellite viewer"
+        >
+          Research
+        </button>
+
+        <DataStatusChip onClick={() => setDataStatusOpen((v) => !v)} />
+
+        <div className="basemap-wrap">
           <button
-            className={`topbar-insight-btn ${smokeVisible ? 'topbar-insight-btn--active' : ''}`}
-            onClick={() => setSmokeVisible((v) => !v)}
-            title="Show fire smoke trajectory forecast (FIRMS + wind)"
-            aria-label="Toggle smoke trajectory"
-            aria-pressed={smokeVisible}
+            type="button"
+            className="topbar-basemap-btn"
+            onClick={() => { setMoreOpen((v) => !v); setBasemapMenuOpen(false) }}
+            aria-expanded={moreOpen}
+            aria-label="More"
           >
-            <span className="topbar-insight-icon topbar-insight-icon--smoke" aria-hidden />
-            <span className="topbar-insight-label">SMOKE</span>
+            <span className="topbar-basemap-label">More</span>
           </button>
-        )}
-
-        {/* INTEL — live frame, open-web dossier, peer study */}
-        <button
-          className={`topbar-insight-btn ${intelOpen ? 'topbar-insight-btn--active' : ''}`}
-          onClick={() => setIntelOpen(!intelOpen)}
-          title="Live frame math, what the open web knows, city comparison (I)"
-          aria-label="Toggle city intelligence"
-          aria-pressed={intelOpen}
-        >
-          <span className="topbar-insight-icon" aria-hidden>◈</span>
-          <span className="topbar-insight-label">INTEL</span>
-        </button>
-
-        {/* FORECAST — 48h AQI + temp outlook */}
-        <button
-          className={`topbar-insight-btn ${forecastOpen ? 'topbar-insight-btn--active' : ''}`}
-          onClick={() => setForecastOpen(!forecastOpen)}
-          title="48-hour air & temperature forecast for this city"
-          aria-label="Toggle forecast"
-          aria-pressed={forecastOpen}
-        >
-          <span className="topbar-insight-icon" aria-hidden>◷</span>
-          <span className="topbar-insight-label">FORECAST</span>
-        </button>
-
-        {/* ASK — local Ollama city chatbot */}
-        <button
-          className={`topbar-insight-btn ${chatOpen ? 'topbar-insight-btn--active' : ''}`}
-          onClick={() => setChatOpen(!chatOpen)}
-          title="Ask about the cities — local AI (Ollama)"
-          aria-label="Toggle city chatbot"
-          aria-pressed={chatOpen}
-        >
-          <span className="topbar-insight-icon" aria-hidden>✦</span>
-          <span className="topbar-insight-label">ASK</span>
-        </button>
-
-        {/* INSIGHT — the pattern-revealing button */}
-        <button
-          className="topbar-insight-btn"
-          onClick={() => setInsightOpen(true)}
-          title="Open insight templates — pre-configured layer stacks"
-          aria-label="Open insights"
-        >
-          <span className="topbar-insight-icon" aria-hidden>◇</span>
-          <span className="topbar-insight-label">INSIGHT</span>
-        </button>
-
-        <ShareButton />
-
-        <button
-          className="topbar-cmdk"
-          onClick={() => setCmdkOpen(true)}
-          title="Search · Cmd/Ctrl + K"
-          aria-label="Open command palette"
-        >
-          <span className="topbar-cmdk-icon" aria-hidden />
-          <span className="topbar-cmdk-key">CMD&nbsp;K</span>
-        </button>
+          {moreOpen && (
+            <>
+              <div className="basemap-menu-backdrop" onClick={() => setMoreOpen(false)} aria-hidden />
+              <ul className="basemap-menu topbar-more-menu" role="menu">
+                <li className="basemap-menu-title" role="presentation">More</li>
+                <MoreItem label={intelOpen ? 'Close this view' : 'This view'} onClick={() => { setIntelOpen(!intelOpen); setMoreOpen(false) }} />
+                <MoreItem label={forecastOpen ? 'Close the next 48 hours' : 'Next 48 hours'} onClick={() => { setForecastOpen(!forecastOpen); setMoreOpen(false) }} />
+                <MoreItem label={chatOpen ? 'Close ask' : 'Ask'} onClick={() => { setChatOpen(!chatOpen); setMoreOpen(false) }} />
+                <MoreItem label="Patterns" onClick={() => { setInsightOpen(true); setMoreOpen(false) }} />
+                {bangkokMode && (
+                  <MoreItem label={smokeVisible ? 'Hide smoke' : 'Smoke from fires'} onClick={() => { setSmokeVisible((v) => !v); setMoreOpen(false) }} />
+                )}
+                {bangkokMode && (
+                  <MoreItem
+                    label={governorMode ? 'Switch to layers' : 'Switch to the brief'}
+                    onClick={() => { toggleGovernorMode(); setMoreOpen(false) }}
+                  />
+                )}
+                {bangkokMode && (
+                  <MoreItem label="Actions" onClick={() => { setActionCenterOpen(!actionCenterOpen); setMoreOpen(false) }} />
+                )}
+                {activeHasTwin && (
+                  <MoreItem label={`${activeCity.name} brief`} onClick={() => { scrollToTwin(); setMoreOpen(false) }} />
+                )}
+                <li role="none"><ShareButton menu /></li>
+                <MoreItem label="Search" onClick={() => { setCmdkOpen(true); setMoreOpen(false) }} />
+                <MoreItem label="About" onClick={() => { setAboutOpen(true); setMoreOpen(false) }} />
+              </ul>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Keep the fixed dialog outside the blurred topbar. Backdrop filters
           create a containing block that would otherwise pin it to 44px. */}
       <AboutModal />
+      <ResearchPanel />
 
       <InsightPanel
         open={insightOpen}

@@ -177,7 +177,7 @@ export function DataStatusChip({ onClick }: { onClick: () => void }) {
       aria-label={`Data source status: ${status}`}
     >
       <span className="data-chip-dot" style={{ background: color }} />
-      <span className="data-chip-label">FEEDS</span>
+      <span className="data-chip-label">Sources</span>
     </button>
   )
 }
