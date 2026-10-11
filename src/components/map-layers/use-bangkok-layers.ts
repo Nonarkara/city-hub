@@ -27,7 +27,8 @@ import { fetchTraffyGeoJSON } from '../../data/traffy'
 import { bangkokAQI } from '../../data/openmeteo-aq'
 import { fetchAir4ThaiGeoJSON } from '../../data/air4thai'
 import { fetchEarthquakeGeoJSON } from '../../data/tmd-earthquake'
-import { fetchOsmEmergency, fetchOsmEducation } from '../../data/osm-pois'
+import { fetchOsmEmergency, fetchOsmEducation, takeOsmDegradedNotice } from '../../data/osm-pois'
+import { useToastStore } from '../../store/toastStore'
 import { fetchWaterQualityGeoJSON, fetchWaterLevelGeoJSON } from '../../data/thaiwater'
 import { fetchTrafficIncidentGeoJSON, fetchBangkokTrafficFlow, tomtomKeyAvailable } from '../../data/tomtom-traffic'
 import { fetchAirbnbGeoJSON } from '../../data/airbnb'
@@ -1216,8 +1217,20 @@ async function addAir4ThaiStations(map: MapLibre) {
   })
 }
 
+function announceOsmDegradation() {
+  const message = takeOsmDegradedNotice()
+  if (!message) return
+  useToastStore.getState().addToast({
+    type: 'warning',
+    title: 'Places unavailable',
+    message,
+    duration: 7000,
+  })
+}
+
 async function addOsmEmergency(map: MapLibre) {
   const data = await fetchOsmEmergency()
+  announceOsmDegradation()
   map.addSource('src-osm-emergency', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-osm-emergency',
@@ -1253,6 +1266,7 @@ async function addOsmEmergency(map: MapLibre) {
 
 async function addOsmEducation(map: MapLibre) {
   const data = await fetchOsmEducation()
+  announceOsmDegradation()
   map.addSource('src-osm-education', { type: 'geojson', data, generateId: true })
   map.addLayer({
     id: 'ly-osm-education',

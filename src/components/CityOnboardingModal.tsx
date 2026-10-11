@@ -111,6 +111,8 @@ export function CityOnboardingModal({ open, onClose }: Props) {
             autoFocus
           />
 
+          <p className="onboarding-attribution">Place search © OpenStreetMap contributors</p>
+
           {loading && <div className="onboarding-loading">Searching…</div>}
           {error && <div className="onboarding-error">{error}</div>}
 

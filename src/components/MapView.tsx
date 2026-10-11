@@ -15,6 +15,7 @@ import {
   gibsSO2Tiles,
 } from '../data/nasa-gibs'
 import { gibsAerosolTileTemplate } from '../data/nasa'
+import { OSM_LABEL_TILES, OSM_TILE_ATTRIBUTION } from '../lib/osm/tiles'
 
 // Mapbox token — optional. Unlocks Mapbox vector + Satellite Streets basemaps.
 // MapLibre doesn't need any token for the tokenless raster basemaps below.
@@ -125,12 +126,7 @@ function mapboxSatStreetsStyle(): StyleSpecification {
  *  zoom (z11) — without it the layer goes blank when you zoom in. */
 // Keyless place-name + road labels (OSM via CARTO), light text with a dark
 // halo so it reads on both dark spectral lenses and bright satellite imagery.
-// Baked into every raster lens → Google-Maps label parity on the whole stack.
-const LABEL_TILES = [
-  'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
-  'https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
-  'https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
-]
+// Baked into every raster lens. The OSMF public tile server is not used.
 
 function rasterStyle(
   tileTemplate: string,
@@ -154,9 +150,9 @@ function rasterStyle(
       },
       labels: {
         type: 'raster',
-        tiles: LABEL_TILES,
+        tiles: [...OSM_LABEL_TILES],
         tileSize: 256,
-        attribution: '© OpenStreetMap · © CARTO',
+        attribution: OSM_TILE_ATTRIBUTION,
       },
     },
     layers: [

@@ -30,9 +30,12 @@
  *   /forecast       → TimeFM / Gemini / Holt-Winters forecasting
  *   /narrate        → Gemini situation narration
  *   /ee/mapid       → Earth Engine tile token minting
+ *   /nominatim      → Nominatim search (identifying User-Agent, 1 req/s, cache)
  *
  * All responses carry CORS headers + short Cloudflare cache.
  */
+
+import { handleNominatimRequest } from '../../src/lib/osm/nominatim-http'
 
 export interface Env {
   HF_API_TOKEN?: string
@@ -181,6 +184,16 @@ export default {
     // Fetches and parses the public activation list, filters for SE Asia + Thailand
     if (url.pathname === '/cems/activations' && request.method === 'GET') {
       return handleCEMS(cors)
+    }
+
+    // Nominatim — GET /nominatim?q=  (also /api/nominatim). Server-side only:
+    // identifying User-Agent, ≤1 upstream request/second per isolate, cached.
+    if (url.pathname === '/nominatim' || url.pathname === '/api/nominatim') {
+      if (request.method !== 'GET') return jsonCors({ error: 'Method not allowed' }, 405, cors)
+      const upstream = await handleNominatimRequest(url)
+      const headers = new Headers(upstream.headers)
+      for (const [key, value] of Object.entries(cors)) headers.set(key, value)
+      return new Response(upstream.body, { status: upstream.status, headers })
     }
 
     if (request.method !== 'GET') {

@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
+import { nominatimDevPlugin } from './src/lib/osm/nominatim-dev-plugin'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), nominatimDevPlugin()],
   resolve: {
     alias: {
       '@shared': fileURLToPath(new URL('../_shared', import.meta.url)),

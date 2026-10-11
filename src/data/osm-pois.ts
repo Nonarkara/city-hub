@@ -8,7 +8,7 @@
  * No API key required. Free and open data.
  */
 import { cachedFetch } from '../lib/cached-fetch'
-import { timeoutSignal } from './source-registry'
+import { queryOverpass } from '../lib/osm/overpass'
 
 const TTL = 24 * 60 * 60 * 1000 // 24 hours — OSM data changes slowly
 
@@ -49,6 +49,31 @@ const AMENITY_CONFIG: Record<string, { label: string; color: string; icon: strin
 
 export const OSM_AMENITIES = Object.keys(AMENITY_CONFIG)
 
+export const OSM_DEGRADED_MESSAGE =
+  'OpenStreetMap places are temporarily unavailable. The rest of the map still works.'
+
+interface OverpassElement {
+  type?: string
+  id?: number
+  lat?: number
+  lon?: number
+  tags?: Record<string, string>
+}
+
+let osmDegraded = false
+let osmNoticeTaken = false
+
+export function takeOsmDegradedNotice(): string | null {
+  if (!osmDegraded || osmNoticeTaken) return null
+  osmNoticeTaken = true
+  return OSM_DEGRADED_MESSAGE
+}
+
+export function resetOsmDegradedForTests() {
+  osmDegraded = false
+  osmNoticeTaken = false
+}
+
 function overpassQuery(amenities: string[]): string {
   return `[out:json][timeout:25];
 (
@@ -57,22 +82,12 @@ function overpassQuery(amenities: string[]): string {
 out body;`
 }
 
-async function fetchOverpass(query: string): Promise<GeoJSON.FeatureCollection> {
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(query)}`,
-    signal: timeoutSignal(30_000), // Overpass query itself requests [timeout:25]
-  })
-  if (!res.ok) throw new Error(`Overpass ${res.status}`)
-  const data = await res.json()
-
-  const elements = data?.elements ?? []
+export function osmElementsToFeatures(elements: OverpassElement[]): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = []
 
   for (const el of elements) {
-    if (el.type !== 'node') continue
-    const tags = (el.tags ?? {}) as Record<string, string>
+    if (el.type !== 'node' || el.lon == null || el.lat == null) continue
+    const tags = el.tags ?? {}
     const amenity = tags.amenity ?? ''
     if (!AMENITY_CONFIG[amenity]) continue
 
@@ -101,21 +116,34 @@ async function fetchOverpass(query: string): Promise<GeoJSON.FeatureCollection> 
   return { type: 'FeatureCollection', features }
 }
 
-/** Fetch all critical infrastructure POIs */
+async function fetchOverpass(query: string): Promise<GeoJSON.FeatureCollection> {
+  const data = await queryOverpass(query) as { elements?: OverpassElement[] }
+  return osmElementsToFeatures(data?.elements ?? [])
+}
+
+async function loadOsm(cacheKey: string, amenities: string[]): Promise<GeoJSON.FeatureCollection> {
+  try {
+    return await cachedFetch(cacheKey, () => fetchOverpass(overpassQuery(amenities)), TTL)
+  } catch (err) {
+    console.warn('[osm] place query failed', err)
+    osmDegraded = true
+    return { type: 'FeatureCollection', features: [] }
+  }
+}
+
+/** Fetch all critical infrastructure POIs. Empty collection when Overpass is down. */
 export async function fetchOsmPois(): Promise<GeoJSON.FeatureCollection> {
-  return cachedFetch('osm/pois-bangkok', () => fetchOverpass(overpassQuery(OSM_AMENITIES)), TTL)
+  return loadOsm('osm/pois-bangkok', OSM_AMENITIES)
 }
 
-/** Fetch only emergency services (hospitals, fire, police) */
+/** Fetch only emergency services (hospitals, fire, police). */
 export async function fetchOsmEmergency(): Promise<GeoJSON.FeatureCollection> {
-  return cachedFetch('osm/emergency-bangkok', () =>
-    fetchOverpass(overpassQuery(['hospital', 'clinic', 'fire_station', 'police'])), TTL)
+  return loadOsm('osm/emergency-bangkok', ['hospital', 'clinic', 'fire_station', 'police'])
 }
 
-/** Fetch only education (schools, universities, kindergartens) */
+/** Fetch only education (schools, universities, kindergartens). */
 export async function fetchOsmEducation(): Promise<GeoJSON.FeatureCollection> {
-  return cachedFetch('osm/education-bangkok', () =>
-    fetchOverpass(overpassQuery(['school', 'university', 'kindergarten'])), TTL)
+  return loadOsm('osm/education-bangkok', ['school', 'university', 'kindergarten'])
 }
 
 /** Get counts by amenity type for analytics */

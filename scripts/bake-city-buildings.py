@@ -23,13 +23,19 @@ import sys
 import time
 from typing import Any
 
-# Primary + fallbacks — overpass-api.de often 504s under load.
+# Mirror order matches src/lib/osm/overpass.ts. overpass-api.de often 504s under load.
 OVERPASS_URLS = [
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
 ]
-USER_AGENT = "UNL-city-hub/0.9 (https://city-hub.pages.dev; OSM building bake)"
+USER_AGENT = "CityHub/0.9 (https://city-hub.pages.dev; OSM building bake)"
+OVERPASS_TIMEOUT_S = 90
+
+
+def backoff_seconds(attempt: int) -> float:
+    """Exponential backoff for Overpass 429/504. Caps at 8s."""
+    return min(8.0, 0.5 * (2 ** attempt))
 
 
 def parse_levels(value: str | None) -> float | None:
@@ -66,7 +72,7 @@ def estimate_height(tags: dict[str, str]) -> tuple[float, float, int]:
     return h, base, real
 
 
-def fetch_overpass(west: float, south: float, east: float, north: float, *, retries: int = 2) -> dict[str, Any]:
+def fetch_overpass(west: float, south: float, east: float, north: float) -> dict[str, Any]:
     # Overpass bbox order: south,west,north,east
     query = (
         "[out:json][timeout:180];\n"
@@ -77,22 +83,27 @@ def fetch_overpass(west: float, south: float, east: float, north: float, *, retr
     last_error: Exception | None = None
     import requests
 
-    for url in OVERPASS_URLS:
-        for attempt in range(1, retries + 1):
-            try:
-                print(f"Trying {url} (attempt {attempt})…", file=sys.stderr)
-                response = requests.post(
-                    url,
-                    data={"data": query},
-                    headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-                    timeout=240,
-                )
-                response.raise_for_status()
-                return response.json()
-            except Exception as exc:  # noqa: BLE001
-                last_error = exc
-                print(f"  failed: {exc}", file=sys.stderr)
-                time.sleep(2 ** attempt)
+    rate_attempt = 0
+    for index, url in enumerate(OVERPASS_URLS):
+        try:
+            print(f"Trying {url}…", file=sys.stderr)
+            response = requests.post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+                timeout=OVERPASS_TIMEOUT_S,
+            )
+            if response.status_code in (429, 504) and index < len(OVERPASS_URLS) - 1:
+                delay = backoff_seconds(rate_attempt)
+                rate_attempt += 1
+                print(f"  HTTP {response.status_code}; backing off {delay:.1f}s", file=sys.stderr)
+                time.sleep(delay)
+                continue
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            print(f"  failed: {exc}", file=sys.stderr)
     raise RuntimeError(f"Overpass failed on all mirrors: {last_error}")
 
 

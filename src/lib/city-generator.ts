@@ -1,5 +1,7 @@
 import tzLookup from 'tz-lookup'
 import type { CityConfig } from '../config/cities'
+import { cachedFetch } from './cached-fetch'
+import { CITY_SEARCH_UNAVAILABLE } from './osm/messages'
 
 export interface NominatimResult {
   place_id: number
@@ -48,15 +50,27 @@ export function nutritionScore(level: NutritionLevel): number {
   }
 }
 
-/** Search Nominatim for city candidates. Free, no key, CORS-safe. */
-export async function searchNominatim(query: string): Promise<NominatimResult[]> {
-  const url =
-    'https://nominatim.openstreetmap.org/search' +
-    `?q=${encodeURIComponent(query)}` +
-    '&format=json&limit=8&addressdetails=1&dedupe=1&accept-language=en'
-  const res = await fetch(url, { headers: { 'User-Agent': 'CityHub/1.0' } })
-  if (!res.ok) throw new Error(`Nominatim ${res.status}`)
-  const results = await res.json() as NominatimResult[]
+const NOMINATIM_CLIENT_TTL_MS = 10 * 60 * 1000
+
+function readProxyUrl(): string {
+  const env = (import.meta as ImportMeta & { env?: { VITE_PROXY_URL?: string } }).env
+  return typeof env?.VITE_PROXY_URL === 'string' ? env.VITE_PROXY_URL : ''
+}
+
+/**
+ * Browser search hits our API. The public geocoder is called only by the
+ * Worker, the Pages function, or the Vite dev server.
+ * With VITE_PROXY_URL the Worker serves `/nominatim`; otherwise the same-origin
+ * Pages function or Vite middleware serves `/api/nominatim`.
+ */
+export function nominatimSearchUrl(query: string, proxyUrl = readProxyUrl()): string {
+  const q = encodeURIComponent(query.trim())
+  const proxy = proxyUrl.trim().replace(/\/$/, '')
+  if (proxy) return `${proxy}/nominatim?q=${q}`
+  return `/api/nominatim?q=${q}`
+}
+
+export function filterNominatimResults(results: NominatimResult[]): NominatimResult[] {
   return results
     .filter((r) => {
       const t = `${r.class}:${r.type}:${r.addresstype ?? ''}`.toLowerCase()
@@ -64,6 +78,33 @@ export async function searchNominatim(query: string): Promise<NominatimResult[]>
     })
     .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))
     .slice(0, 6)
+}
+
+/** Search city candidates through the server-side Nominatim proxy. */
+export async function searchNominatim(query: string): Promise<NominatimResult[]> {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) return []
+  try {
+    return await cachedFetch(
+      `nominatim/${trimmed.toLowerCase()}`,
+      () => fetchNominatimApi(trimmed),
+      NOMINATIM_CLIENT_TTL_MS,
+    )
+  } catch (err) {
+    console.warn('[nominatim] search failed', err)
+    throw new Error(CITY_SEARCH_UNAVAILABLE)
+  }
+}
+
+async function fetchNominatimApi(query: string): Promise<NominatimResult[]> {
+  const res = await fetch(nominatimSearchUrl(query), {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(`city search ${res.status}`)
+  const body = await res.json() as { results?: NominatimResult[] } | NominatimResult[]
+  const results = Array.isArray(body) ? body : body.results
+  if (!Array.isArray(results)) throw new Error('city search payload')
+  return filterNominatimResults(results)
 }
 
 /** Convert Nominatim result → CityConfig. */
