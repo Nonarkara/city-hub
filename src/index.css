@@ -1,15 +1,30 @@
 /* Design tokens — single source of truth */
 @import url('../../_shared/design-tokens/dr-non-brand.css');
 
-/* ── v3.0 typography override ────────────────────────────────────────────── */
-/* Space Grotesk replaces Josefin Sans: same geometric lineage, more assertive.
-   Space Mono replaces JetBrains Mono for display labels (keeps JetBrains for
-   data values). Source Sans 3 made explicit for body text.                   */
+/* ── Palette & Wada Design Tokens (https://github.com/Nonarkara/palette) ──── */
+/* Sanzo Wada 348 combination system + Bauhaus Human Design lineage.
+   - Core chord: Wada Yellow Orange (#f99d1b) replaces generic Tailwind amber (#f59e0b).
+   - Deep field: Wada Dark Tyrian Blue (#12354e) provides atmospheric depth.
+   - Reading ground: Paper (#fff4d8) and Ink (#181525) for research dossiers.
+   - Display type: Archivo Narrow / Space Grotesk for Bauhaus geometric hierarchy. */
 :root {
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  /* Palette Foundation Tokens */
+  --amber:        #f99d1b;          /* Sanzo Wada Yellow Orange (Plate 002) */
+  --chord:        #f99d1b;          /* Active plate primary chord */
+  --deep:         #12354e;          /* Sanzo Wada Dark Tyrian Blue (Plate 002) */
+  --black:        #101010;          /* Interface ground (exhibition black) */
+  --white:        #f7f5ef;          /* Warm off-white surface */
+  --paper:        #fff4d8;          /* Wada reading room ground */
+  --ink:          #181525;          /* Wada reading room ink */
+  --bg:           #04060b;          /* Cockpit ground */
+  --fg:           #f7f5ef;          /* Primary foreground */
+
+  /* Typography */
+  --font-display: 'Archivo Narrow', 'Space Grotesk', system-ui, sans-serif;
   --font-body:    'Source Sans 3', system-ui, sans-serif;
   --font-mono:    'Space Mono', 'JetBrains Mono', monospace;
   --font-data:    'JetBrains Mono', 'Space Mono', monospace;  /* numbers/values */
+  --font-thai:    'IBM Plex Sans Thai', system-ui, sans-serif;
 }
 
 /* ── MapLibre overrides ──────────────────────────────────────────────────── */
@@ -788,6 +803,30 @@
 .hud-cell-strong { color: var(--amber); font-weight: 500; }
 .hud-cell-coord { color: rgba(245, 245, 240, 0.7); }
 .hud-cell-uptime { color: rgba(245, 158, 11, 0.7); }
+
+.hud-cell-wada {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+.hud-wada-swatches {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.hud-wada-swatch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+}
+.hud-wada-label {
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
 
 .hud-sep {
   display: inline-block;
@@ -9957,30 +9996,87 @@
 
 .ki-foot { font-family: var(--font-body); font-size: 9px; color: rgba(245,245,240,0.38); margin-top: 12px; line-height: 1.4; }
 
-.research-card { width: min(640px, calc(100vw - 32px)); }
+/* ── Wada Reading Room for Research (Plate 002: Yellow Orange + Dark Tyrian Blue) ── */
+.research-card {
+  width: min(680px, calc(100vw - 32px));
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+  border: 1px solid rgba(18, 53, 78, 0.25) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+.research-header {
+  margin: -28px -28px 24px;
+  padding: 32px 32px 24px;
+  background: var(--chord);
+  color: var(--deep);
+  border-bottom: 2px solid var(--deep);
+}
+.research-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--deep);
+  margin-bottom: 8px;
+}
 .research-title {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--fg);
-  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--deep);
+  line-height: 1.05;
+  margin: 0 0 10px;
 }
 .research-standfirst {
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.45;
-  color: var(--fg);
-  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--deep);
+  margin: 0;
+  font-weight: 500;
 }
-.research-section { margin-top: 18px; }
+.research-section { margin-top: 22px; }
 .research-heading {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--amber);
-  margin: 0 0 8px;
+  color: var(--deep);
+  border-bottom: 1px solid rgba(18, 53, 78, 0.2);
+  padding-bottom: 4px;
+  margin: 0 0 10px;
+}
+.research-card .about-text {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.research-card .about-text strong {
+  color: var(--deep);
+}
+.research-footer {
+  margin: 28px -28px -24px;
+  padding: 16px 32px;
+  background: var(--deep);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.research-footer-text {
+  color: var(--paper);
+  opacity: 0.85;
+}
+.research-close-btn {
+  background: var(--deep) !important;
+  color: var(--paper) !important;
+  border: 1px solid rgba(255, 244, 216, 0.3) !important;
 }
 
 /* ── Intel dock — live frame, dossier, study ─────────────────────────────── */

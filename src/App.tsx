@@ -34,6 +34,7 @@ import { ShareButton } from './components/ShareButton'
 import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
 import { ResearchPanel } from './components/ResearchPanel'
+import { applyWadaPlate, getPlateForCity, getPlate } from './lib/wada-engine'
 import { lookLabel, PRODUCT_VERSION } from './lib/city-reading'
 import { useCityRisk } from './hooks/useCityRisk'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -234,8 +235,17 @@ export default function App() {
   // whatever lens is active, so a manual choice persists across switches.
   useEffect(() => {
     if (activeCity.basemapDefault) setBasemap(activeCity.basemapDefault)
+    const cityPlate = getPlateForCity(activeCity.id)
+    useUIStore.getState().setActiveWadaPlateId(cityPlate.id)
+    applyWadaPlate(cityPlate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCity.id])
+
+  // Synchronize dynamic plate change
+  const activeWadaPlateId = useUIStore((s) => s.activeWadaPlateId)
+  useEffect(() => {
+    applyWadaPlate(getPlate(activeWadaPlateId))
+  }, [activeWadaPlateId])
 
   const anomalies = useAnomalies(bangkokMode)
 

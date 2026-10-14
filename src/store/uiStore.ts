@@ -24,6 +24,7 @@ interface UIStore {
   globeView: boolean
   forecastOpen: boolean
   intelOpen: boolean
+  activeWadaPlateId: number
 
   setGovernorMode: (v: boolean) => void
   toggleGovernorMode: () => void
@@ -45,6 +46,7 @@ interface UIStore {
   setGlobeView: (v: boolean) => void
   setForecastOpen: (v: boolean) => void
   setIntelOpen: (v: boolean) => void
+  setActiveWadaPlateId: (id: number) => void
 }
 
 export const useUIStore = create<UIStore>()((set) => ({
@@ -67,6 +69,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   globeView: false,
   forecastOpen: false,
   intelOpen: false,
+  activeWadaPlateId: 2,
 
   setGovernorMode: (v) => set({ governorMode: v }),
   toggleGovernorMode: () => set((s) => ({ governorMode: !s.governorMode })),
@@ -92,4 +95,5 @@ export const useUIStore = create<UIStore>()((set) => ({
   setGlobeView: (v) => set({ globeView: v }),
   setForecastOpen: (v) => set({ forecastOpen: v }),
   setIntelOpen: (v) => set({ intelOpen: v }),
+  setActiveWadaPlateId: (id) => set({ activeWadaPlateId: id }),
 }))

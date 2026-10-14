@@ -31,12 +31,15 @@ export function ResearchPanel() {
         aria-labelledby="research-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="about-close" onClick={() => setOpen(false)} aria-label="Close" title="Close">✕</button>
-        <div className="about-eyebrow">CITY HUB {PRODUCT_VERSION}</div>
-        <h2 id="research-title" className="research-title">Research</h2>
-        <p className="research-standfirst">
-          This is not a comparison of satellite photos. The photo is how you look. The bar is what we are telling you.
-        </p>
+        <button className="about-close research-close-btn" onClick={() => setOpen(false)} aria-label="Close" title="Close">✕</button>
+        <header className="research-header">
+          <div className="research-eyebrow">CITY HUB {PRODUCT_VERSION} · WADA READING ROOM</div>
+          <h2 id="research-title" className="research-title">Research</h2>
+          <p className="research-standfirst">
+            This is not a comparison of satellite photos. The photo is how you look. The bar is what we are telling you.
+          </p>
+        </header>
+
         {RESEARCH_SECTIONS.map((section) => (
           <section key={section.id} className="research-section">
             <h3 className="research-heading">{section.heading}</h3>
@@ -45,9 +48,11 @@ export function ResearchPanel() {
             ))}
           </section>
         ))}
-        <div className="about-footer-row">
-          <span className="about-footer-dim">Dr Non Arkara · non@nonarkara.org</span>
-        </div>
+
+        <footer className="research-footer">
+          <span className="research-footer-text">Dr Non Arkara · non@nonarkara.org</span>
+          <span className="research-footer-text">WADA PLATE 002 · YELLOW ORANGE &amp; DARK TYRIAN BLUE</span>
+        </footer>
       </div>
     </div>
   )

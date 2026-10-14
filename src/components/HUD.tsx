@@ -11,6 +11,7 @@ import { cachedFetch } from '../lib/cached-fetch'
 import { useUIStore } from '../store/uiStore'
 import { cityClaim, viewClause } from '../lib/city-reading'
 import { frameFromBounds, type FrameStats } from '../lib/viewport-math'
+import { getPlate } from '../lib/wada-engine'
 
 interface HUDProps {
   map: MapLibre | null
@@ -46,6 +47,8 @@ export function HUD({ map, activeCity }: HUDProps) {
   const [wx, setWx] = useState<CityWeather | null>(null)
   const [frame, setFrame] = useState<FrameStats | null>(null)
   const setResearchOpen = useUIStore((s) => s.setResearchOpen)
+  const activeWadaPlateId = useUIStore((s) => s.activeWadaPlateId)
+  const currentPlate = getPlate(activeWadaPlateId)
 
   // Fetch weather for the active city, refresh every 15 min
   useEffect(() => {
@@ -123,6 +126,18 @@ export function HUD({ map, activeCity }: HUDProps) {
         )}
         <span className="hud-sep" />
         <span className="hud-cell">{activeCity.hudClockLabel} {fmtClock(now, activeCity.timezone)}</span>
+        <span className="hud-sep" />
+        <span
+          className="hud-cell hud-cell-wada"
+          title={`Sanzo Wada Plate ${currentPlate.plateNumber}: ${currentPlate.colors.map((c) => c.name).join(' + ')}`}
+        >
+          <span className="hud-wada-swatches" aria-hidden>
+            {currentPlate.colors.map((c, i) => (
+              <span key={i} className="hud-wada-swatch" style={{ background: c.hex }} />
+            ))}
+          </span>
+          <span className="hud-wada-label">P.{currentPlate.plateNumber}</span>
+        </span>
       </div>
     </>
   )
