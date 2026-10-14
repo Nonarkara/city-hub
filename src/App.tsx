@@ -35,6 +35,7 @@ import { useShareableView } from './hooks/useShareableView'
 import { AboutModal } from './components/AboutModal'
 import { ResearchPanel } from './components/ResearchPanel'
 import { applyWadaPlate, getPlateForCity, getPlate } from './lib/wada-engine'
+import { PlanOverlay } from './components/PlanOverlay'
 import { lookLabel, PRODUCT_VERSION } from './lib/city-reading'
 import { useCityRisk } from './hooks/useCityRisk'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -145,6 +146,8 @@ export default function App() {
   const setIntelOpen = useUIStore((s) => s.setIntelOpen)
   const setAboutOpen = useUIStore((s) => s.setAboutOpen)
   const setResearchOpen = useUIStore((s) => s.setResearchOpen)
+  const planOpen = useUIStore((s) => s.planOpen)
+  const setPlanOpen = useUIStore((s) => s.setPlanOpen)
 
   // ── Onboarding modal ────────────────────────────────────────────────────────
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -588,6 +591,7 @@ export default function App() {
               <div className="basemap-menu-backdrop" onClick={() => setMoreOpen(false)} aria-hidden />
               <ul className="basemap-menu topbar-more-menu" role="menu">
                 <li className="basemap-menu-title" role="presentation">More</li>
+                <MoreItem label={planOpen ? 'Close the plan' : 'Plan'} onClick={() => { setPlanOpen(!planOpen); setMoreOpen(false) }} />
                 <MoreItem label={intelOpen ? 'Close this view' : 'This view'} onClick={() => { setIntelOpen(!intelOpen); setMoreOpen(false) }} />
                 <MoreItem label={forecastOpen ? 'Close the next 48 hours' : 'Next 48 hours'} onClick={() => { setForecastOpen(!forecastOpen); setMoreOpen(false) }} />
                 <MoreItem label={chatOpen ? 'Close ask' : 'Ask'} onClick={() => { setChatOpen(!chatOpen); setMoreOpen(false) }} />
@@ -620,6 +624,7 @@ export default function App() {
           create a containing block that would otherwise pin it to 44px. */}
       <AboutModal />
       <ResearchPanel />
+      <PlanOverlay city={activeCity} />
 
       <InsightPanel
         open={insightOpen}

@@ -20,6 +20,7 @@ interface UIStore {
   actionCenterOpen: boolean
   aboutOpen: boolean
   researchOpen: boolean
+  planOpen: boolean
   activeOverlays: Set<string>
   globeView: boolean
   forecastOpen: boolean
@@ -42,6 +43,7 @@ interface UIStore {
   setActionCenterOpen: (v: boolean) => void
   setAboutOpen: (v: boolean) => void
   setResearchOpen: (v: boolean) => void
+  setPlanOpen: (v: boolean) => void
   toggleOverlay: (id: string) => void
   setGlobeView: (v: boolean) => void
   setForecastOpen: (v: boolean) => void
@@ -65,6 +67,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   actionCenterOpen: false,
   aboutOpen: false,
   researchOpen: false,
+  planOpen: false,
   activeOverlays: new Set<string>(),
   globeView: false,
   forecastOpen: false,
@@ -87,6 +90,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   setActionCenterOpen: (v) => set({ actionCenterOpen: v }),
   setAboutOpen: (v) => set({ aboutOpen: v }),
   setResearchOpen: (v) => set({ researchOpen: v }),
+  setPlanOpen: (v) => set({ planOpen: v }),
   toggleOverlay: (id) => set((s) => {
     const next = new Set(s.activeOverlays)
     if (next.has(id)) next.delete(id); else next.add(id)
