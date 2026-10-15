@@ -62,7 +62,9 @@ export const useUIStore = create<UIStore>()((set) => ({
   basemapMenuOpen: false,
   activeInsight: null,
   activeDate: new Date().toISOString().split('T')[0],
-  splitOpen: false,
+  // Comparison is the product's primary surface. The full single-city command
+  // center remains one click away through the Compare toggle.
+  splitOpen: true,
   chatOpen: false,
   actionCenterOpen: false,
   aboutOpen: false,

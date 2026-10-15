@@ -48,12 +48,13 @@ export const STRESS_COLOR: Record<StressLevel, string> = {
   high:     '#ef4444',
 }
 
-export function useCityStress(): StressMap {
+export function useCityStress(enabled = true): StressMap {
   const customCities = useCityStore((s) => s.customCities)
   const allCities    = useMemo(() => [...CITIES, ...customCities], [customCities])
   const [stressMap, setStressMap] = useState<StressMap>({})
 
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
 
     const load = async () => {
@@ -112,7 +113,7 @@ export function useCityStress(): StressMap {
     load()
     const timer = setInterval(load, POLL_MS)
     return () => { cancelled = true; clearInterval(timer) }
-  }, [allCities.map((c) => c.id).join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, allCities.map((c) => c.id).join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return stressMap
 }

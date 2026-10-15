@@ -1373,6 +1373,52 @@
   background: #04060b;
 }
 
+.split-loading {
+  position: fixed;
+  top: 44px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-frame);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #04060b;
+}
+.split-loading-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  background: rgba(245, 245, 240, 0.08);
+}
+.split-loading-grid span {
+  background: #080b11;
+  animation: splitLoadingPulse 1.2s ease-in-out infinite alternate;
+}
+.split-loading-grid span:last-child { animation-delay: 0.18s; }
+.split-loading-status {
+  position: relative;
+  z-index: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  background: rgba(4, 6, 11, 0.94);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+.split-loading--error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@keyframes splitLoadingPulse {
+  from { background: #080b11; }
+  to { background: #10151d; }
+}
+
 /* CSS grid for the pane area — fills all space above the toolbar */
 .split-grid {
   flex: 1;
@@ -1425,20 +1471,9 @@
     right: 48px;
     top: 40px;
   }
-  .split-analysis-bar {
-    overflow-x: auto;
-    justify-content: flex-start;
-  }
-  .split-analysis-caveat { display: none; }
-  .split-toolbar {
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding: 6px 8px;
-    overflow-x: auto;
-  }
-  .split-traffic-btn {
-    margin-left: 0;
-    width: auto;
+  .split-loading-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1747,6 +1782,59 @@
 }
 .split-toolbar-btn:hover { border-color: var(--amber); color: var(--amber); }
 .split-toolbar-btn--exit:hover { border-color: #e5484d; color: #e5484d; }
+
+/* These overrides follow the base controls so the mobile grid wins the
+   cascade. Both metric selectors remain inside the viewport at 360px. */
+@media (max-width: 767px) {
+  .split-analysis-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+    padding: 7px 8px;
+    overflow: visible;
+  }
+  .split-analysis-title { grid-column: 1 / -1; }
+  .split-analysis-field {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    overflow: hidden;
+    flex-shrink: 1;
+  }
+  .split-analysis-field select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .split-analysis-vs { text-align: center; }
+  .split-correlation-plot {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .split-analysis-result {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .split-analysis-bar:has(.split-correlation-plot) .split-analysis-result {
+    grid-column: 2 / -1;
+  }
+  .split-analysis-result span { white-space: normal; }
+  .split-analysis-caveat { display: none; }
+  .split-toolbar {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow-x: auto;
+  }
+  .split-traffic-btn {
+    margin-left: 0;
+    width: auto;
+  }
+}
 
 /* ── City Chat — local Ollama assistant ─────────────────────────────────── */
 .citychat {
@@ -2061,6 +2149,17 @@
   .topbar-insight-btn { display: none; }
   .topbar-split-btn { display: flex; margin-left: 0; }
   .data-chip-label { display: none; }
+
+  /* Each compare pane already owns its city and lens. Keep the phone header
+     to the two controls that still matter instead of clipping dashboard UI. */
+  :root:has(.split-compare) .topbar > :not(.topbar-wordmark):not(.topbar-spacer):not(.topbar-split-btn) {
+    display: none;
+  }
+  :root:has(.split-compare) .topbar-wordmark {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  :root:has(.split-compare) .topbar-brand-mark { flex-shrink: 0; }
 }
 
 /* Tablet (768–1024) — hide Cmd+K to save horizontal space for tabs */

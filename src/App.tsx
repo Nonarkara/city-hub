@@ -92,6 +92,27 @@ function MoreItem({ label, onClick }: { label: string; onClick: () => void }) {
   )
 }
 
+function CompareLoading() {
+  return (
+    <div className="split-loading" role="status" aria-live="polite">
+      <div className="split-loading-grid" aria-hidden>
+        <span />
+        <span />
+      </div>
+      <div className="split-loading-status">PREPARING CITY COMPARISON</div>
+    </div>
+  )
+}
+
+function CompareFailure({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="split-loading split-loading--error" role="alert">
+      <div className="split-loading-status">COMPARISON COULD NOT START</div>
+      <button type="button" className="split-toolbar-btn" onClick={onClose}>RETURN TO MAP</button>
+    </div>
+  )
+}
+
 export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
 
@@ -250,7 +271,7 @@ export default function App() {
     applyWadaPlate(getPlate(activeWadaPlateId))
   }, [activeWadaPlateId])
 
-  const anomalies = useAnomalies(bangkokMode)
+  const anomalies = useAnomalies(bangkokMode && !splitOpen)
 
   const toggleLayer = useCallback((id: string) => {
     trackEvent('toggle_layer', { layer_id: id })
@@ -267,8 +288,8 @@ export default function App() {
   }, [setActiveCity, setSelectedDistrict, clearSelection])
 
   const tokenAvailable = hasMapboxToken()
-  const cityRisk   = useCityRisk()
-  const cityStress = useCityStress()
+  const cityRisk   = useCityRisk(!splitOpen)
+  const cityStress = useCityStress(!splitOpen)
   const sourceCount = sourceCountForCity(activeCity)
   useEscalationAlerts(cityRisk, allCities)   // fires toasts via toastStore on escalation
 
@@ -300,30 +321,40 @@ export default function App() {
   const temporalBasemapActive = isTemporalBasemap(basemap)
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<CompareLoading />}>
       <ToastSystem />
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
 
-      <MapView city={activeCity} basemap={basemap} activeDate={activeDate} globeView={globeView} onMapReady={setMap} />
+      {!splitOpen && (
+        <MapView city={activeCity} basemap={basemap} activeDate={activeDate} globeView={globeView} onMapReady={setMap} />
+      )}
 
-      {splitOpen && <ErrorBoundary fallback={null}><SplitCompare /></ErrorBoundary>}
+      {splitOpen && (
+        <ErrorBoundary fallback={<CompareFailure onClose={() => setSplitOpen(false)} />}>
+          <Suspense fallback={<CompareLoading />}>
+            <SplitCompare />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
-      {chatOpen && <ErrorBoundary fallback={null}><CityChat activeCity={activeCity} /></ErrorBoundary>}
+      {chatOpen && <ErrorBoundary fallback={null}><Suspense fallback={null}><CityChat activeCity={activeCity} /></Suspense></ErrorBoundary>}
 
-      {forecastOpen && <ErrorBoundary fallback={null}><ForecastPanel activeCity={activeCity} /></ErrorBoundary>}
+      {forecastOpen && <ErrorBoundary fallback={null}><Suspense fallback={null}><ForecastPanel activeCity={activeCity} /></Suspense></ErrorBoundary>}
 
       {!splitOpen && <SituationBrief allCities={allCities} />}
       {!splitOpen && <CopernicusAlert />}
       {!splitOpen && <DisasterAlerts />}
-      {bangkokMode && <SmokeConeOverlay map={map} activeCity={activeCity} visible={smokeVisible} />}
+      {!splitOpen && bangkokMode && <SmokeConeOverlay map={map} activeCity={activeCity} visible={smokeVisible} />}
 
 
-      <HUD
-        map={map}
-        activeCity={activeCity}
-        activeLayerCount={bangkokMode ? activeLayers.size : 0}
-        sourceCount={sourceCount}
-      />
+      {!splitOpen && (
+        <HUD
+          map={map}
+          activeCity={activeCity}
+          activeLayerCount={bangkokMode ? activeLayers.size : 0}
+          sourceCount={sourceCount}
+        />
+      )}
 
       {!splitOpen && (
         <IntelDrawer
@@ -358,23 +389,23 @@ export default function App() {
         onSetChat={setChatOpen}
       />
 
-      {bangkokMode && <FreshnessPanel />}
-      <TimeScrubber visible={bangkokMode && governorMode && !selectedDistrict && !showComparison} />
-      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={temporalBasemapActive && !selectedDistrict && !showComparison} />
-      {bangkokMode && governorMode && !showComparison && (
+      {!splitOpen && bangkokMode && <FreshnessPanel />}
+      <TimeScrubber visible={!splitOpen && bangkokMode && governorMode && !selectedDistrict && !showComparison} />
+      <TimelineSlider activeDate={activeDate} onChange={setActiveDate} visible={!splitOpen && temporalBasemapActive && !selectedDistrict && !showComparison} />
+      {!splitOpen && bangkokMode && governorMode && !showComparison && (
         <AnomalyPins map={map} anomalies={anomalies} cityCenter={activeCity.center} />
       )}
-      {bangkokMode && <ASEANStrip />}
+      {!splitOpen && bangkokMode && <ASEANStrip />}
 
-      {bangkokMode && <CounterpartStrip activeCity={activeCity} />}
+      {!splitOpen && bangkokMode && <CounterpartStrip activeCity={activeCity} />}
 
-      {bangkokMode && compareMode && (
+      {!splitOpen && bangkokMode && compareMode && (
         <div className="multicity-chart-wrap">
           <MultiCityChart />
         </div>
       )}
 
-      {bangkokMode && !compareMode && (
+      {!splitOpen && bangkokMode && !compareMode && (
         <div className="small-multiples-wrap">
           <SmallMultiplesGrid activeCity={activeCity} />
         </div>
@@ -382,9 +413,9 @@ export default function App() {
 
       {appDraft && <DraftModal draft={appDraft} onClose={() => setAppDraft(null)} />}
 
-      <CityFactsCard activeCity={activeCity} />
+      {!splitOpen && <CityFactsCard activeCity={activeCity} />}
 
-      <ActiveInsightBanner active={activeInsight} activeCity={activeCity} onClear={clearInsight} />
+      {!splitOpen && <ActiveInsightBanner active={activeInsight} activeCity={activeCity} onClear={clearInsight} />}
 
       <header className="topbar">
         <span className="topbar-wordmark" title="Dr Non's City Hub — read the city, not the photo">
@@ -634,30 +665,36 @@ export default function App() {
       />
 
       <ErrorBoundary fallback={null}>
-        <CityOnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+        <Suspense fallback={null}>
+          <CityOnboardingModal open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+        </Suspense>
       </ErrorBoundary>
 
-      <CityRail
-        activeCity={activeCity}
-        onDistrictSelect={bangkokMode ? setSelectedDistrict : undefined}
-        selectedDistrict={selectedDistrict}
-      />
+      {!splitOpen && (
+        <CityRail
+          activeCity={activeCity}
+          onDistrictSelect={bangkokMode ? setSelectedDistrict : undefined}
+          selectedDistrict={selectedDistrict}
+        />
+      )}
 
-      <MobileStrip
-        activeCity={activeCity}
-        onAddCity={() => setOnboardingOpen(true)}
-        open={mobileSheetOpen}
-        onOpenChange={setMobileSheetOpen}
-        onSelect={(city) => {
-          setActiveCity(city)
-          setSelectedDistrict(null)
-          setMobileSheetOpen(false)
-        }}
-      />
+      {!splitOpen && (
+        <MobileStrip
+          activeCity={activeCity}
+          onAddCity={() => setOnboardingOpen(true)}
+          open={mobileSheetOpen}
+          onOpenChange={setMobileSheetOpen}
+          onSelect={(city) => {
+            setActiveCity(city)
+            setSelectedDistrict(null)
+            setMobileSheetOpen(false)
+          }}
+        />
+      )}
 
       {!splitOpen && (
         showComparison ? (
-          <ErrorBoundary fallback={null}><ComparisonPanel /></ErrorBoundary>
+          <ErrorBoundary fallback={null}><Suspense fallback={null}><ComparisonPanel /></Suspense></ErrorBoundary>
         ) : bangkokMode ? (
           districtComparePair ? (
             <DistrictComparePanel />
@@ -665,11 +702,13 @@ export default function App() {
             ? (selectedDistrict
                 ? (
                   <ErrorBoundary fallback={null}>
-                    <DistrictPanel
-                      district={selectedDistrict}
-                      onClose={() => setSelectedDistrict(null)}
-                      onDraft={setAppDraft}
-                    />
+                    <Suspense fallback={null}>
+                      <DistrictPanel
+                        district={selectedDistrict}
+                        onClose={() => setSelectedDistrict(null)}
+                        onDraft={setAppDraft}
+                      />
+                    </Suspense>
                   </ErrorBoundary>
                 )
                 : <AlertPanel />

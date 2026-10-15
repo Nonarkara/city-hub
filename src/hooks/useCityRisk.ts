@@ -17,13 +17,14 @@ const POLL_MS = 10 * 60_000
 
 export type RiskMap = Record<string, RiskLevel>
 
-export function useCityRisk(): RiskMap {
+export function useCityRisk(enabled = true): RiskMap {
   const customCities = useCityStore((s) => s.customCities)
   const allCities = useMemo(() => [...CITIES, ...customCities], [customCities])
 
   const [riskMap, setRiskMap] = useState<RiskMap>({})
 
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
 
     const load = async () => {
@@ -52,7 +53,7 @@ export function useCityRisk(): RiskMap {
     load()
     const timer = setInterval(load, POLL_MS)
     return () => { cancelled = true; clearInterval(timer) }
-  }, [allCities.map((c) => c.id).join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, allCities.map((c) => c.id).join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return riskMap
 }

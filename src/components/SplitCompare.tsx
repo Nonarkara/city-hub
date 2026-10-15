@@ -431,6 +431,7 @@ const DEFAULT_LENSES: BasemapId[] = [
 export function SplitCompare() {
   const customCities = useCityStore((s) => s.customCities)
   const activeCity   = useCityStore((s) => s.activeCity)
+  const compareSet   = useCityStore((s) => s.compareSet)
   const setSplitOpen = useUIStore((s) => s.setSplitOpen)
   const activeDate   = useUIStore((s) => s.activeDate)
 
@@ -446,15 +447,34 @@ export function SplitCompare() {
   const [xMetric, setXMetric] = useState<CompareMetricId>('green')
   const [yMetric, setYMetric] = useState<CompareMetricId>('gdp-pc')
 
-  // Start with two different cities on the same imagery for an apples-to-apples
-  // urban-form comparison. Lens/time comparisons remain available via SYNC LENS.
+  // Start from the user's pinned comparison when one exists. Otherwise pair
+  // the active city with Kranj, the project's established second-city case,
+  // then fall back to the next available city.
   const [panes, setPanes] = useState<PaneState[]>(() => {
-    const otherCity = cities.find((city) => city.id !== activeCity.id) ?? activeCity
-    return [
-      { cityId: activeCity.id, basemap: 'esri-imagery', date: today },
-      { cityId: otherCity.id, basemap: 'esri-imagery', date: today },
-    ]
+    const pinned = compareSet
+      .map((id) => cities.find((city) => city.id === id))
+      .filter((city): city is CityConfig => !!city)
+      .slice(0, 8)
+    const seeded = pinned.length >= MIN_PANES
+      ? pinned
+      : [
+          activeCity,
+          cities.find((city) => city.id === 'kranj' && city.id !== activeCity.id)
+            ?? cities.find((city) => city.id !== activeCity.id)
+            ?? activeCity,
+        ]
+    return seeded.map((city) => ({ cityId: city.id, basemap: 'esri-imagery', date: today }))
   })
+
+  const previousActiveCityId = useRef(activeCity.id)
+  useEffect(() => {
+    if (previousActiveCityId.current === activeCity.id) return
+    previousActiveCityId.current = activeCity.id
+    if (compareSet.length >= MIN_PANES) return
+    setPanes((prev) => prev.map((pane, index) => (
+      index === 0 ? { ...pane, cityId: activeCity.id } : pane
+    )))
+  }, [activeCity.id, compareSet.length])
 
   const count = panes.length
 

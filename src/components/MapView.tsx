@@ -320,7 +320,7 @@ interface MapViewProps {
   activeDate?: string
   /** Render the map as a 3D globe instead of flat mercator. */
   globeView?: boolean
-  onMapReady?: (map: MapLibreMap) => void
+  onMapReady?: (map: MapLibreMap | null) => void
 }
 
 export const MapView = memo(function MapView({ city, basemap, activeDate, globeView, onMapReady }: MapViewProps) {
@@ -354,6 +354,7 @@ export const MapView = memo(function MapView({ city, basemap, activeDate, globeV
     return () => {
       map.remove()
       mapRef.current = null
+      onMapReady?.(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
