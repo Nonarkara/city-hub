@@ -86,7 +86,8 @@ export function applyWadaPlate(plate: WadaPlate) {
   root.setAttribute('data-wada-plate', plate.plateNumber)
 
   // Primary chord tokens
-  root.style.setProperty('--amber', plate.dominant)
+  // Navigation keeps one meaning across cities; the plate belongs to atmosphere.
+  root.style.setProperty('--amber', '#f99d1b')
   root.style.setProperty('--chord', plate.dominant)
   root.style.setProperty('--deep', plate.counter)
 

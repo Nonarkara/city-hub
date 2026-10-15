@@ -3,6 +3,7 @@ import { setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import './index.css'
+import './city-atlas.css'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 

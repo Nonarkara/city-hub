@@ -255,6 +255,23 @@ test('Overpass timeout skips to the next mirror without a rate-limit backoff', a
   expect(sleeps).toEqual([])
 })
 
+test('Overpass partial HTTP 200 responses are not cached and Retry can recover', async () => {
+  let recovered = false
+  let calls = 0
+  const client = new OverpassClient({
+    mirrors: ['https://example.test/interpreter'],
+    fetchImpl: async () => {
+      calls += 1
+      return Response.json(recovered ? { elements: [] } : { elements: [], remark: 'runtime error: timeout' })
+    },
+  })
+  await expect(client.query('retry-query')).rejects.toThrow('Overpass unavailable')
+  recovered = true
+  await expect(client.query('retry-query')).resolves.toEqual({ elements: [] })
+  await client.query('retry-query')
+  expect(calls).toBe(2)
+})
+
 test('a down Overpass degrades to an empty place layer', async () => {
   installOverpassClient(new OverpassClient({
     clock: { now: () => 0, sleep: async () => {} },

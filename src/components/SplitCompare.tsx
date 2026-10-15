@@ -23,6 +23,7 @@ import { fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
 import { cacheTimestamp } from '../lib/cached-fetch'
 import { CityTwinWorkbench } from './CityTwinWorkbench'
+import { CITY_ELEMENTS, fetchCityImage, studyBounds, type CityElement, type CityImage } from '../data/city-image'
 import { freshnessLabel } from '../lib/freshness'
 import { pearson } from '../lib/stats'
 import {
@@ -268,7 +269,7 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
 // Single map pane
 // ─────────────────────────────────────────────────────────────────────────────
 function CompareMapPane({
-  state, onChange, onRemove, onExplore, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading,
+  state, onChange, onRemove, onExplore, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading, cityElement,
 }: {
   state:          PaneState
   onChange:       (next: PaneState) => void
@@ -281,6 +282,7 @@ function CompareMapPane({
   trafficOn:      boolean
   live:           CompareSnapshot | null
   liveLoading:    boolean
+  cityElement:    CityElement | null
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<MapLibreMap | null>(null)
@@ -288,8 +290,12 @@ function CompareMapPane({
   const curDate      = useRef(state.date)
   const curCity      = useRef(state.cityId)
   const trafficOnRef = useRef(trafficOn)
+  const [image, setImage] = useState<CityImage | null>(null)
+  const [imageError, setImageError] = useState(false)
+  const [retryImage, setRetryImage] = useState(0)
 
   const city = cities.find((c) => c.id === state.cityId) ?? cities[0]
+  const imageFeatures = image?.collection.features.filter((feature) => feature.properties?.kind === cityElement) ?? []
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -314,6 +320,38 @@ function CompareMapPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!cityElement) return
+    let cancelled = false
+    setImage(null)
+    setImageError(false)
+    fetchCityImage(city).then((result) => { if (!cancelled) setImage(result) })
+      .catch(() => { if (!cancelled) setImageError(true) })
+    return () => { cancelled = true }
+  }, [city.id, !!cityElement, retryImage])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !cityElement) return
+    const draw = () => {
+      if (!map.isStyleLoaded()) return
+      if (!map.getSource('city-image')) map.addSource('city-image', {
+        type: 'geojson', data: image?.collection ?? { type: 'FeatureCollection', features: [] },
+        attribution: '© OpenStreetMap contributors',
+      })
+      else (map.getSource('city-image') as import('maplibre-gl').GeoJSONSource).setData(image?.collection ?? { type: 'FeatureCollection', features: [] })
+      if (!map.getLayer('city-image-context')) map.addLayer({ id: 'city-image-context', source: 'city-image', type: 'line', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#b3bcbf', 'line-width': 1 } })
+      const filter: import('maplibre-gl').FilterSpecification = ['==', ['get', 'kind'], cityElement]
+      if (!map.getLayer('city-image-lines')) map.addLayer({ id: 'city-image-lines', source: 'city-image', type: 'line', filter, paint: { 'line-color': '#8a4b08', 'line-width': 3, 'line-opacity': 0.95 } })
+      else map.setFilter('city-image-lines', filter)
+      if (!map.getLayer('city-image-points')) map.addLayer({ id: 'city-image-points', source: 'city-image', type: 'circle', filter: ['all', filter, ['==', ['geometry-type'], 'Point']], paint: { 'circle-color': '#8a4b08', 'circle-radius': cityElement === 'districts' ? 9 : 5, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
+      else map.setFilter('city-image-points', ['all', filter, ['==', ['geometry-type'], 'Point']])
+    }
+    draw()
+    map.on('style.load', draw)
+    return () => { map.off('style.load', draw) }
+  }, [image, cityElement])
+
   // Toggle traffic without changing the basemap
   useEffect(() => {
     trafficOnRef.current = trafficOn
@@ -326,19 +364,27 @@ function CompareMapPane({
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    if (cityElement) {
+      map.setStyle({ version: 8, sources: {}, layers: [{ id: 'study-ground', type: 'background', paint: { 'background-color': '#f1f3f2' } }] })
+      const [w, s, e, n] = studyBounds(city)
+      map.fitBounds([[w, s], [e, n]], { padding: 28, duration: 0 })
+      return
+    }
     const bmChanged = curBasemap.current !== state.basemap
     const dtChanged = curDate.current !== state.date
     const temporal  = isTemporalBasemap(state.basemap)
-    if (!bmChanged && !(temporal && dtChanged)) return
+    if (!bmChanged && !(temporal && dtChanged) && map.getLayer('study-ground') == null) return
     curBasemap.current = state.basemap
     curDate.current    = state.date
     map.setStyle(getBasemapDef(state.basemap, state.date).style)
-  }, [state.basemap, state.date])
+    map.jumpTo({ center: city.center, zoom: city.zoom })
+  }, [state.basemap, state.date, cityElement, city.id])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || curCity.current === state.cityId) return
     curCity.current = state.cityId
+    if (cityElement) return
     map.flyTo({ center: city.center, zoom: city.zoom, duration: 1100, essential: true })
   }, [state.cityId, city.center, city.zoom])
 
@@ -351,7 +397,14 @@ function CompareMapPane({
       {/* Pane index badge */}
       <div className="split-pane-badge">{index + 1}</div>
 
-      <PaneMetricDock city={city} live={live} loading={liveLoading} />
+      {!cityElement && <PaneMetricDock city={city} live={live} loading={liveLoading} />}
+      {cityElement && <div className="city-image-caption" aria-live="polite">
+        <strong>{city.name}</strong>
+        <span>{imageError ? 'Public map data unavailable' : !image ? 'Reading OpenStreetMap…' : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+        {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}
+        {image && <small>{[...new Set(imageFeatures.map((feature) => feature.properties?.name))].slice(0, 3).join(' / ') || 'No matching features in this study window'}</small>}
+        {image && <small>OSM reference · retrieved {freshnessLabel(image.fetchedAt)}{image.sourceTime ? ` · source ${image.sourceTime.slice(0, 10)}` : ' · source date unavailable'}</small>}
+      </div>}
 
       {/* Close button — only shown when canRemove */}
       {canRemove && (
@@ -380,7 +433,7 @@ function CompareMapPane({
           ))}
         </select>
 
-        <select
+        {!cityElement && <select
           className="split-select"
           value={state.basemap}
           onChange={(e) => onChange({ ...state, basemap: e.target.value as BasemapId })}
@@ -399,9 +452,9 @@ function CompareMapPane({
               })}
             </optgroup>
           ))}
-        </select>
+        </select>}
 
-        {temporal && (
+        {temporal && !cityElement && (
           <div className="split-pane-date">
             <input
               className="split-date-range"
@@ -451,6 +504,7 @@ export function SplitCompare() {
   const [yMetric, setYMetric] = useState<CompareMetricId>('gdp-pc')
   const [explorerCityId, setExplorerCityId] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [cityElement, setCityElement] = useState<CityElement | null>(null)
   useEffect(() => {
     const timer = setInterval(() => setRefreshTick((tick) => tick + 1), 10 * 60_000)
     return () => clearInterval(timer)
@@ -590,6 +644,14 @@ export function SplitCompare() {
 
   return (
     <div className="split-compare">
+      <div className="city-image-nav">
+        <button type="button" className="city-image-mode" aria-pressed={cityElement !== null} onClick={() => setCityElement(cityElement ? null : 'paths')}>City image</button>
+        {cityElement ? <>
+          <nav aria-label="Lynch city elements">{CITY_ELEMENTS.map((element) => <button type="button" key={element.id} aria-pressed={cityElement === element.id} onClick={() => setCityElement(element.id)}>{element.label}</button>)}</nav>
+          <span className="city-image-scale">Approx. 4 × 4 km study windows</span>
+        </> : <span className="city-image-intro">Compare the places people move through, recognise and remember.</span>}
+      </div>
+      {cityElement && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
       <div className="twin-map-workspace">
       <div className={gridClass}>
         {panes.map((pane, i) => (
@@ -606,6 +668,7 @@ export function SplitCompare() {
             trafficOn={trafficOn}
             live={liveByCity[pane.cityId] ?? null}
             liveLoading={liveLoading}
+            cityElement={cityElement}
           />
         ))}
       </div>

@@ -75,6 +75,8 @@ export class OverpassClient {
         })
         if (res.ok) {
           const data = await res.json() as unknown
+          // Overpass can return HTTP 200 with a runtime error and partial data.
+          if (!data || typeof data !== 'object' || !Array.isArray((data as { elements?: unknown }).elements) || (data as { remark?: unknown }).remark) continue
           this.cache.set(query, { at: this.clock.now(), data })
           return data
         }
