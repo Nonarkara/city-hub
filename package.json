@@ -3,6 +3,27 @@
   "private": true,
   "version": "0.9.4",
   "license": "MIT",
+  "description": "Open civic intelligence and planning tool. Models a city as systems with capacity and demand, over live air, water, traffic, satellite and civic-report feeds. Every number declares whether it is measured, derived or assumed.",
+  "homepage": "https://hub.nonarkara.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nonarkara/city-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nonarkara/city-hub/issues"
+  },
+  "keywords": [
+    "civic-tech",
+    "open-data",
+    "smart-city",
+    "urban-analytics",
+    "gis",
+    "maplibre",
+    "satellite",
+    "air-quality",
+    "bangkok",
+    "openstreetmap"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -15,9 +15,19 @@ This is **not** an official product of BMA, DEPA, or any government. It is indep
 
 ## What this is
 
-City Hub is a replicable **civic intelligence dashboard**. Bangkok is the full-tier city (`tier: 'full'` in `src/config/cities.ts`). Other cities in that same registry — Chiang Mai, Phuket, Singapore, Kuching, Kranj, Ljubljana, and more — run on global open sources (`tier: 'lite'`). Adding a city is one config object; pointing the map at a typed name uses OpenStreetMap Nominatim for a session-only view.
+City Hub is a replicable **civic intelligence and planning tool**. Bangkok is the full-tier city (`tier: 'full'` in `src/config/cities.ts`). Other cities in that same registry — Chiang Mai, Phuket, Singapore, Kuching, Kranj, Ljubljana, and more — run on global open sources (`tier: 'lite'`). Adding a city is one config object; pointing the map at a typed name uses OpenStreetMap Nominatim for a session-only view.
 
 It exists so a resident, journalist, or city operator can open one tab and see **what the sensors say next to what the press says**, with every figure cited. It is not a brochure dashboard. Layers that are pending, historical, mocked, or key-gated say so in `src/config/bangkok-layers.ts`.
+
+**Since v7** the top bar carries three actions — *Compare*, *Look*, *Research* —
+and everything else lives under *More*. The line under the title is the finding
+for the current city; clicking it opens the argument. **More → Plan** models the
+city as eight systems with capacity and demand, says what to do about the ones
+going negative, and lists the assumptions that would change the ranking. Every
+coefficient on that panel is marked `MEASURED`, `DERIVED` or `ASSUMED`.
+
+Reading the code cold? Start at **[SYSTEM.md](SYSTEM.md)** — how the layers fit,
+what the data contracts are, and why the OSM traffic goes through a proxy.
 
 The product name in the UI is **Dr Non's City Hub**. `package.json` version is `0.9.4`. GitHub description: *Bangkok civic intelligence hub — live PM2.5, satellite, alerts. Independent of any vendor platform.*
 
@@ -206,8 +216,13 @@ From the previous README and `context.md` (Vite inlines `VITE_*` at **build** ti
 
 ```bash
 npm run build
-npx wrangler pages deploy dist --project-name city-hub --branch main
+npx wrangler pages deploy dist --project-name city-hub --branch main \
+  --commit-hash=$(git rev-parse --short HEAD) \
+  --commit-message="$(git log -1 --pretty=%s)"
 ```
+
+`functions/` is bundled with the Pages deploy automatically — the Nominatim and
+Overpass proxies ship with the static app, no separate deploy step.
 
 Cloudflare Pages Git integration: framework preset **Vite**, build command `npm run build`, output `dist`. Set `VITE_MAPBOX_ACCESS_TOKEN` and `VITE_PROXY_URL` (and any other `VITE_*` you need) in Pages **build** environment variables for Production and Preview.
 
@@ -231,10 +246,12 @@ Documented public host — also the GitHub repository homepage:
 
 | Doc | What it is |
 | --- | --- |
+| **[SYSTEM.md](SYSTEM.md)** | **How the system fits together — read this before changing a fetcher or a contract** |
 | [STORY.md](STORY.md) | Why the UNL tiles were dropped; vendor independence |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to run a fork and what pull requests we want |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 | [LICENSE](LICENSE) | MIT — GitHub-detectable |
+| [docs/DESIGN-AUDIT-LYNCH.md](docs/DESIGN-AUDIT-LYNCH.md) | The five Lynch lenses, and why OSM features are candidate evidence rather than a mental map |
 | [docs/hero-banner.png](docs/hero-banner.png) | Public README hero (this banner) |
 | [docs/UNL-DEPENDENCY-INVENTORY.md](docs/UNL-DEPENDENCY-INVENTORY.md) | What UNL did vs what replaced it (historical; some env names in it are obsolete) |
 | [docs/IMPLEMENTATION-2026-05-26.md](docs/IMPLEMENTATION-2026-05-26.md) | Air4Thai, TMD seismic, Thaiwater, TomTom, Airbnb, correlation engine |
