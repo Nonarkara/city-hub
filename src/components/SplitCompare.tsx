@@ -292,6 +292,11 @@ function CompareMapPane({
   const trafficOnRef = useRef(trafficOn)
   const [image, setImage] = useState<CityImage | null>(null)
   const [imageError, setImageError] = useState(false)
+  // The city-image query is a real 40–60 seconds of upstream work the first time
+  // a city is asked for, then cached for 24h. Show elapsed time so a long wait
+  // reads as work in progress rather than a hang — and so a user who does not
+  // want to wait can go and use the satellite view instead.
+  const [imageWaitMs, setImageWaitMs] = useState(0)
   const [retryImage, setRetryImage] = useState(0)
 
   const city = cities.find((c) => c.id === state.cityId) ?? cities[0]
@@ -325,9 +330,15 @@ function CompareMapPane({
     let cancelled = false
     setImage(null)
     setImageError(false)
-    fetchCityImage(city).then((result) => { if (!cancelled) setImage(result) })
-      .catch(() => { if (!cancelled) setImageError(true) })
-    return () => { cancelled = true }
+    setImageWaitMs(0)
+    // Tick while waiting so the elapsed figure is honest rather than frozen.
+    const startedAt = Date.now()
+    const tick = setInterval(() => {
+      if (!cancelled) setImageWaitMs(Date.now() - startedAt)
+    }, 1000)
+    fetchCityImage(city).then((result) => { if (!cancelled) { setImage(result); setImageWaitMs(0) } })
+      .catch(() => { if (!cancelled) { setImageError(true); setImageWaitMs(0) } })
+    return () => { cancelled = true; clearInterval(tick) }
   }, [city.id, !!cityElement, retryImage])
 
   useEffect(() => {
@@ -400,9 +411,28 @@ function CompareMapPane({
       {!cityElement && <PaneMetricDock city={city} live={live} loading={liveLoading} />}
       {cityElement && <div className="city-image-caption" aria-live="polite">
         <strong>{city.name}</strong>
-        <span>{imageError ? 'Public map data unavailable' : !image ? 'Reading OpenStreetMap…' : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+        <span>{imageError
+          ? 'Public map data unavailable'
+          : !image
+            ? `Reading OpenStreetMap… ${imageWaitMs > 3000 ? `${Math.round(imageWaitMs / 1000)}s` : ''}`.trim()
+            : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
         {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}
-        {image && <small>{[...new Set(imageFeatures.map((feature) => feature.properties?.name))].slice(0, 3).join(' / ') || 'No matching features in this study window'}</small>}
+        {!imageError && !image && <small>First read of a city takes up to a minute. It is then kept for a day. The satellite view underneath is unaffected.</small>}
+        {image && (
+          <small>
+            {[...new Set(imageFeatures.map((feature) => feature.properties?.name))]
+              .filter((name): name is string => typeof name === 'string' && name.length > 0)
+              .slice(0, 3)
+              .join(' / ') || (
+                // A truncated fetch that found nothing is NOT evidence that the
+                // city lacks this element — it is evidence the sample stopped
+                // before reaching it. Say which one this is.
+                image.truncated
+                  ? 'No match inside the retrieved sample. The read was cut off before covering the whole study window, so absence here is not absence in the city.'
+                  : 'No matching features in this study window.'
+              )}
+          </small>
+        )}
         {image && <small>OSM reference · retrieved {freshnessLabel(image.fetchedAt)}{image.sourceTime ? ` · source ${image.sourceTime.slice(0, 10)}` : ' · source date unavailable'}</small>}
       </div>}
 

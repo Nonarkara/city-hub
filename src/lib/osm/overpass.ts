@@ -15,7 +15,27 @@ export const OVERPASS_MIRRORS = [
 
 export const OVERPASS_USER_AGENT =
   'CityHub/0.9 (https://city-hub.pages.dev; civic place overlay)'
-export const OVERPASS_TIMEOUT_MS = 12_000
+
+/**
+ * Per-attempt budget.
+ *
+ * Measured 2026-10-15 with the real Bangkok city-image query against
+ * overpass-api.de:
+ *
+ *   upstream [timeout:12]  → HTTP 502 (gateway gives up at 12s)
+ *   upstream [timeout:25]  → HTTP 200 in 52s, 791 elements
+ *   upstream [timeout:60]  → HTTP 200 in 55s, 1200 elements (all five elements)
+ *
+ * So the previous 12s client budget could not succeed against the public
+ * mirrors: the request is genuinely 40–60 seconds of work, not a hang. The
+ * budget has to clear the real cost, and the query in `city-image.ts` carries
+ * `[timeout:60]` to match.
+ *
+ * This is safe because the request is made at most once per city per 24h — the
+ * client caches, and the CDN caches the proxy response behind it. The user
+ * waits once, behind a visible pending state, and nobody waits twice.
+ */
+export const OVERPASS_TIMEOUT_MS = 90_000
 export const OVERPASS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 export function overpassBackoffMs(attempt: number): number {
@@ -92,7 +112,35 @@ export class OverpassClient {
   }
 }
 
+/**
+ * Same-origin proxy. The Worker / Pages function forwards to the mirrors with a
+ * User-Agent it is actually allowed to set; see `overpass-http.ts` for the
+ * measurements behind that.
+ */
+export const OVERPASS_PROXY_PATH = '/api/overpass'
+
+/**
+ * True when Overpass is being called from a browser.
+ *
+ * Browser: route through the proxy. The mirrors reject a browser UA (measured:
+ * overpass-api.de returns 406 to Chrome's UA) and rate-limit one that looks
+ * like a script, and JavaScript cannot set User-Agent to fix either.
+ * Node / Worker: talk to the mirrors directly — no pointless round-trip.
+ */
+function inBrowser(): boolean {
+  return typeof window !== 'undefined'
+}
+
 let active = new OverpassClient()
+
+function defaultClient(): OverpassClient {
+  // A single-element mirror list: in the browser the "mirror" is our own
+  // function, which does its own fallback server-side. The loop and its
+  // backoff logic stay identical on both transports.
+  return inBrowser()
+    ? new OverpassClient({ mirrors: [OVERPASS_PROXY_PATH] })
+    : new OverpassClient()
+}
 
 export function queryOverpass(query: string): Promise<unknown> {
   return active.query(query)
@@ -100,5 +148,7 @@ export function queryOverpass(query: string): Promise<unknown> {
 
 /** Test hook. Pass nothing to restore a fresh default client. */
 export function installOverpassClient(client?: OverpassClient) {
-  active = client ?? new OverpassClient()
+  active = client ?? defaultClient()
 }
+
+active = defaultClient()

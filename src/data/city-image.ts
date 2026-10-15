@@ -23,10 +23,23 @@ export function studyBounds(city: CityConfig): [number, number, number, number] 
   return [lng - dx, lat - dy, lng + dx, lat + dy]
 }
 
+/**
+ * Upstream work budget, in seconds.
+ *
+ * This query is genuinely expensive — measured 2026-10-15 at 52s for a partial
+ * result and 55s for the full 1200 elements. A 12s budget does not make it
+ * faster; it makes the gateway abandon work that was about to succeed, which
+ * is how it fails: HTTP 502 "server at capacity".
+ *
+ * Must stay below OVERPASS_TIMEOUT_MS (90s) in overpass.ts, or the client
+ * aborts work the server is still finishing.
+ */
+export const CITY_IMAGE_QUERY_TIMEOUT_S = 60
+
 export function cityImageQuery(city: CityConfig): string {
   const [w, s, e, n] = studyBounds(city)
   const box = `${s},${w},${n},${e}`
-  return `[out:json][timeout:12];(
+  return `[out:json][timeout:${CITY_IMAGE_QUERY_TIMEOUT_S}];(
     way[highway~"^(primary|secondary|tertiary|pedestrian)$"][name](${box});
     way[waterway~"^(river|canal)$"](${box});
     way[railway=rail](${box});
