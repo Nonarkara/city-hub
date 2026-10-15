@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('comparison is the primary view and never blanks the application', async ({ page }) => {
+test('comparison is the primary view and never blanks the application', async ({ page }, testInfo) => {
   await page.goto('/?city=bangkok&lens=esri-imagery')
 
   await expect(page.locator('.topbar')).toBeVisible()
@@ -36,6 +36,18 @@ test('comparison is the primary view and never blanks the application', async ({
     expect(rect.left).toBeGreaterThanOrEqual(0)
     expect(rect.right).toBeLessThanOrEqual(viewportWidth + 1)
   }
+
+  await page.getByRole('button', { name: 'Explore Bangkok', exact: true }).click()
+  await expect(page.getByRole('complementary', { name: 'Bangkok city twin' })).toBeVisible()
+  await page.getByRole('tab', { name: 'What if?' }).click()
+  await page.getByRole('slider', { name: 'Population change', exact: true }).fill('20')
+  await expect(page.locator('.twin-scenario-result')).toContainText('Scenario calculation')
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download scenario & evidence' }).click()
+  expect((await downloadPromise).suggestedFilename()).toBe('bangkok-scenario.json')
+  await page.screenshot({ path: testInfo.outputPath('twin-scenario.png') })
+  await page.getByRole('button', { name: 'Close city explorer' }).click()
+  await expect(page.locator('.twin-workbench')).toHaveCount(0)
 
 })
 

@@ -21,7 +21,8 @@ import { useCityStore } from '../store/cityStore'
 import { useUIStore } from '../store/uiStore'
 import { fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
-import { cachedFetch, cacheTimestamp } from '../lib/cached-fetch'
+import { cacheTimestamp } from '../lib/cached-fetch'
+import { CityTwinWorkbench } from './CityTwinWorkbench'
 import { freshnessLabel } from '../lib/freshness'
 import { pearson } from '../lib/stats'
 import {
@@ -236,7 +237,7 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
   }
   const envelopeFor = (id: CompareMetricId): string => {
     if (id === 'aqi' || id === 'pm25') {
-      return feedEnvelope(live?.aqiFetchedAt, 5 * 60_000)
+      return feedEnvelope(live?.aqiFetchedAt, 10 * 60_000)
     }
     if (id === 'temperature') {
       return feedEnvelope(live?.weatherFetchedAt, 10 * 60_000)
@@ -267,11 +268,12 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
 // Single map pane
 // ─────────────────────────────────────────────────────────────────────────────
 function CompareMapPane({
-  state, onChange, onRemove, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading,
+  state, onChange, onRemove, onExplore, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading,
 }: {
   state:          PaneState
   onChange:       (next: PaneState) => void
   onRemove:       () => void
+  onExplore:      () => void
   cities:         CityConfig[]
   tokenAvailable: boolean
   index:          number
@@ -362,6 +364,7 @@ function CompareMapPane({
       )}
 
       <div className="split-pane-controls">
+        <button type="button" className="split-select twin-explore" onClick={onExplore} aria-label={`Explore ${city.name}`}>Explore {city.name}</button>
         <select
           className="split-select"
           value={state.cityId}
@@ -446,6 +449,12 @@ export function SplitCompare() {
   const [liveLoading, setLiveLoading] = useState(false)
   const [xMetric, setXMetric] = useState<CompareMetricId>('green')
   const [yMetric, setYMetric] = useState<CompareMetricId>('gdp-pc')
+  const [explorerCityId, setExplorerCityId] = useState<string | null>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setRefreshTick((tick) => tick + 1), 10 * 60_000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Start from the user's pinned comparison when one exists. Otherwise pair
   // the active city with Kranj, the project's established second-city case,
@@ -493,11 +502,11 @@ export function SplitCompare() {
     const loadingTimer = setTimeout(() => { if (!cancelled && !done) setLiveLoading(true) }, 0)
     Promise.all(selectedCities.map(async (city) => {
       const [lng, lat] = city.center
-      const aqiKey = `split/aqi/${city.id}`
-      const weatherKey = `split/weather/${city.id}`
+      const aqiKey = `openmeteo/aqi/${lat.toFixed(3)},${lng.toFixed(3)}`
+      const weatherKey = `openmeteo/weather/${lat.toFixed(3)},${lng.toFixed(3)}`
       const [aqiResult, weatherResult] = await Promise.allSettled([
-        cachedFetch(aqiKey, () => fetchAQI(lng, lat, city.timezone), 5 * 60_000),
-        cachedFetch(weatherKey, () => fetchWeather(lng, lat, city.timezone), 10 * 60_000),
+        fetchAQI(lng, lat, city.timezone),
+        fetchWeather(lng, lat, city.timezone),
       ])
       return {
         cityId: city.id,
@@ -529,7 +538,7 @@ export function SplitCompare() {
     return () => { cancelled = true; clearTimeout(loadingTimer) }
     // selectedCityKey is the stable identity of cities that require live data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCityKey])
+  }, [selectedCityKey, refreshTick])
 
   const correlationPoints = useMemo(() => {
     const xDef = METRIC_BY_ID[xMetric]
@@ -577,9 +586,11 @@ export function SplitCompare() {
   // next even grid; the trailing empty cell just shows the gap colour.
   const bucket = count <= 2 ? 2 : count === 3 ? 3 : count <= 4 ? 4 : count <= 6 ? 6 : 8
   const gridClass = `split-grid split-grid--${bucket}`
+  const explorerCity = selectedCities.find((city) => city.id === explorerCityId)
 
   return (
     <div className="split-compare">
+      <div className="twin-map-workspace">
       <div className={gridClass}>
         {panes.map((pane, i) => (
           <CompareMapPane
@@ -587,6 +598,7 @@ export function SplitCompare() {
             state={pane}
             onChange={(next) => updatePane(i, next)}
             onRemove={() => removePane(i)}
+            onExplore={() => setExplorerCityId(pane.cityId)}
             cities={cities}
             tokenAvailable={tokenAvailable}
             index={i}
@@ -596,6 +608,12 @@ export function SplitCompare() {
             liveLoading={liveLoading}
           />
         ))}
+      </div>
+      {explorerCity && <CityTwinWorkbench key={explorerCity.id} city={explorerCity} snapshot={liveByCity[explorerCity.id] ?? null} onClose={() => setExplorerCityId(null)} onPlan={() => {
+        useCityStore.getState().setActiveCity(explorerCity)
+        setSplitOpen(false)
+        useUIStore.getState().setPlanOpen(true)
+      }} />}
       </div>
 
       <div className="split-analysis-bar" aria-label="City metric relationship model">
