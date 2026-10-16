@@ -148,17 +148,24 @@ function rasterStyle(
         attribution,
         ...(maxzoom !== undefined ? { maxzoom } : {}),
       },
-      labels: {
-        type: 'raster',
-        tiles: [...OSM_LABEL_TILES],
-        tileSize: 256,
-        attribution: OSM_TILE_ATTRIBUTION,
-      },
+      // Only present when labels will actually render. Requesting CARTO
+      // without a key returns a black tile stamped "API KEY REQUIRED", so the
+      // layer is omitted entirely rather than added and watermarked.
+      ...(OSM_LABEL_TILES.length ? {
+        labels: {
+          type: 'raster',
+          tiles: [...OSM_LABEL_TILES],
+          tileSize: 256,
+          attribution: OSM_TILE_ATTRIBUTION,
+        },
+      } : {}),
     },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#04060b' } },
       { id: 'basemap', type: 'raster', source: 'basemap' },
-      { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.92 } },
+      ...(OSM_LABEL_TILES.length
+        ? [{ id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.92 } } as never]
+        : []),
     ],
   }
 }

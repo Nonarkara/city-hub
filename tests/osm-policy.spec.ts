@@ -23,7 +23,7 @@ import {
   installOverpassClient,
   overpassBackoffMs,
 } from '../src/lib/osm/overpass'
-import { FORBIDDEN_OSM_TILE_HOST, OSM_LABEL_TILES, OSM_TILE_ATTRIBUTION } from '../src/lib/osm/tiles'
+import { FORBIDDEN_OSM_TILE_HOST, OSM_LABEL_TILES, OSM_TILE_ATTRIBUTION, hasCartoLabels } from '../src/lib/osm/tiles'
 import {
   filterNominatimResults,
   nominatimSearchUrl,
@@ -66,18 +66,29 @@ test.beforeEach(() => {
   installOverpassClient()
 })
 
-test('label tiles use CARTO and credit OpenStreetMap contributors', () => {
-  expect(OSM_LABEL_TILES.length).toBeGreaterThan(0)
+test('label tiles never request a watermarked CARTO tile', () => {
+  // Verified 2026-10-16: every basemaps.cartocdn.com endpoint — dark_only_labels,
+  // rastertiles/voyager_labels, dark_nolabels — answers a keyless request with a
+  // black tile stamped diagonally "API KEY REQUIRED / carto.com/basemaps/apikey".
+  // That stamp lands on the primary surface of the whole product, so a configured
+  // label tile must always carry a key.
   for (const tile of OSM_LABEL_TILES) {
     expect(tile).toContain('basemaps.cartocdn.com')
+    expect(tile).toContain('api_key=')
     expect(tile).not.toContain(FORBIDDEN_OSM_TILE_HOST)
   }
-  expect(OSM_TILE_ATTRIBUTION).toContain('OpenStreetMap contributors')
-  expect(OSM_TILE_ATTRIBUTION).toContain('CARTO')
+  // With no key configured, the honest outcome is no labels at all — never a
+  // stamping layer — and no attribution for data that is not on screen.
+  if (!hasCartoLabels) {
+    expect(OSM_LABEL_TILES).toEqual([])
+    expect(OSM_TILE_ATTRIBUTION).toBe('')
+  }
 
   const mapView = read('src/components/MapView.tsx')
   expect(mapView).not.toContain('https://tile.openstreetmap.org')
   expect(mapView).toContain('OSM_TILE_ATTRIBUTION')
+  // The labels source and layer are omitted rather than added empty.
+  expect(mapView).toContain('OSM_LABEL_TILES.length')
 })
 
 test('the browser city search never calls Nominatim directly', () => {
