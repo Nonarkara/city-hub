@@ -1,5 +1,5 @@
 /* Design tokens — single source of truth */
-@import url('../../_shared/design-tokens/dr-non-brand.css');
+@import url('../shared/design-tokens/dr-non-brand.css');
 
 /* ── Palette & Wada Design Tokens (https://github.com/Nonarkara/palette) ──── */
 /* Sanzo Wada 348 combination system + Bauhaus Human Design lineage.

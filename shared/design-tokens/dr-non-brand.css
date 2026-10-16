@@ -1,0 +1,154 @@
+/**
+ * Dr Non Brand — Design Tokens
+ * The single source of truth for colors, typography, and spacing.
+ *
+ * IMPORT: @import url('../../_shared/design-tokens/dr-non-brand.css');
+ *
+ * CANON (CLAUDE.md §14 — Visual DNA):
+ *   These tokens are derived from physical objects, not branding decisions.
+ *   --amber    : the orange = key on the Braun ET66 calculator (Dieter Rams)
+ *   --bg/#000  : Braun products: cream, grey, or black field. No exceptions.
+ *   --line     : hairlines only, like a Vignelli subway map — no thick borders
+ *   --radius:0 : every Braun product, every Mondaine clock, every Leica M
+ *   system-ui  : type disappears into the OS, like Vignelli's Helvetica
+ *   3 sizes    : Bauhaus posters never use more than 3 scale steps. Neither do we.
+ *
+ * WHAT IS BANNED (from the canon, CLAUDE.md §14):
+ *   - Tailwind blue #3B82F6 — the AI default
+ *   - Gradients between two colours (only dark-to-transparent for photo overlays)
+ *   - border-radius > 0 except 50% true circles
+ *   - box-shadow / drop shadows
+ *   - More than one accent colour active at once
+ *
+ * Full reference: ~/Documents/SecondBrain/Soul/Visual-DNA.md
+ */
+
+/* ── Colour palette ─────────────────────────────────────────────────────── */
+:root {
+  /* Core */
+  --black:  #000000;
+  --white:  #f5f5f0;          /* warm off-white — not pure #fff */
+  --amber:  #f59e0b;          /* THE accent. Only one. */
+
+  /* Dark theme (default) */
+  --bg:     #000000;
+  --fg:     #f5f5f0;
+  --dim:    rgba(245, 245, 240, 0.35);
+  --line:   rgba(245, 245, 240, 0.18);  /* hairline borders */
+
+  /* Semantic */
+  --ok:     #f59e0b;           /* health dot: OK = amber */
+  --fail:   #c44;              /* health dot: fail = muted red (not screaming) */
+  --warn:   rgba(245,158,11,0.6);
+
+  /* Safe areas (iPhone/Android) */
+  --sat:    env(safe-area-inset-top,    0px);
+  --sab:    env(safe-area-inset-bottom, 0px);
+  --sal:    env(safe-area-inset-left,   0px);
+  --sar:    env(safe-area-inset-right,  0px);
+}
+
+/* Light theme — toggled by data-theme="light" on body/root */
+[data-theme="light"] {
+  --black:  #f5f5f0;
+  --white:  #1a1a1a;
+  --amber:  #b85c28;          /* amber darkened for legibility on white */
+  --bg:     #f5f5f0;
+  --fg:     #1a1a1a;
+  --dim:    rgba(26, 26, 26, 0.45);
+  --line:   rgba(26, 26, 26, 0.18);
+}
+
+/* Crimson mode — personal QR modals (Harvard colour) */
+[data-theme="crimson"] {
+  --bg:     #A51C30;
+  --fg:     #f5f5f0;
+  --dim:    rgba(245, 245, 240, 0.55);
+  --line:   rgba(245, 245, 240, 0.25);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+:root {
+  /* Font families */
+  --font-display:  'Josefin Sans', system-ui, sans-serif;   /* wordmarks, big headlines */
+  --font-body:     system-ui, -apple-system, sans-serif;    /* UI text — disappears into OS */
+  --font-thai:     'IBM Plex Sans Thai', system-ui, sans-serif;   /* NON-LOOPED. Never Sarabun. */
+  --font-zh:       'Noto Sans SC', system-ui, sans-serif;
+  --font-mono:     'JetBrains Mono', 'IBM Plex Mono', monospace;  /* all data/numbers */
+
+  /* The three canonical sizes (§11.7 — add a 4th and you've regressed) */
+  --text-display:  32px;       /* page title / hero number — one per page */
+  --text-body:     14px;       /* everything else */
+  --text-micro:    11px;       /* eyebrow labels, mono ticks, tiny meta */
+}
+
+/* ── Borders / radius ───────────────────────────────────────────────────── */
+:root {
+  --radius:       0;           /* §11.6 law: zero border-radius */
+  --radius-circle: 50%;        /* only exception: true circles */
+  --border:       1px solid var(--line);
+}
+
+/* ── Spacing scale ──────────────────────────────────────────────────────── */
+:root {
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  40px;
+  --space-2xl: 64px;
+}
+
+/* ── Tap targets (§11.8 — minimum 44×44px) ─────────────────────────────── */
+:root {
+  --tap-min: 44px;
+}
+
+/* ── Z-index scale ──────────────────────────────────────────────────────── */
+:root {
+  --z-base:    1;
+  --z-overlay: 10;
+  --z-modal:   100;
+  --z-drawer:  150;
+  --z-frame:   250;   /* fullscreen art/pomodoro overlays */
+  --z-boot:    9999;  /* boot screen */
+}
+
+/* ── Global resets ──────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100vh;
+  height: 100dvh;          /* dynamic viewport — no URL-bar bounce on mobile */
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Thai language override */
+[lang="th"], [data-lang="th"] {
+  font-family: var(--font-thai);
+}
+
+/* Chinese language override */
+[lang="zh"], [data-lang="zh"] {
+  font-family: var(--font-zh);
+}
+
+/* All numbers/data in mono */
+.mono, [class*="val"], [class*="count"], [class*="metric"],
+time, code, pre {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

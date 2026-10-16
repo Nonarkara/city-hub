@@ -769,9 +769,14 @@ export function SplitCompare() {
         setSplitOpen(false)
         useUIStore.getState().setPlanOpen(true)
       }} />}
+      {/* Provenance, not chrome. This line says what the overlay is and how far
+          to trust it ("OSM proxies; coverage varies"), so it must not depend on a
+          panel being opened — a reader who never finds the notes toggle would
+          never learn the data is partial. It sits outside the notes panel so the
+          map stays first without the caveat going with it. */}
+      {cityElement && !explorerCity && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
       {!explorerCity && notesOpen && (
         <aside className="split-notes" aria-label="Comparison notes">
-          {cityElement && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
           <div className="split-analysis-bar" aria-label="City metric relationship model">
             <span className="split-analysis-title">RELATIONSHIP</span>
             <label className="split-analysis-field">

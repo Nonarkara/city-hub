@@ -21,6 +21,13 @@ test('comparison is the primary view and never blanks the application', async ({
   expect(layout.bodyWidth).toBeLessThanOrEqual(viewportWidth + 1)
   expect(layout.documentWidth).toBeLessThanOrEqual(viewportWidth + 1)
 
+  // The relationship model lives in the notes rail, which PR #6 made
+  // deliberately responsive: open on wide screens, tucked away on phones
+  // ("map-first"). It is still there on a phone, so open the rail rather than
+  // asserting it is always visible.
+  const notes = page.locator('.split-notes-btn')
+  if (await notes.getAttribute('aria-pressed') !== 'true') await notes.click()
+
   const relationship = await page.locator('.split-analysis-bar').boundingBox()
   expect(relationship).not.toBeNull()
   expect(relationship!.x).toBeGreaterThanOrEqual(0)
