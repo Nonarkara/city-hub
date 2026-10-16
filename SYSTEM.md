@@ -183,6 +183,41 @@ figure happens to be real.
 contract**, not runtime health — a `configured` layer can be offline right now,
 and runtime health belongs to `DataSourceStatus`.
 
+### A basemap that stamps the product is worse than a basemap with no labels
+
+The raster basemaps draw place-name labels from OpenStreetMap via CARTO. Every
+`basemaps.cartocdn.com` endpoint — `dark_only_labels`, `rastertiles/voyager_labels`,
+`dark_nolabels` — answers a request with **no `api_key`** with a black tile
+stamped diagonally:
+
+```
+API KEY REQUIRED
+carto.com/basemaps/apikey
+```
+
+Measured 2026-10-16 by fetching the exact tile the app requests. That label layer
+is baked into *every* raster style, so the stamp covered the product's primary
+surface — the single most damaging thing in the whole app.
+
+Two things this is **not**:
+
+- **Not Esri.** `server.arcgisonline.com` World Imagery serves clean tiles with
+  no key. Chasing the wrong provider is easy here because Esri's terms changed
+  too, and the credit line already names it.
+- **Not fixable by switching to OSMF.** `tile.openstreetmap.org` now answers this
+  app with an explicit `403` tile: *"App is not following the tile usage policy
+  of OpenStreetMap's volunteer-run servers."* That is why this repo never used it.
+
+So there is no keyless replacement that respects OSMF's policy. `src/lib/osm/tiles.ts`
+therefore configures labels **only** with `VITE_CARTO_API_KEY`, and omits the
+source and layer entirely without one — clean imagery instead of a stamped map.
+Attribution is empty in that case, because no OSM labels are on screen and
+crediting an absent source would be a claim the map is not making.
+
+**Before adding any tile or imagery source, fetch one tile unauthenticated and
+look at it.** A 200 response can still be a watermark, and a proxy-friendly
+status code says nothing about whether the pixels are shippable.
+
 ---
 
 ## Costs worth knowing before you add a fetch
@@ -210,12 +245,23 @@ pick a number because it sounds reasonable.
 
 ```bash
 npm test              # Playwright — unit and contract specs under tests/
+npm run test:e2e      # Playwright — real browser against a built app (tests-e2e/)
 npx tsc -b            # typecheck
 npm run build         # production bundle
 ```
 
 `tests/` are Playwright specs, not browser E2E — they import modules directly
 and assert contracts. `tests-e2e/` drives a real browser and needs a built app.
+
+**`npm test` does not run `tests-e2e`.** Verified the hard way on 2026-10-15:
+moving OSM traffic behind a same-origin proxy changed the path the browser
+actually requests, while `tests-e2e/city-image.spec.ts` kept mocking
+`**/api/interpreter`. The browser then hit the real network, every e2e journey
+failed, and `npm test` stayed at 61 green — because the suite that would have
+noticed does not run. Run both before calling anything done.
+
+Route mocks must target the URL the **browser** requests, not the upstream URL
+the server will eventually call.
 
 **A regression test should name the defect it prevents.** Every fix in this repo
 that mattered came with one, and several carry the measurement inline:
@@ -225,6 +271,10 @@ test('the client budget exceeds the upstream query budget', async () => {
   // Measured 2026-10-15: upstream [timeout:12] → 502; [timeout:60] → 200 in 55s
 })
 ```
+
+**And check the failure mode is genuinely gone, not merely quieter.** The blank
+City-image pane was visible in a screenshot and provable in one line of DOM: if
+the basemap had been stripped, a camera move would request no tiles.
 
 ---
 
