@@ -227,8 +227,13 @@ function defaultClient(): OverpassClient {
   // A single-element mirror list: in the browser the "mirror" is our own
   // function, which does its own fallback server-side. The loop and its
   // backoff logic stay identical on both transports.
+  //
+  // `maxRounds: 1` matters. The proxy has *already* spent its own retry budget
+  // on the mirrors before it answers, so retrying it would mean paying the wait
+  // twice for one question. The browser's job here is to make one request and
+  // report honestly what came back; the deadline is its own fetch budget.
   return inBrowser()
-    ? new OverpassClient({ mirrors: [OVERPASS_PROXY_PATH] })
+    ? new OverpassClient({ mirrors: [OVERPASS_PROXY_PATH], maxRounds: 1, deadlineMs: OVERPASS_TIMEOUT_MS })
     : new OverpassClient()
 }
 

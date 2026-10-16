@@ -299,6 +299,25 @@ test('the Overpass deadline stays inside the client timeout it must answer withi
   expect(OVERPASS_TIMEOUT_MS - OVERPASS_DEADLINE_MS).toBeGreaterThanOrEqual(10_000)
 })
 
+// The proxy has already retried the mirrors by the time it answers, so the
+// browser asking it a second time pays the same wait twice for one question.
+test('the browser client asks the proxy once instead of retrying an answered proxy', async () => {
+  let calls = 0
+  const client = new OverpassClient({
+    mirrors: ['/api/overpass'],
+    maxRounds: 1,
+    deadlineMs: OVERPASS_TIMEOUT_MS,
+    clock: { now: () => 0, sleep: async () => {} },
+    fetchImpl: async () => {
+      calls += 1
+      return new Response('busy', { status: 503 })
+    },
+  })
+
+  await expect(client.query('proxy-retry')).rejects.toThrow('Overpass unavailable')
+  expect(calls).toBe(1)
+})
+
 test('Overpass stops at its deadline instead of sleeping past it', async () => {
   let now = 0
   const sleeps: number[] = []
