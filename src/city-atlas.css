@@ -1,117 +1,134 @@
-/* City atlas: neutral viewing hardware, amber selection, maps as the work. */
+/* Split compare — map-first "surgical table".
+   Shares the main cockpit's tokens (--bg / --fg / --line / --amber / --dim,
+   mono uppercase eyebrows, sharp corners) so Compare reads as the same
+   instrument as the main view. The maps are the work; text sits in one slim,
+   collapsible notes rail (pattern borrowed from BKKxCulture's walkthrough
+   .map-explorer / .chapter-panel and the 3D atlas .atlas-page grid). */
 .split-compare {
-  --atlas-ground: #ffffff;
-  --atlas-ink: #20282c;
-  --atlas-muted: #546168;
-  --atlas-rule: #d6dcde;
-  --atlas-action: #8a4b08;
-  --atlas-support: #edf1f2;
-  color: var(--atlas-ink);
-  background: var(--atlas-ground);
-  font: 14px/1.45 var(--font-body);
-  letter-spacing: 0;
+  --cmp-panel: rgba(4, 6, 11, 0.96);
+  --cmp-glass: rgba(4, 6, 11, 0.78);
+  --cmp-rail: 300px;
+  --cmp-quiet: rgba(245, 245, 240, 0.64);  /* --dim is too faint for reading text */
+  color: var(--fg);
+  background: var(--bg);
+  font: 13px/1.45 var(--font-body);
 }
-.split-compare *, :root:has(.split-compare) .topbar * { letter-spacing: 0; }
 .split-compare button, .split-compare select { font: inherit; border-radius: 0; }
 .split-compare button { cursor: pointer; }
 .split-compare button:focus-visible, .split-compare select:focus-visible,
-.split-compare a:focus-visible, .split-compare input:focus-visible { outline: 2px solid var(--atlas-action); outline-offset: -3px; }
-:root:has(.split-compare) .topbar { background: #fff; backdrop-filter: none; border-bottom: 1px solid #d6dcde; gap: 12px; }
-:root:has(.split-compare) .topbar-wordmark { color: #20282c; font-family: var(--font-body); font-size: 14px; }
-:root:has(.split-compare) .topbar-wordmark-prefix { color: #546168; opacity: 1; }
-:root:has(.split-compare) .topbar-version { color: #546168; }
-:root:has(.split-compare) .topbar button { color: #20282c; background: transparent; border: 0; font: 14px var(--font-body); }
-:root:has(.split-compare) .topbar button[aria-pressed="true"] { color: #8a4b08; box-shadow: inset 0 -3px #8a4b08; }
-:root:has(.split-compare) .topbar-city-select-name { color: #20282c; }
-:root:has(.split-compare) .topbar .basemap-menu { background: #fff; color: #20282c; }
-:root:has(.split-compare) .topbar .basemap-menu-label { color: #20282c; }
-.city-image-nav { display: flex; align-items: center; min-height: 52px; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--atlas-rule); flex-shrink: 0; }
-.city-image-mode { min-height: 44px; border: 0; background: none; color: var(--atlas-action); font-weight: 600 !important; padding: 0 8px; }
-.city-image-mode[aria-pressed="true"] { box-shadow: inset 0 -3px var(--atlas-action); }
-.city-image-nav nav { display: flex; gap: 4px; }
-.city-image-nav nav button { min-height: 44px; padding: 0 14px; border: 0; background: none; color: var(--atlas-muted); }
-.city-image-nav nav button[aria-pressed="true"] { color: var(--atlas-ink); box-shadow: inset 0 -3px var(--atlas-action); }
-.city-image-intro, .city-image-scale { color: var(--atlas-muted); font-size: 13px; }
-.city-image-scale { margin-left: auto; white-space: nowrap; }
-.city-image-reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 10px 24px; background: var(--atlas-support); flex-shrink: 0; }
-.city-image-reading strong { font-size: 15px; font-weight: 600; }
-.city-image-reading span { font-size: 12px; color: var(--atlas-muted); }
-.city-image-reading a { color: var(--atlas-action); }
-.split-grid { gap: 1px; background: var(--atlas-rule); }
-.split-compare .split-pane { display: flex; flex-direction: column; background: var(--atlas-ground); }
-.split-compare .split-pane-map { position: relative; inset: auto; order: 2; flex: 1; min-height: 0; }
+.split-compare a:focus-visible, .split-compare input:focus-visible { outline: 1px solid var(--amber); outline-offset: -2px; }
+
+/* Shared eyebrow — same voice as the main panels' mono amber labels */
+.split-compare .split-analysis-title,
+.split-compare .split-toolbar-title,
+.city-image-mode,
+.city-image-nav nav button,
+.split-compare .split-count-btn,
+.split-compare .split-toolbar-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Top lens bar: one slim line ─────────────────────────────────────── */
+.city-image-nav { display: flex; align-items: center; min-height: 36px; gap: 14px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--cmp-panel); flex-shrink: 0; }
+.city-image-mode { min-height: 36px; border: 0; background: none; color: var(--amber); padding: 0 6px; }
+.city-image-mode[aria-pressed="true"] { box-shadow: inset 0 -2px var(--amber); }
+.city-image-nav nav { display: flex; gap: 2px; }
+.city-image-nav nav button { min-height: 36px; padding: 0 10px; border: 0; background: none; color: var(--cmp-quiet); transition: color 160ms ease, box-shadow 160ms ease; }
+.city-image-nav nav button:hover { color: var(--fg); }
+.city-image-nav nav button[aria-pressed="true"] { color: var(--fg); box-shadow: inset 0 -2px var(--amber); }
+.city-image-intro, .city-image-scale { color: var(--cmp-quiet); font-size: 12px; }
+.city-image-scale { margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 10px; }
+
+/* ── Workspace: maps take the room, notes rail on the right ──────────── */
+.split-compare .twin-map-workspace { display: flex; flex: 1; min-height: 0; }
+.split-compare .split-grid { flex: 1; gap: 1px; background: var(--line); }
+.split-compare .split-pane { position: relative; background: var(--bg); }
+.split-compare .split-pane-map { position: absolute; inset: 0; }
 .split-compare .split-pane-badge { display: none; }
-.split-compare .split-pane-stats { position: static; order: 1; display: grid; gap: 0; padding: 9px 12px; background: var(--atlas-ground); }
-.split-compare .split-pane-stat { background: transparent; border: 0; padding: 0 6px; gap: 2px; font-family: var(--font-body); color: var(--atlas-ink); }
-.split-compare .split-pane-stat-label { font-size: 11px; color: var(--atlas-muted); }
-.split-compare .split-pane-stat-value { font-size: 18px; font-family: var(--font-data); color: var(--atlas-ink); }
-.split-compare .split-pane-stat-envelope { font-size: 10px; color: var(--atlas-muted); }
-.split-compare .split-pane-controls { position: static; order: 3; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 12px; background: var(--atlas-ground); }
-.split-compare .split-select { flex: 1 1 110px; width: auto; max-width: none; min-width: 0; min-height: 44px; color: var(--atlas-ink); background-color: transparent; border: 0; border-bottom: 1px solid var(--atlas-rule); padding-left: 8px; font-family: var(--font-body); }
-.split-compare .split-select.twin-explore { flex: 0 1 auto; color: var(--atlas-action); border: 0; }
-.split-compare .split-pane-remove { color: var(--atlas-ink); background: #fff; border: 0; top: 80px; }
-.city-image-caption { order: 1; display: grid; grid-template-columns: 1fr auto; padding: 10px 18px; gap: 3px 12px; min-height: 84px; }
-.city-image-caption strong { font-size: 21px; font-weight: 600; }
-.city-image-caption > span { align-self: center; font-size: 12px; color: var(--atlas-muted); }
-.city-image-caption small { grid-column: 1 / -1; font-size: 12px; color: var(--atlas-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.city-image-caption button { background: none; border: 0; color: var(--atlas-action); min-height: 44px; }
-.split-compare .split-analysis-bar { background: var(--atlas-support); border-top: 1px solid var(--atlas-rule); color: var(--atlas-ink); padding: 8px 16px; gap: 12px; font-family: var(--font-body); }
-.split-compare .split-analysis-title { font-size: 12px; color: var(--atlas-muted); }
-.split-compare .split-analysis-field { font-size: 12px; color: var(--atlas-muted); }
-.split-compare .split-analysis-field select { background: transparent; color: var(--atlas-ink); border: 0; border-bottom: 1px solid #8c989e; font: 13px var(--font-body); min-height: 44px; }
-.split-compare .split-analysis-result strong { color: var(--atlas-ink); font-size: 14px; }
-.split-compare .split-analysis-result span, .split-compare .split-analysis-caveat { color: var(--atlas-muted); font-size: 11px; opacity: 1; }
-.split-compare .split-analysis-caveat { white-space: normal; max-width: 240px; }
-.split-compare .split-toolbar { background: var(--atlas-ground); border-top: 0; padding: 4px 16px; gap: 16px; }
-.split-compare .split-toolbar-title { font: 12px var(--font-body); color: var(--atlas-muted); }
-.split-compare .split-count-btn, .split-compare .split-toolbar-btn { border: 0; background: none; color: var(--atlas-muted); min-height: 44px; padding: 0 10px; }
-.split-compare .split-count-btn--active { color: var(--atlas-action); box-shadow: inset 0 -2px var(--atlas-action); }
-.split-compare .split-correlation-plot { border: 0; background: transparent; }
-.split-compare .split-correlation-plot line { stroke: #8c989e; }
-.split-compare .split-correlation-plot circle { fill: var(--atlas-action); stroke: #fff; }
-.split-compare .twin-workbench { background: var(--atlas-ground); color: var(--atlas-ink); border-left-color: var(--atlas-rule); }
-.split-compare .twin-heading { padding: 20px 20px 12px; }
-.split-compare .twin-heading small, .split-compare .twin-heading span, .split-compare .twin-note, .split-compare .twin-readings dt, .split-compare .twin-readings small { color: var(--atlas-muted); }
-.split-compare .twin-heading button { border: 0; color: var(--atlas-ink); }
-.split-compare .twin-tabs { border-color: var(--atlas-rule); }
-.split-compare .twin-tabs button { color: var(--atlas-muted); }
-.split-compare .twin-tabs button[aria-selected="true"] { color: var(--atlas-action); border-color: var(--atlas-action); }
-.split-compare .twin-content { padding: 20px; font-size: 15px; line-height: 1.5; }
-.split-compare .twin-content h3 { font-size: 18px; }
-.split-compare .twin-content a { color: var(--atlas-action); }
-.split-compare .twin-note { font-size: 13px; }
-.split-compare .twin-readings > div, .split-compare .twin-scenario-result { border-color: var(--atlas-rule); }
-.split-compare .twin-input input { accent-color: var(--atlas-action); }
-.split-compare .twin-scenario-result strong { color: var(--atlas-ink); }
-.split-compare .twin-scenario-result span { color: var(--atlas-muted); font-size: 12px; }
-.split-compare .twin-action { background: none; color: var(--atlas-action); border: 0; border-bottom: 1px solid var(--atlas-rule); text-align: left; padding: 10px 0; font-size: 14px; }
+
+/* Metrics float over the map as a thin glass strip, not a slab above it */
+.split-compare .split-pane-stats { position: absolute; top: 0; left: 0; right: 0; z-index: 2; display: grid; gap: 0; padding: 5px 8px; background: linear-gradient(180deg, var(--cmp-glass), rgba(4, 6, 11, 0.45)); border-bottom: 1px solid var(--line); }
+.split-compare .split-pane-stat { background: transparent; border: 0; padding: 0 6px; gap: 0; color: var(--fg); }
+.split-compare .split-pane-stat-label { font: 9px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cmp-quiet); }
+.split-compare .split-pane-stat-value { font: 15px/1.15 var(--font-data); color: var(--fg); }
+.split-compare .split-pane-stat-envelope { font: 8px var(--font-mono); letter-spacing: 0.06em; color: var(--cmp-quiet); opacity: 0.8; }
+
+/* Pane controls: a thin bar glued to the bottom edge of the map */
+.split-compare .split-pane-controls { position: absolute; left: 0; right: 0; bottom: 0; top: auto; z-index: 2; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px; padding: 0 6px; background: var(--cmp-glass); border-top: 1px solid var(--line); }
+.split-compare .split-select { flex: 1 1 110px; width: auto; max-width: none; min-width: 0; height: 32px; min-height: 32px; color: var(--fg); background-color: transparent; border: 0; padding-left: 6px; font: 12px var(--font-body); }
+.split-compare .split-select option { background: var(--bg); color: var(--fg); }
+.split-compare .split-select.twin-explore { flex: 0 1 auto; color: var(--amber); font: 10px var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 0; }
+.split-compare .split-pane-date { position: static; }
+.split-compare .split-pane-remove { color: var(--fg); background: var(--cmp-glass); border: 1px solid var(--line); top: 52px; }
+.split-compare .maplibregl-ctrl-bottom-right, .split-compare .maplibregl-ctrl-bottom-left { bottom: 34px; }
+
+/* City-image caption: compact card on the map, collapsible */
+.city-image-caption { position: absolute; left: 10px; bottom: 44px; z-index: 3; max-width: min(340px, calc(100% - 20px)); display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 10px 9px; background: var(--cmp-panel); border: 1px solid var(--line); border-left: 2px solid var(--amber); transition: max-height 180ms ease; }
+.city-image-caption strong { font: 600 14px/1.2 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.city-image-caption > span { grid-column: 1 / -1; font: 11px var(--font-mono); color: var(--amber); }
+.city-image-caption small { grid-column: 1 / -1; font-size: 11px; line-height: 1.4; color: var(--cmp-quiet); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.city-image-caption button { background: none; border: 0; color: var(--amber); min-height: 24px; padding: 0 4px; font: 10px var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.city-image-caption .city-image-caption-toggle { grid-column: 2; grid-row: 1; width: 24px; height: 24px; border: 1px solid var(--line); color: var(--fg); font-size: 14px; line-height: 1; }
+.city-image-caption--collapsed > span, .city-image-caption--collapsed small, .city-image-caption--collapsed > button:not(.city-image-caption-toggle) { display: none; }
+
+/* ── Notes rail (shophouses .atlas-panel pattern) ────────────────────── */
+.split-notes { flex: 0 0 var(--cmp-rail); width: var(--cmp-rail); min-width: 0; display: flex; flex-direction: column; overflow-y: auto; background: var(--cmp-panel); border-left: 1px solid var(--line); animation: splitNotesIn 180ms ease; }
+@keyframes splitNotesIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+.city-image-reading { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.city-image-reading strong { font: 600 16px/1.25 var(--font-display); color: var(--fg); }
+.city-image-reading span { font-size: 12px; line-height: 1.55; color: var(--cmp-quiet); }
+.city-image-reading a { color: var(--amber); }
+.split-compare .split-analysis-bar { display: grid; grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr); align-items: end; gap: 8px 6px; min-height: 0; padding: 14px 16px; background: transparent; border-top: 0; font-family: var(--font-body); }
+.split-compare .split-analysis-title { grid-column: 1 / -1; color: var(--amber); font-size: 10px; }
+.split-compare .split-analysis-field { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font: 9px var(--font-mono); letter-spacing: 0.12em; color: var(--cmp-quiet); }
+.split-compare .split-analysis-field select { width: 100%; height: 30px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); font: 12px var(--font-body); }
+.split-compare .split-analysis-vs { align-self: center; padding-top: 12px; color: var(--cmp-quiet); }
+.split-compare .split-correlation-plot { grid-column: 1 / -1; width: 100%; height: 96px; flex: none; border: 1px solid var(--line); background: rgba(245, 245, 240, 0.02); }
+.split-compare .split-analysis-result { grid-column: 1 / -1; min-width: 0; }
+.split-compare .split-analysis-result strong { font: 15px var(--font-data); color: var(--amber); }
+.split-compare .split-analysis-result--empty strong { color: var(--fg); font-size: 13px; }
+.split-compare .split-analysis-result span { white-space: normal; font: 10px/1.5 var(--font-mono); color: var(--cmp-quiet); }
+.split-compare .split-analysis-caveat { grid-column: 1 / -1; margin: 0; max-width: none; white-space: normal; font: 10px/1.5 var(--font-mono); letter-spacing: 0.04em; color: var(--cmp-quiet); opacity: 0.7; }
+
+/* ── Bottom toolbar: one thin line ───────────────────────────────────── */
+.split-compare .split-toolbar { padding: 0 12px; gap: 4px; min-height: 36px; background: var(--cmp-panel); border-top: 1px solid var(--line); }
+.split-compare .split-toolbar-title { color: var(--amber); margin-right: 8px; }
+.split-compare .split-count-btn, .split-compare .split-toolbar-btn { border: 0; background: none; color: var(--cmp-quiet); min-height: 36px; min-width: 0; padding: 0 10px; transition: color 160ms ease, box-shadow 160ms ease; }
+.split-compare .split-count-btn:hover, .split-compare .split-toolbar-btn:hover { color: var(--fg); }
+.split-compare .split-count-btn--active { color: var(--amber); box-shadow: inset 0 -2px var(--amber); }
+.split-compare .split-notes-btn { margin-left: auto; }
+.split-compare .split-toolbar-btn--exit:hover { color: #e5484d; }
+
+/* Explorer workbench keeps its own panel but on the shared ground */
+.split-compare .twin-workbench { flex-basis: var(--cmp-rail); width: var(--cmp-rail); background: var(--cmp-panel); border-left-color: var(--line); }
+.split-compare .twin-action { font-size: 13px; }
+
 @media (max-width: 1100px) {
+  .split-compare { --cmp-rail: 272px; }
   .city-image-scale { display: none; }
-  .split-compare .split-analysis-caveat { display: none; }
 }
+/* Phones: maps stack, the rail becomes a bottom sheet (atlas-panel 45vh rule) */
 @media (max-width: 767px) {
-  .city-image-nav { padding: 2px 8px; gap: 0; flex-wrap: wrap; }
+  .split-compare .twin-map-workspace { flex-direction: column; position: relative; }
+  .split-notes { flex: 0 0 auto; width: 100%; max-height: 42dvh; border-left: 0; border-top: 1px solid var(--line); animation-name: splitNotesUp; }
+  @keyframes splitNotesUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .city-image-nav { padding: 0 6px; gap: 0; flex-wrap: wrap; }
   .city-image-nav nav { width: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .city-image-nav nav button { padding: 0 2px; font-size: 13px; }
-  .city-image-intro { flex: 1; font-size: 12px; padding: 4px 8px; }
-  .city-image-reading { display: block; padding: 8px 16px; }
-  .city-image-reading strong { display: block; font-size: 14px; }
-  .city-image-reading span { display: block; font-size: 11px; }
-  .split-compare .split-grid { grid-auto-rows: 65dvh; }
-  .split-compare .split-analysis-bar { padding: 6px 12px; gap: 4px; }
-  .split-compare .split-analysis-title { display: none; }
-  .split-compare .split-analysis-result { padding-top: 4px; }
-  .split-compare .split-toolbar { gap: 8px; padding: 2px 8px; }
+  .city-image-nav nav button { padding: 0 2px; letter-spacing: 0.04em; }
+  .city-image-intro { flex: 1; font-size: 11px; padding: 4px 6px; }
+  .split-compare .split-grid { grid-auto-rows: 62dvh; }
+  .split-compare .split-toolbar { gap: 0; padding: 0 4px; }
   .split-compare .split-toolbar-title { display: none; }
-  .split-compare .split-sync-btn { font-size: 12px; }
-  .split-compare .split-pane-controls { padding: 3px 8px; }
-  .split-compare .split-pane-stat-value { font-size: 16px; }
-  .split-compare .split-pane-stat-envelope { font-size: 10px; }
-  .city-image-caption { padding: 10px 14px; grid-template-columns: 1fr; }
-  .city-image-caption strong { font-size: 20px; }
-  .city-image-caption > span { font-size: 12px; }
-  .split-compare .twin-workbench { background: var(--atlas-ground); }
-  .split-compare:has(.twin-workbench) > .city-image-nav,
-  .split-compare:has(.twin-workbench) > .city-image-reading { display: none; }
+  .split-compare .split-pane-stat-value { font-size: 14px; }
+  .city-image-caption { max-width: calc(100% - 20px); }
 }
-.split-compare:has(.city-image-reading) .split-analysis-bar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .split-notes { animation: none; }
+}
+.split-compare .split-pane-stat { min-width: 0; overflow: hidden; padding-right: 10px; }
+.split-compare .split-pane-stat-envelope { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.split-compare .split-pane-stats { background: linear-gradient(180deg, rgba(4, 6, 11, 0.86), rgba(4, 6, 11, 0.6)); }
+.city-image-caption > button:not(.city-image-caption-toggle) { grid-column: 1 / -1; justify-self: start; }
