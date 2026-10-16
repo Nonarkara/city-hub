@@ -1,8 +1,8 @@
 /**
- * Overpass client: mirror fallback, per-attempt timeout, backoff on 429/504,
- * and an in-memory cache. A custom User-Agent is sent for runtimes that allow
- * it (Workers, Node). Browsers strip that header, so a 406 on the primary
- * mirror falls through to the next one.
+ * Overpass client: mirror fallback, per-attempt timeout, backoff-and-retry on
+ * backpressure (429/500/502/503/504), and an in-memory cache. A custom
+ * User-Agent is sent for runtimes that allow it (Workers, Node). Browsers strip
+ * that header, so a 406 on the primary mirror falls through to the next one.
  */
 import { timeoutSignal } from '../request-timeout'
 import { systemClock, type Clock } from './rate-limit'
@@ -42,6 +42,43 @@ export function overpassBackoffMs(attempt: number): number {
   return Math.min(8_000, 500 * 2 ** attempt)
 }
 
+/**
+ * Statuses that mean "busy right now, ask again", not "this query is wrong".
+ *
+ * Measured 2026-10-15 against the real mirrors while they were saturated, with
+ * the exact city-image query the app sends:
+ *
+ *   overpass-api.de  → 502, body: "This Overpass API server is currently at
+ *                      capacity. All query workers are busy and the request queue
+ *                      is full. … Retry your request using exponential backoff"
+ *   kumi.systems     → 500
+ *   no User-Agent    → 429
+ *
+ * 502 was the missing one and it is the one that actually happens. The previous
+ * condition treated only 429/504 as retryable, so a merely-busy primary mirror
+ * ended the whole sweep in ~2s and the user was shown "map data unavailable" for
+ * a service that answers the identical query in ~24s once the queue drains.
+ * 406 stays out of this set on purpose: that means the request was rejected, and
+ * repeating it unchanged would just repeat the rejection.
+ */
+export const OVERPASS_RETRYABLE_STATUS: ReadonlySet<number> = new Set([429, 500, 502, 503, 504])
+
+/**
+ * Full passes over the mirror list before giving up.
+ *
+ * The old loop made exactly one pass: `index` only ever moved forward, so a
+ * transient "all workers busy" could never be retried even though the upstream
+ * asks for exactly that. Three rounds is the most we will ever send to a free
+ * public service in one request — 9 attempts at absolute worst — and the CDN
+ * cache means a given city is really only asked once a day.
+ */
+export const OVERPASS_MAX_ROUNDS = 3
+
+/** Spread retries out so concurrent clients do not resynchronise on one mirror. */
+export function overpassRetryDelayMs(attempt: number, random: () => number = Math.random): number {
+  return overpassBackoffMs(attempt) + Math.floor(random() * 250)
+}
+
 export class OverpassUnavailableError extends Error {
   constructor() {
     super('Overpass unavailable')
@@ -57,6 +94,9 @@ export interface OverpassClientOptions {
   mirrors?: readonly string[]
   timeoutMs?: number
   cacheTtlMs?: number
+  /** Jitter source for retry delays. Tests pass a constant to stay deterministic. */
+  random?: () => number
+  maxRounds?: number
 }
 
 export class OverpassClient {
@@ -65,6 +105,8 @@ export class OverpassClient {
   private readonly mirrors: readonly string[]
   private readonly timeoutMs: number
   private readonly cacheTtlMs: number
+  private readonly random: () => number
+  private readonly maxRounds: number
   private readonly cache = new Map<string, { at: number; data: unknown }>()
 
   constructor(options: OverpassClientOptions = {}) {
@@ -73,6 +115,8 @@ export class OverpassClient {
     this.mirrors = options.mirrors ?? OVERPASS_MIRRORS
     this.timeoutMs = options.timeoutMs ?? OVERPASS_TIMEOUT_MS
     this.cacheTtlMs = options.cacheTtlMs ?? OVERPASS_CACHE_TTL_MS
+    this.random = options.random ?? Math.random
+    this.maxRounds = Math.max(1, options.maxRounds ?? OVERPASS_MAX_ROUNDS)
   }
 
   async query(query: string): Promise<unknown> {
@@ -80,32 +124,49 @@ export class OverpassClient {
     if (hit && this.clock.now() - hit.at < this.cacheTtlMs) return hit.data
 
     let attempt = 0
-    for (let index = 0; index < this.mirrors.length; index += 1) {
-      const mirror = this.mirrors[index]
-      try {
-        const res = await this.fetchImpl(mirror, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-            'User-Agent': OVERPASS_USER_AGENT,
-          },
-          body: `data=${encodeURIComponent(query)}`,
-          signal: timeoutSignal(this.timeoutMs),
-        })
-        if (res.ok) {
-          const data = await res.json() as unknown
-          // Overpass can return HTTP 200 with a runtime error and partial data.
-          if (!data || typeof data !== 'object' || !Array.isArray((data as { elements?: unknown }).elements) || (data as { remark?: unknown }).remark) continue
-          this.cache.set(query, { at: this.clock.now(), data })
-          return data
+    for (let round = 0; round < this.maxRounds; round += 1) {
+      // Did this pass end in backpressure (busy), or in a verdict (rejected /
+      // timed out / partial)? Only backpressure is worth another pass.
+      let sawBackpressure = false
+
+      for (let index = 0; index < this.mirrors.length; index += 1) {
+        const mirror = this.mirrors[index]
+        try {
+          const res = await this.fetchImpl(mirror, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              Accept: 'application/json',
+              'User-Agent': OVERPASS_USER_AGENT,
+            },
+            body: `data=${encodeURIComponent(query)}`,
+            signal: timeoutSignal(this.timeoutMs),
+          })
+          if (res.ok) {
+            const data = await res.json() as unknown
+            // Overpass can return HTTP 200 with a runtime error and partial data.
+            if (!data || typeof data !== 'object' || !Array.isArray((data as { elements?: unknown }).elements) || (data as { remark?: unknown }).remark) continue
+            this.cache.set(query, { at: this.clock.now(), data })
+            return data
+          }
+          if (OVERPASS_RETRYABLE_STATUS.has(res.status)) {
+            sawBackpressure = true
+            if (index < this.mirrors.length - 1) {
+              await this.clock.sleep(overpassRetryDelayMs(attempt, this.random))
+              attempt += 1
+            }
+          }
+        } catch {
+          // Timeout or network failure: try the next mirror immediately.
         }
-        if ((res.status === 429 || res.status === 504) && index < this.mirrors.length - 1) {
-          await this.clock.sleep(overpassBackoffMs(attempt))
-          attempt += 1
-        }
-      } catch {
-        // Timeout or network failure: try the next mirror immediately.
+      }
+
+      // Nothing said "busy" — the mirrors gave a final answer. Repeating the
+      // request would only repeat that answer, so do not spend budget on it.
+      if (!sawBackpressure) break
+      if (round < this.maxRounds - 1) {
+        await this.clock.sleep(overpassRetryDelayMs(attempt, this.random))
+        attempt += 1
       }
     }
     throw new OverpassUnavailableError()

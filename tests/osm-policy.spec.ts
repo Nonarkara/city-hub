@@ -13,7 +13,9 @@ import {
 } from '../src/lib/osm/nominatim-upstream'
 import { handleNominatimRequest } from '../src/lib/osm/nominatim-http'
 import {
+  OVERPASS_MAX_ROUNDS,
   OVERPASS_MIRRORS,
+  OVERPASS_RETRYABLE_STATUS,
   OVERPASS_USER_AGENT,
   OverpassClient,
   installOverpassClient,
@@ -203,6 +205,7 @@ test('Overpass backs off on 429/504, then uses the next mirror', async () => {
       now: () => 0,
       sleep: async (ms) => { sleeps.push(ms) },
     },
+    random: () => 0,
     fetchImpl: async (url, init) => {
       urls.push(url)
       ua = header(init, 'User-Agent')
@@ -221,6 +224,68 @@ test('Overpass backs off on 429/504, then uses the next mirror', async () => {
   expect(urls).toEqual([...OVERPASS_MIRRORS])
   expect(sleeps).toEqual([500, 1000])
   expect(ua).toBe(OVERPASS_USER_AGENT)
+})
+
+// Measured 2026-10-15: a saturated overpass-api.de answers 502 with
+// "All query workers are busy and the request queue is full. Retry your
+// request using exponential backoff". Treating that as a final verdict made
+// the UI show "map data unavailable" for a mirror that answers the very same
+// query in ~24s once the queue drains.
+test('Overpass retries a saturated mirror (502) instead of failing on the first pass', async () => {
+  expect(OVERPASS_RETRYABLE_STATUS.has(502)).toBe(true)
+  expect(OVERPASS_RETRYABLE_STATUS.has(500)).toBe(true)
+  expect(OVERPASS_RETRYABLE_STATUS.has(406)).toBe(false)
+
+  const sleeps: number[] = []
+  let calls = 0
+  const client = new OverpassClient({
+    mirrors: ['https://example.test/interpreter'],
+    clock: { now: () => 0, sleep: async (ms) => { sleeps.push(ms) } },
+    random: () => 0,
+    fetchImpl: async () => {
+      calls += 1
+      // Busy for the first two passes, then the queue drains.
+      if (calls <= 2) return new Response('at capacity', { status: 502 })
+      return Response.json({ elements: [{ type: 'node', id: 7 }] })
+    },
+  })
+
+  await expect(client.query('capacity-query')).resolves.toEqual({ elements: [{ type: 'node', id: 7 }] })
+  expect(calls).toBe(3)
+  expect(sleeps).toEqual([500, 1000])
+})
+
+test('Overpass gives up after the bounded rounds rather than hammering the mirror', async () => {
+  let calls = 0
+  const client = new OverpassClient({
+    mirrors: ['https://example.test/interpreter'],
+    clock: { now: () => 0, sleep: async () => {} },
+    random: () => 0,
+    fetchImpl: async () => {
+      calls += 1
+      return new Response('at capacity', { status: 502 })
+    },
+  })
+
+  await expect(client.query('always-busy')).rejects.toThrow('Overpass unavailable')
+  expect(calls).toBe(OVERPASS_MAX_ROUNDS)
+})
+
+test('Overpass does not spend retries on a mirror that gave a final verdict', async () => {
+  let calls = 0
+  const client = new OverpassClient({
+    mirrors: ['https://example.test/interpreter'],
+    clock: { now: () => 0, sleep: async () => {} },
+    random: () => 0,
+    fetchImpl: async () => {
+      calls += 1
+      // 406 = "your request was rejected", not "come back later".
+      return new Response('missing ua', { status: 406 })
+    },
+  })
+
+  await expect(client.query('rejected')).rejects.toThrow('Overpass unavailable')
+  expect(calls).toBe(1)
 })
 
 test('Overpass 406 falls through to the next mirror without a rate-limit backoff', async () => {

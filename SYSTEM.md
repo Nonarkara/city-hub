@@ -110,6 +110,29 @@ header the browser will not let JavaScript set. Nominatim was moved
 server-side for this reason (`nominatim-upstream.ts` documents it); Overpass now
 is too. `src/lib/osm/overpass-http.ts` carries the reasoning and the numbers.
 
+### "Busy" is not "rejected"
+
+Overpass is a free, volunteer-run service and says so when it is saturated.
+Measured 2026-10-15 under load, with the real city-image query:
+
+| Mirror | Answer |
+|---|---|
+| `overpass-api.de` | `502` — *"All query workers are busy and the request queue is full. Retry your request using exponential backoff"* |
+| `kumi.systems` | `500` |
+| no User-Agent | `429` |
+
+`OverpassClient` therefore distinguishes **backpressure** (429/500/502/503/504 —
+come back later) from a **verdict** (406 — your request was rejected). Only
+backpressure spends retries: `OVERPASS_MAX_ROUNDS` full passes over the mirror
+list, `overpassRetryDelayMs` backoff with jitter between them, capped so a single
+request never sends more than 9 queries to a free service.
+
+This mattered in practice. The earlier client treated only 429/504 as retryable
+and never repeated a mirror, so one saturated primary ended the sweep in ~2s and
+the UI showed *"Public map data unavailable"* — for a mirror that answers the
+identical query in ~24s once the queue drains. The honest failure state is still
+there and still 503; it just no longer fires on a service that is merely busy.
+
 ---
 
 ## Data contracts
