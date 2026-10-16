@@ -252,6 +252,7 @@ Documented public host — also the GitHub repository homepage:
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 | [LICENSE](LICENSE) | MIT — GitHub-detectable |
 | [docs/DESIGN-AUDIT-LYNCH.md](docs/DESIGN-AUDIT-LYNCH.md) | The five Lynch lenses, and why OSM features are candidate evidence rather than a mental map |
+| [docs/IOC-2.0-RESEARCH.md](docs/IOC-2.0-RESEARCH.md) | Research and design for Image of the City 2.0 — binding the eight city systems to Lynch's elements, with page references to the 1960 source |
 | [docs/hero-banner.png](docs/hero-banner.png) | Public README hero (this banner) |
 | [docs/UNL-DEPENDENCY-INVENTORY.md](docs/UNL-DEPENDENCY-INVENTORY.md) | What UNL did vs what replaced it (historical; some env names in it are obsolete) |
 | [docs/IMPLEMENTATION-2026-05-26.md](docs/IMPLEMENTATION-2026-05-26.md) | Air4Thai, TMD seismic, Thaiwater, TomTom, Airbnb, correlation engine |
