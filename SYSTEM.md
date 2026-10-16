@@ -133,6 +133,19 @@ the UI showed *"Public map data unavailable"* — for a mirror that answers the
 identical query in ~24s once the queue drains. The honest failure state is still
 there and still 503; it just no longer fires on a service that is merely busy.
 
+**The server must answer before the client gives up.** `OVERPASS_TIMEOUT_MS`
+(90s) is the budget the browser enforces on itself; `OVERPASS_DEADLINE_MS`
+(75s) bounds the whole server-side request — every mirror, every retry, every
+backoff, and each attempt is further capped to the time actually left. Without
+that ceiling, retries made the *server* slower than its own caller: the client
+aborted at 90s mid-flight, and a failure reached the user as a silent abort
+instead of a 503 that says why. Verified live: a saturated read now returns
+**503 at 75.1s**, answering in its own words instead of being cut off.
+
+In the browser the single "mirror" is this proxy, which has already spent its
+retry budget, so the browser client asks it **once** (`maxRounds: 1`) — retrying
+an already-answered proxy means paying the same wait twice for one question.
+
 ---
 
 ## Data contracts
