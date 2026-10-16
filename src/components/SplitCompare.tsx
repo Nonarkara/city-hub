@@ -290,6 +290,9 @@ function CompareMapPane({
   const curDate      = useRef(state.date)
   const curCity      = useRef(state.cityId)
   const trafficOnRef = useRef(trafficOn)
+  // Whether the pane is currently zoomed into a study window rather than the
+  // city view. Used to put the camera back when City image is switched off.
+  const wasCityElement = useRef(false)
   const [image, setImage] = useState<CityImage | null>(null)
   const [imageError, setImageError] = useState(false)
   // The city-image query is a real 40–60 seconds of upstream work the first time
@@ -351,8 +354,12 @@ function CompareMapPane({
         attribution: '© OpenStreetMap contributors',
       })
       else (map.getSource('city-image') as import('maplibre-gl').GeoJSONSource).setData(image?.collection ?? { type: 'FeatureCollection', features: [] })
-      if (!map.getLayer('city-image-context')) map.addLayer({ id: 'city-image-context', source: 'city-image', type: 'line', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#b3bcbf', 'line-width': 1 } })
+      if (!map.getLayer('city-image-context')) map.addLayer({ id: 'city-image-context', source: 'city-image', type: 'line', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#cfd6d8', 'line-width': 1, 'line-opacity': 0.7 } })
       const filter: import('maplibre-gl').FilterSpecification = ['==', ['get', 'kind'], cityElement]
+      // Casing under the highlighted element. Without it a 3px brown line
+      // disappears into satellite and street tiles; the casing is what makes
+      // the same overlay readable over imagery and over a pale basemap.
+      if (!map.getLayer('city-image-casing')) map.addLayer({ id: 'city-image-casing', source: 'city-image', type: 'line', filter, paint: { 'line-color': '#f7f5f0', 'line-width': 6, 'line-opacity': 0.85 } })
       if (!map.getLayer('city-image-lines')) map.addLayer({ id: 'city-image-lines', source: 'city-image', type: 'line', filter, paint: { 'line-color': '#8a4b08', 'line-width': 3, 'line-opacity': 0.95 } })
       else map.setFilter('city-image-lines', filter)
       if (!map.getLayer('city-image-points')) map.addLayer({ id: 'city-image-points', source: 'city-image', type: 'circle', filter: ['all', filter, ['==', ['geometry-type'], 'Point']], paint: { 'circle-color': '#8a4b08', 'circle-radius': cityElement === 'districts' ? 9 : 5, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
@@ -376,19 +383,32 @@ function CompareMapPane({
     const map = mapRef.current
     if (!map) return
     if (cityElement) {
-      map.setStyle({ version: 8, sources: {}, layers: [{ id: 'study-ground', type: 'background', paint: { 'background-color': '#f1f3f2' } }] })
+      // Keep the basemap. This used to replace the whole style with a flat
+      // background so the OSM proxies stood alone as evidence. That bought
+      // nothing legible — and when a read failed it left half the screen as an
+      // empty void while the caption claimed "the satellite view underneath is
+      // unaffected". The proxies still need somewhere to sit, and the basemap
+      // is real, labelled context rather than a claim about the city image.
+      wasCityElement.current = true
       const [w, s, e, n] = studyBounds(city)
       map.fitBounds([[w, s], [e, n]], { padding: 28, duration: 0 })
       return
     }
+    const leavingStudyWindow = wasCityElement.current
+    wasCityElement.current = false
     const bmChanged = curBasemap.current !== state.basemap
     const dtChanged = curDate.current !== state.date
     const temporal  = isTemporalBasemap(state.basemap)
-    if (!bmChanged && !(temporal && dtChanged) && map.getLayer('study-ground') == null) return
-    curBasemap.current = state.basemap
-    curDate.current    = state.date
-    map.setStyle(getBasemapDef(state.basemap, state.date).style)
-    map.jumpTo({ center: city.center, zoom: city.zoom })
+    // Reload the basemap only when it actually changed. Leaving a study window
+    // is just a camera move — the style never left.
+    if (bmChanged || (temporal && dtChanged)) {
+      curBasemap.current = state.basemap
+      curDate.current    = state.date
+      map.setStyle(getBasemapDef(state.basemap, state.date).style)
+    }
+    if (leavingStudyWindow || bmChanged || (temporal && dtChanged)) {
+      map.jumpTo({ center: city.center, zoom: city.zoom })
+    }
   }, [state.basemap, state.date, cityElement, city.id])
 
   useEffect(() => {
@@ -412,12 +432,12 @@ function CompareMapPane({
       {cityElement && <div className="city-image-caption" aria-live="polite">
         <strong>{city.name}</strong>
         <span>{imageError
-          ? 'Public map data unavailable'
+          ? 'Public map data unavailable — basemap unchanged'
           : !image
             ? `Reading OpenStreetMap… ${imageWaitMs > 3000 ? `${Math.round(imageWaitMs / 1000)}s` : ''}`.trim()
             : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
         {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}
-        {!imageError && !image && <small>First read of a city takes up to a minute. It is then kept for a day. The satellite view underneath is unaffected.</small>}
+        {!imageError && !image && <small>First read of a city takes up to a minute. It is then kept for a day. The basemap stays live underneath while you wait.</small>}
         {image && (
           <small>
             {[...new Set(imageFeatures.map((feature) => feature.properties?.name))]
