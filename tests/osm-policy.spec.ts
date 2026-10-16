@@ -13,9 +13,11 @@ import {
 } from '../src/lib/osm/nominatim-upstream'
 import { handleNominatimRequest } from '../src/lib/osm/nominatim-http'
 import {
+  OVERPASS_DEADLINE_MS,
   OVERPASS_MAX_ROUNDS,
   OVERPASS_MIRRORS,
   OVERPASS_RETRYABLE_STATUS,
+  OVERPASS_TIMEOUT_MS,
   OVERPASS_USER_AGENT,
   OverpassClient,
   installOverpassClient,
@@ -286,6 +288,35 @@ test('Overpass does not spend retries on a mirror that gave a final verdict', as
 
   await expect(client.query('rejected')).rejects.toThrow('Overpass unavailable')
   expect(calls).toBe(1)
+})
+
+// Adding retries without a total deadline made the server slower than its own
+// caller: the client gave up at 90s while the server was still working, so a
+// failure arrived as a silent client abort instead of a 503 that says why.
+test('the Overpass deadline stays inside the client timeout it must answer within', () => {
+  expect(OVERPASS_DEADLINE_MS).toBeLessThan(OVERPASS_TIMEOUT_MS)
+  // Enough headroom for a measured 55s cold read plus at least one retry.
+  expect(OVERPASS_TIMEOUT_MS - OVERPASS_DEADLINE_MS).toBeGreaterThanOrEqual(10_000)
+})
+
+test('Overpass stops at its deadline instead of sleeping past it', async () => {
+  let now = 0
+  const sleeps: number[] = []
+  const client = new OverpassClient({
+    mirrors: ['https://example.test/interpreter'],
+    deadlineMs: 2_000,
+    clock: {
+      now: () => now,
+      sleep: async (ms) => { sleeps.push(ms); now += ms },
+    },
+    random: () => 0,
+    fetchImpl: async () => new Response('at capacity', { status: 502 }),
+  })
+
+  await expect(client.query('deadline-query')).rejects.toThrow('Overpass unavailable')
+  // It answered, rather than letting the caller time out on an open request.
+  expect(now).toBeLessThanOrEqual(2_000)
+  expect(sleeps).toEqual([500, 1000])
 })
 
 test('Overpass 406 falls through to the next mirror without a rate-limit backoff', async () => {

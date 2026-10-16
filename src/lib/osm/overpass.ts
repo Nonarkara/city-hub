@@ -74,6 +74,23 @@ export const OVERPASS_RETRYABLE_STATUS: ReadonlySet<number> = new Set([429, 500,
  */
 export const OVERPASS_MAX_ROUNDS = 3
 
+/**
+ * Ceiling on the *whole* request, across every mirror and every retry.
+ *
+ * `OVERPASS_TIMEOUT_MS` (90s) is the budget the browser gives us and the budget
+ * it enforces on itself. If retries could outlive it, the client would abort
+ * mid-flight and the user would sit watching "Reading OpenStreetMap… 89s" and
+ * then get a failure they never learn the reason for — which is exactly what
+ * adding retries did before this constant existed: a saturated mirror answered
+ * 503 in ~43s for Kranj, but Bangkok burned the full 90s and was cut off by
+ * the client rather than answered by us.
+ *
+ * So the server always finishes first and answers in its own words — 200 with
+ * data, or 503 that means something. 75s leaves headroom under the 90s client
+ * budget while still covering a measured 55s cold read plus one retry.
+ */
+export const OVERPASS_DEADLINE_MS = 75_000
+
 /** Spread retries out so concurrent clients do not resynchronise on one mirror. */
 export function overpassRetryDelayMs(attempt: number, random: () => number = Math.random): number {
   return overpassBackoffMs(attempt) + Math.floor(random() * 250)
@@ -97,6 +114,8 @@ export interface OverpassClientOptions {
   /** Jitter source for retry delays. Tests pass a constant to stay deterministic. */
   random?: () => number
   maxRounds?: number
+  /** Ceiling on the whole request, across all mirrors and retries. */
+  deadlineMs?: number
 }
 
 export class OverpassClient {
@@ -107,6 +126,7 @@ export class OverpassClient {
   private readonly cacheTtlMs: number
   private readonly random: () => number
   private readonly maxRounds: number
+  private readonly deadlineMs: number
   private readonly cache = new Map<string, { at: number; data: unknown }>()
 
   constructor(options: OverpassClientOptions = {}) {
@@ -117,12 +137,16 @@ export class OverpassClient {
     this.cacheTtlMs = options.cacheTtlMs ?? OVERPASS_CACHE_TTL_MS
     this.random = options.random ?? Math.random
     this.maxRounds = Math.max(1, options.maxRounds ?? OVERPASS_MAX_ROUNDS)
+    this.deadlineMs = options.deadlineMs ?? OVERPASS_DEADLINE_MS
   }
 
   async query(query: string): Promise<unknown> {
     const hit = this.cache.get(query)
     if (hit && this.clock.now() - hit.at < this.cacheTtlMs) return hit.data
 
+    // Every attempt, backoff and retry shares this one budget so the answer
+    // always lands inside the caller's own timeout.
+    const deadline = this.clock.now() + this.deadlineMs
     let attempt = 0
     for (let round = 0; round < this.maxRounds; round += 1) {
       // Did this pass end in backpressure (busy), or in a verdict (rejected /
@@ -131,6 +155,8 @@ export class OverpassClient {
 
       for (let index = 0; index < this.mirrors.length; index += 1) {
         const mirror = this.mirrors[index]
+        const remaining = deadline - this.clock.now()
+        if (remaining <= 0) break
         try {
           const res = await this.fetchImpl(mirror, {
             method: 'POST',
@@ -140,7 +166,7 @@ export class OverpassClient {
               'User-Agent': OVERPASS_USER_AGENT,
             },
             body: `data=${encodeURIComponent(query)}`,
-            signal: timeoutSignal(this.timeoutMs),
+            signal: timeoutSignal(Math.min(this.timeoutMs, remaining)),
           })
           if (res.ok) {
             const data = await res.json() as unknown
@@ -164,10 +190,13 @@ export class OverpassClient {
       // Nothing said "busy" — the mirrors gave a final answer. Repeating the
       // request would only repeat that answer, so do not spend budget on it.
       if (!sawBackpressure) break
-      if (round < this.maxRounds - 1) {
-        await this.clock.sleep(overpassRetryDelayMs(attempt, this.random))
-        attempt += 1
-      }
+      if (round >= this.maxRounds - 1) break
+      // Never sleep past the deadline: a backoff that outlives the budget would
+      // hand the caller a timeout instead of an answer.
+      const delay = overpassRetryDelayMs(attempt, this.random)
+      if (this.clock.now() + delay >= deadline) break
+      await this.clock.sleep(delay)
+      attempt += 1
     }
     throw new OverpassUnavailableError()
   }
