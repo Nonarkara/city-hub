@@ -30,5 +30,24 @@ test('service errors cannot masquerade as empty or complete city maps', () => {
   expect(() => parseCityImage({ remark: 'timeout', elements: [] })).toThrow()
   expect(() => parseCityImage({})).toThrow()
   expect(parseCityImage({ elements: [] }).collection.features).toHaveLength(0)
-  expect(parseCityImage({ elements: new Array(1200).fill(null) }).truncated).toBe(true)
+  // Truncation is about the *drawn* set. The query returns two outputs with
+  // separate caps, so a window with thousands of crossing witnesses and a
+  // handful of Lynch elements is a complete image, not a truncated one.
+  const drawn = Array.from({ length: 1200 }, (_, i) => ({
+    type: 'way', id: i + 1, tags: { highway: 'primary', name: `Road ${i}` },
+    geometry: [{ lat: 13.7 + i * 1e-5, lon: 100.5 }, { lat: 13.7 + (i + 1) * 1e-5, lon: 100.5 }],
+  }))
+  expect(parseCityImage({ elements: drawn }).truncated).toBe(true)
+  const withCrossings = [...drawn.slice(0, 10), ...Array.from({ length: 2500 }, (_, i) => ({
+    type: 'node', id: 50_000 + i, lat: 13.75 + i * 1e-5, lon: 100.5,
+  }))]
+  expect(parseCityImage({ elements: withCrossings }).truncated).toBe(false)
+})
+
+test('the query keeps crossing witnesses out of the drawn element budget', () => {
+  const query = cityImageQuery(CITIES.find((c) => c.id === 'bangkok')!)
+  // Two outputs, two limits — otherwise a road-dense window would push the
+  // Lynch elements past the cap and silently truncate the city image.
+  expect(query).toContain('.display out geom 1200')
+  expect(query).toContain('.cross out body 3000')
 })

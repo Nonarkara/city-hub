@@ -356,12 +356,41 @@ function CompareMapPane({
       else (map.getSource('city-image') as import('maplibre-gl').GeoJSONSource).setData(image?.collection ?? { type: 'FeatureCollection', features: [] })
       if (!map.getLayer('city-image-context')) map.addLayer({ id: 'city-image-context', source: 'city-image', type: 'line', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#cfd6d8', 'line-width': 1, 'line-opacity': 0.7 } })
       const filter: import('maplibre-gl').FilterSpecification = ['==', ['get', 'kind'], cityElement]
+
+      // ── Barrier vs seam (Lynch p.63–64) ──────────────────────────────────
+      // An edge the city uses and an edge the city works around are the same
+      // line on a map. Splitting them here is the whole point of this lens: a
+      // seam is drawn solid and stitched with the roads that meet it; a barrier
+      // is dashed and severed, because nothing meets it.
+      const NEVER: import('maplibre-gl').FilterSpecification = ['==', ['get', 'kind'], '__never__']
+      const edgesLens = cityElement === 'edges'
+      // Seams keep the highlight layer; barriers move to their own. Everything
+      // that is not the Edges lens keeps the original single-layer behaviour.
+      const seamFilter: import('maplibre-gl').FilterSpecification = edgesLens
+        ? ['all', filter, ['!=', ['get', 'structure'], 'barrier']]
+        : filter
+      const barrierFilter: import('maplibre-gl').FilterSpecification = edgesLens
+        ? ['all', filter, ['==', ['get', 'structure'], 'barrier']]
+        : NEVER
+
       // Casing under the highlighted element. Without it a 3px brown line
       // disappears into satellite and street tiles; the casing is what makes
       // the same overlay readable over imagery and over a pale basemap.
-      if (!map.getLayer('city-image-casing')) map.addLayer({ id: 'city-image-casing', source: 'city-image', type: 'line', filter, paint: { 'line-color': '#f7f5f0', 'line-width': 6, 'line-opacity': 0.85 } })
-      if (!map.getLayer('city-image-lines')) map.addLayer({ id: 'city-image-lines', source: 'city-image', type: 'line', filter, paint: { 'line-color': '#8a4b08', 'line-width': 3, 'line-opacity': 0.95 } })
-      else map.setFilter('city-image-lines', filter)
+      if (!map.getLayer('city-image-casing')) map.addLayer({ id: 'city-image-casing', source: 'city-image', type: 'line', filter: seamFilter, paint: { 'line-color': '#f7f5f0', 'line-width': 6, 'line-opacity': 0.85 } })
+      else map.setFilter('city-image-casing', seamFilter)
+      if (!map.getLayer('city-image-lines')) map.addLayer({ id: 'city-image-lines', source: 'city-image', type: 'line', filter: seamFilter, paint: { 'line-color': '#8a4b08', 'line-width': 3.4, 'line-opacity': 0.95 } })
+      else { map.setFilter('city-image-lines', seamFilter); map.setPaintProperty('city-image-lines', 'line-width', edgesLens ? 3.4 : 3) }
+
+      if (!map.getLayer('city-image-barrier')) map.addLayer({ id: 'city-image-barrier', source: 'city-image', type: 'line', filter: barrierFilter, paint: { 'line-color': '#243138', 'line-width': 2.4, 'line-dasharray': [1.2, 2.6], 'line-opacity': 0.95 } })
+      else map.setFilter('city-image-barrier', barrierFilter)
+
+      // The roads that meet each edge, so a seam reads as stitching. Without
+      // them the distinction is a label; with them it is the evidence.
+      const crossingFilter: import('maplibre-gl').FilterSpecification = edgesLens
+        ? ['==', ['get', 'kind'], 'crossings']
+        : NEVER
+      if (!map.getLayer('city-image-crossings')) map.addLayer({ id: 'city-image-crossings', source: 'city-image', type: 'circle', filter: crossingFilter, paint: { 'circle-color': '#c9761f', 'circle-radius': 2.2, 'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
+      else map.setFilter('city-image-crossings', crossingFilter)
       if (!map.getLayer('city-image-points')) map.addLayer({ id: 'city-image-points', source: 'city-image', type: 'circle', filter: ['all', filter, ['==', ['geometry-type'], 'Point']], paint: { 'circle-color': '#8a4b08', 'circle-radius': cityElement === 'districts' ? 9 : 5, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
       else map.setFilter('city-image-points', ['all', filter, ['==', ['geometry-type'], 'Point']])
     }
@@ -435,7 +464,12 @@ function CompareMapPane({
           ? 'Public map data unavailable — basemap unchanged'
           : !image
             ? `Reading OpenStreetMap… ${imageWaitMs > 3000 ? `${Math.round(imageWaitMs / 1000)}s` : ''}`.trim()
-            : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+            : cityElement === 'edges'
+              ? `${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier} edge${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier === 1 ? '' : 's'} · ${image.edgeSummary.seam} seam${image.edgeSummary.seam === 1 ? '' : 's'}, ${image.edgeSummary.barrier} barrier${image.edgeSummary.barrier === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`
+              : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+        {image && cityElement === 'edges' && (
+          <small>Solid where the city meets the edge and keeps going — a seam. Dashed where nothing meets it and the city works around it — a barrier. Lynch 1960, p.63–64.</small>
+        )}
         {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}
         {!imageError && !image && <small>First read of a city takes up to a minute. It is then kept for a day. The basemap stays live underneath while you wait.</small>}
         {image && (
