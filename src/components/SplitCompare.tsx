@@ -301,6 +301,7 @@ function CompareMapPane({
   // want to wait can go and use the satellite view instead.
   const [imageWaitMs, setImageWaitMs] = useState(0)
   const [retryImage, setRetryImage] = useState(0)
+  const [captionOpen, setCaptionOpen] = useState(true)
 
   const city = cities.find((c) => c.id === state.cityId) ?? cities[0]
   const imageFeatures = image?.collection.features.filter((feature) => feature.properties?.kind === cityElement) ?? []
@@ -458,8 +459,9 @@ function CompareMapPane({
       <div className="split-pane-badge">{index + 1}</div>
 
       {!cityElement && <PaneMetricDock city={city} live={live} loading={liveLoading} />}
-      {cityElement && <div className="city-image-caption" aria-live="polite">
+      {cityElement && <div className={`city-image-caption ${captionOpen ? '' : 'city-image-caption--collapsed'}`} aria-live="polite">
         <strong>{city.name}</strong>
+        <button type="button" className="city-image-caption-toggle" onClick={() => setCaptionOpen((v) => !v)} aria-expanded={captionOpen} aria-label={captionOpen ? `Collapse ${city.name} notes` : `Expand ${city.name} notes`}>{captionOpen ? '−' : '+'}</button>
         <span>{imageError
           ? 'Public map data unavailable — basemap unchanged'
           : !image
@@ -582,6 +584,8 @@ export function SplitCompare() {
   // Live traffic overlay — applied to every pane at once (needs the Mapbox token)
   const [trafficOn, setTrafficOn] = useState(false)
   const [syncLens, setSyncLens] = useState(true)
+  // Map-first: the notes rail is open on wide screens, tucked away on phones.
+  const [notesOpen, setNotesOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768)
   const [liveByCity, setLiveByCity] = useState<Record<string, CompareSnapshot>>({})
   const [liveLoading, setLiveLoading] = useState(false)
   const [xMetric, setXMetric] = useState<CompareMetricId>('green')
@@ -715,7 +719,12 @@ export function SplitCompare() {
 
   // Esc → close
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSplitOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSplitOpen(false)
+      const target = e.target as HTMLElement | null
+      const typing = !!target && /INPUT|SELECT|TEXTAREA/.test(target.tagName)
+      if ((e.key === 'n' || e.key === 'N') && !e.metaKey && !e.ctrlKey && !e.altKey && !typing) setNotesOpen((v) => !v)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [setSplitOpen])
@@ -735,7 +744,6 @@ export function SplitCompare() {
           <span className="city-image-scale">Approx. 4 × 4 km study windows</span>
         </> : <span className="city-image-intro">Compare the places people move through, recognise and remember.</span>}
       </div>
-      {cityElement && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
       <div className="twin-map-workspace">
       <div className={gridClass}>
         {panes.map((pane, i) => (
@@ -761,42 +769,46 @@ export function SplitCompare() {
         setSplitOpen(false)
         useUIStore.getState().setPlanOpen(true)
       }} />}
-      </div>
+      {!explorerCity && notesOpen && (
+        <aside className="split-notes" aria-label="Comparison notes">
+          {cityElement && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
+          <div className="split-analysis-bar" aria-label="City metric relationship model">
+            <span className="split-analysis-title">RELATIONSHIP</span>
+            <label className="split-analysis-field">
+              <span>X</span>
+              <select value={xMetric} onChange={(e) => setXMetric(e.target.value as CompareMetricId)} aria-label="Correlation X metric">
+                {COMPARE_METRICS.map((metric) => <option key={metric.id} value={metric.id}>{metric.label}</option>)}
+              </select>
+            </label>
+            <span className="split-analysis-vs">↔</span>
+            <label className="split-analysis-field">
+              <span>Y</span>
+              <select value={yMetric} onChange={(e) => setYMetric(e.target.value as CompareMetricId)} aria-label="Correlation Y metric">
+                {COMPARE_METRICS.map((metric) => <option key={metric.id} value={metric.id}>{metric.label}</option>)}
+              </select>
+            </label>
 
-      <div className="split-analysis-bar" aria-label="City metric relationship model">
-        <span className="split-analysis-title">RELATIONSHIP</span>
-        <label className="split-analysis-field">
-          <span>X</span>
-          <select value={xMetric} onChange={(e) => setXMetric(e.target.value as CompareMetricId)} aria-label="Correlation X metric">
-            {COMPARE_METRICS.map((metric) => <option key={metric.id} value={metric.id}>{metric.label}</option>)}
-          </select>
-        </label>
-        <span className="split-analysis-vs">↔</span>
-        <label className="split-analysis-field">
-          <span>Y</span>
-          <select value={yMetric} onChange={(e) => setYMetric(e.target.value as CompareMetricId)} aria-label="Correlation Y metric">
-            {COMPARE_METRICS.map((metric) => <option key={metric.id} value={metric.id}>{metric.label}</option>)}
-          </select>
-        </label>
-
-        {correlation ? (
-          <>
-            <CorrelationPlot points={correlationPoints} />
-            <div className="split-analysis-result">
-              <strong>r {correlation.r >= 0 ? '+' : ''}{correlation.r.toFixed(2)}</strong>
-              <span>
-                {relationshipLabel(correlation.r)} · n={correlation.n}
-                {correlation.n >= 10 && ` · p≈${correlation.p < 0.001 ? '<0.001' : correlation.p.toFixed(3)}`}
-              </span>
-            </div>
-          </>
-        ) : (
-          <div className="split-analysis-result split-analysis-result--empty">
-            <strong>{correlationPoints.length}/4 comparable cities</strong>
-            <span>{xMetric === yMetric ? 'Choose two different metrics' : 'Four cities with both values are required'}</span>
+            {correlation ? (
+              <>
+                <CorrelationPlot points={correlationPoints} />
+                <div className="split-analysis-result">
+                  <strong>r {correlation.r >= 0 ? '+' : ''}{correlation.r.toFixed(2)}</strong>
+                  <span>
+                    {relationshipLabel(correlation.r)} · n={correlation.n}
+                    {correlation.n >= 10 && ` · p≈${correlation.p < 0.001 ? '<0.001' : correlation.p.toFixed(3)}`}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="split-analysis-result split-analysis-result--empty">
+                <strong>{correlationPoints.length}/4 comparable cities</strong>
+                <span>{xMetric === yMetric ? 'Choose two different metrics' : 'Four cities with both values are required'}</span>
+              </div>
+            )}
+            <span className="split-analysis-caveat">association only · reference profiles use mixed years · feeds show fetch age</span>
           </div>
-        )}
-        <span className="split-analysis-caveat">association only · reference profiles use mixed years · feeds show fetch age</span>
+        </aside>
+      )}
       </div>
 
       <div className="split-toolbar">
@@ -853,6 +865,14 @@ export function SplitCompare() {
             aria-pressed={trafficOn}
           >▦ TRAFFIC</button>
         )}
+
+        <button
+          type="button"
+          className={`split-count-btn split-notes-btn ${notesOpen ? 'split-count-btn--active' : ''}`}
+          onClick={() => setNotesOpen((v) => !v)}
+          aria-pressed={notesOpen}
+          title="Show or hide the comparison notes (N) · บันทึก · 注释"
+        >NOTES</button>
 
         <button
           className="split-toolbar-btn split-toolbar-btn--exit"
