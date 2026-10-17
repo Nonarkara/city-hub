@@ -190,3 +190,24 @@ test('transit is exposed by detached paths — capacity the city does not join',
   // The connected street is in the image but is not the exposure.
   expect(transit.citations.map((c) => c.name)).toEqual(['Elevated Spine'])
 })
+
+test('health is exposed where a junction works but cannot be recognised', () => {
+  // Lynch p.72–76: Scollay Square was the switch point at Beacon Hill and no
+  // one could remember it beyond the subway station. Reach counted only at
+  // junctions a patient could find would flatter the network.
+  const hub = { lat: 42.30, lon: -71.10 }
+  const star = [
+    { type: 'way', id: 3_000, tags: { highway: 'secondary', name: 'Alpha Road' }, geometry: [{ lat: hub.lat, lon: hub.lon - 0.01 }, hub] },
+    { type: 'way', id: 3_001, tags: { highway: 'secondary', name: 'Beta Road' }, geometry: [hub, { lat: hub.lat, lon: hub.lon + 0.01 }] },
+    { type: 'way', id: 3_002, tags: { highway: 'tertiary', name: 'Gamma Road' }, geometry: [hub, { lat: hub.lat + 0.01, lon: hub.lon }] },
+  ]
+  const image = parseCityImage({ elements: star }, 0, 'Testville')
+  expect(image.nodeSummary.shapeless).toBe(1)
+
+  const [health] = projectSystems(image, ['health'])
+  expect(health.line).toContain('shapeless junction')
+  expect(health.line).toContain('Lynch p.72–76')
+  // The citation is the junction, not a district it happens to sit in.
+  expect(health.citations).toHaveLength(1)
+  expect(health.citations[0].structure).toBe('shapeless')
+})

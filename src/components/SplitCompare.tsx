@@ -427,6 +427,29 @@ function CompareMapPane({
         : NEVER
       if (!map.getLayer('city-image-junctions-busy')) map.addLayer({ id: 'city-image-junctions-busy', source: 'city-image', type: 'circle', filter: busyJunctionFilter, paint: { 'circle-color': '#b3341f', 'circle-radius': 4.6, 'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 1.2, 'circle-opacity': 0.95 } })
       else map.setFilter('city-image-junctions-busy', busyJunctionFilter)
+
+      // ── Node image against node function (Lynch p.72–76) ────────────────────
+      // Scollay Square was the switch point at Beacon Hill and could not be
+      // remembered in any concrete way; Copley Square was less important and
+      // very sharply imaged. Drawn here so the two are different colours:
+      // function without anything to recognise is the one worth stopping for.
+      const nodesLens = cityElement === 'nodes'
+      const verdictFilter: import('maplibre-gl').FilterSpecification = nodesLens
+        ? ['==', ['get', 'kind'], 'junctions']
+        : NEVER
+      if (!map.getLayer('city-image-node-verdict')) map.addLayer({
+        id: 'city-image-node-verdict', source: 'city-image', type: 'circle', filter: verdictFilter,
+        paint: {
+          'circle-color': ['match', ['get', 'verdict'],
+            'shapeless', '#b3341f',      // works hard, nothing to recognise
+            'anchored', '#8a4b08',       // works hard and you can see it
+            'memorable', '#c9761f',      // seen clearly, does less
+            '#5a6a72'],                  // quiet: an ordinary crossing
+          'circle-radius': ['match', ['get', 'verdict'], 'shapeless', 6.5, 'anchored', 5, 'memorable', 4.5, 3],
+          'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 1.4, 'circle-opacity': 0.95,
+        },
+      })
+      else map.setFilter('city-image-node-verdict', verdictFilter)
       if (!map.getLayer('city-image-points')) map.addLayer({ id: 'city-image-points', source: 'city-image', type: 'circle', filter: ['all', filter, ['==', ['geometry-type'], 'Point']], paint: { 'circle-color': '#8a4b08', 'circle-radius': cityElement === 'districts' ? 9 : 5, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
       else map.setFilter('city-image-points', ['all', filter, ['==', ['geometry-type'], 'Point']])
     }
@@ -505,7 +528,9 @@ function CompareMapPane({
               ? `${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier} edge${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier === 1 ? '' : 's'} · ${image.edgeSummary.seam} seam${image.edgeSummary.seam === 1 ? '' : 's'}, ${image.edgeSummary.barrier} barrier${image.edgeSummary.barrier === 1 ? '' : 's'}${image.crossingsTruncated ? ' · incomplete road contacts, reads toward barrier' : image.truncated || image.edgeTruncated ? ' · limited sample' : ''}`
               : cityElement === 'paths'
               ? `${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached} named path${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached === 1 ? '' : 's'} · ${image.pathSummary.linked} linked, ${image.pathSummary.sparse} sparse, ${image.pathSummary.detached} detached${image.truncated ? ' · limited sample' : ''}`
-              : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+              : cityElement === 'nodes'
+                ? `${image.nodeSummary.anchored + image.nodeSummary.shapeless + image.nodeSummary.memorable + image.nodeSummary.quiet} junctions · ${image.nodeSummary.shapeless} do work with nothing to recognise${image.truncated ? ' · limited sample' : ''}`
+                : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
         {image && cityElement === 'edges' && (
           <small>
             Solid where the city meets the edge and keeps going — a seam. Dashed where nothing meets it and the city works around it — a barrier. Lynch 1960, p.63–64.
@@ -526,6 +551,11 @@ function CompareMapPane({
               ? ` Alignment runs ${Math.round(image.pathGrain.concentration * 100)}% along one direction.`
               : ' The named network has no dominant direction here, so there is nothing for a path to align to.'}
             {' '}Junctions of four branches or more are marked in red — Lynch found those give people trouble. Lynch 1960, p.56–61.
+          </small>
+        )}
+        {image && cityElement === 'nodes' && (
+          <small>
+            Red junctions are doing real work with nothing around them a person could name — Scollay Square, the switch point at Beacon Hill, which no one could remember beyond the subway station. Amber junctions are seen clearly whatever they do — Copley Square, less important, remembered by its buildings. Functional importance and image strength are different quantities. Lynch 1960, p.72–76.
           </small>
         )}
         {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}

@@ -35,6 +35,7 @@
 
 import type { SystemId } from '../city-model'
 import type { CityElement, CityImage } from '../../data/city-image'
+import type { NodeVerdict } from './node-image'
 import type { EdgeStructure } from './edge-structure'
 import type { PathStructure } from './path-structure'
 
@@ -45,15 +46,25 @@ import type { PathStructure } from './path-structure'
  * structural condition that makes acting through it hard — the element property
  * that costs the system something.
  */
+/**
+ * A kind of thing a system acts through.
+ *
+ * `junctions` is not one of Lynch's five — it is where two or more named paths
+ * meet, which is the place a system does its switching. A system can be exposed
+ * there without any of the five elements being involved, so it needs a name of
+ * its own rather than being forced into `nodes`.
+ */
+export type SystemElement = CityElement | 'junctions'
+
 export const SYSTEM_BINDINGS: Record<SystemId, {
-  elements: CityElement[]
+  elements: SystemElement[]
   /**
    * `structure` narrows to whichever band this system's risk sits in. Edges and
    * paths were measured by different evidence — road-node contacts versus named
    * junctions — so they carry different verdicts, and a system may be exposed by
    * either.
    */
-  risk: { kind: CityElement; structure?: EdgeStructure | PathStructure; because: string }
+  risk: { kind: SystemElement; structure?: EdgeStructure | PathStructure | NodeVerdict; because: string }
   /** What one of these is called in a sentence — not the raw element id. */
   noun: { one: string; many: string }
 }> = {
@@ -94,9 +105,13 @@ export const SYSTEM_BINDINGS: Record<SystemId, {
     noun: { one: 'junction', many: 'junctions' },
   },
   health: {
-    elements: ['nodes'],
-    risk: { kind: 'nodes', because: 'reach is a question of which junctions exist' },
-    noun: { one: 'junction', many: 'junctions' },
+    // Lynch's own inversion: a place can be the most important junction in the
+    // city and still be invisible in it. Reach measured only at junctions a
+    // patient could recognise would flatter the network; measured at junctions
+    // with nothing nameable around them, it is the honest number.
+    elements: ['nodes', 'junctions'],
+    risk: { kind: 'junctions', structure: 'shapeless', because: 'reach lands there but nothing marks it (Lynch p.72–76)' },
+    noun: { one: 'shapeless junction', many: 'shapeless junctions' },
   },
   housing: {
     elements: ['districts'],
@@ -107,16 +122,18 @@ export const SYSTEM_BINDINGS: Record<SystemId, {
 
 export interface ElementCitation {
   osmId: string
+  /** Synthesised elements — junctions — have no OSM id but do have a handle. */
+  junctionId?: string
   name: string
-  kind: CityElement
-  structure?: EdgeStructure | PathStructure
+  kind: SystemElement
+  structure?: EdgeStructure | PathStructure | NodeVerdict
   densityPerKm?: number
 }
 
 export interface SystemProjection {
   system: SystemId
   /** The element kinds this system acts through. */
-  elements: CityElement[]
+  elements: SystemElement[]
   /** Named elements of the risk class, worst first. */
   citations: ElementCitation[]
   /** One sentence, safe to show next to a capacity verdict. */
@@ -158,7 +175,7 @@ export function projectSystems(image: CityImage | null, systems: readonly System
     const raw = image.collection.features.filter((feature) => {
       if (feature.properties?.kind !== risk.kind) return false
       if (risk.structure && feature.properties?.structure !== risk.structure) return false
-      return wanted.has(feature.properties?.kind as CityElement)
+      return wanted.has(feature.properties?.kind as SystemElement)
     })
 
     // OSM splits one named place into many ways — measured on central Bangkok,
@@ -172,15 +189,19 @@ export function projectSystems(image: CityImage | null, systems: readonly System
       if (!byName.has(name)) {
         byName.set(name, {
           osmId: String(feature.properties?.osmId ?? ''),
+          junctionId: feature.properties?.junctionId ? String(feature.properties.junctionId) : undefined,
           name,
-          kind: feature.properties?.kind as CityElement,
+          kind: feature.properties?.kind as SystemElement,
           structure: feature.properties?.structure as EdgeStructure | PathStructure | undefined,
         })
       }
     }
 
+    // Every citation has to be traceable back to something concrete, or a
+    // planner cannot act on it. Junctions are synthesised rather than drawn
+    // from OSM, so they are traceable by the paths that form them.
     const citations = [...byName.values()]
-      .filter((c) => c.osmId)
+      .filter((c) => c.osmId || c.junctionId)
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .slice(0, 3)
 
@@ -205,7 +226,7 @@ export function projectSystems(image: CityImage | null, systems: readonly System
   })
 }
 
-function list(elements: CityElement[]): string {
+function list(elements: SystemElement[]): string {
   return elements.map((e) => `${e}`).join(' and ')
 }
 

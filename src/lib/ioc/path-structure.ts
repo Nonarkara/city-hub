@@ -216,12 +216,34 @@ export interface PathGroup {
 }
 
 /**
+ * Key under which one street's ways are grouped.
+ *
+ * Not the name as written. OSM carries the same street under more than one
+ * spelling, and each spelling becomes its own path: it stops joining its own
+ * fragments, its length is split in half, and it reports fewer junctions per
+ * kilometre than it has. Measured on central Chiang Mai, `Sri Poom Road` (15
+ * ways) and `Sripoom Road` (5) are one street, as are `Wua Lai Road` (11) and
+ * `Wualai Road` (4) — 72 named paths that are really 70.
+ *
+ * Spaces and case only. Transliteration variants are a deeper problem that this
+ * does not attempt: `Changpuak Road` and `Chang Phueak Road` are also one street
+ * and remain two, which is stated in the module header rather than papered over
+ * with a fuzzy match that would eventually merge two genuinely different roads.
+ */
+export function pathKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase().replace(/\s+/g, '')
+}
+
+/**
  * Group path features by name.
  *
  * Group first, measure second — the fragmentation numbers are in the header of
  * this file and they are not small. Unnamed ways are not drawn at all: the query
  * requires `[name]`, so every path here is a place someone has named, and there
  * is no key to group an unnamed one by.
+ *
+ * Grouped under `pathKey`, but the reading keeps the first spelling actually
+ * seen, because that is the name a person would use.
  */
 export function groupPaths(collection: GeoJSON.FeatureCollection): PathGroup[] {
   const groups = new Map<string, PathGroup>()
@@ -231,12 +253,13 @@ export function groupPaths(collection: GeoJSON.FeatureCollection): PathGroup[] {
     const name = String(feature.properties.name ?? '')
     const osmId = String(feature.properties.osmId)
     if (!name || name === 'Mapped feature' || !osmId) continue
-    const existing = groups.get(name)
+    const key = pathKey(name)
+    const existing = groups.get(key)
     if (existing) {
       existing.geometry.push(feature.geometry.coordinates as LngLat[])
       existing.osmIds.push(osmId)
     } else {
-      groups.set(name, { name, geometry: [feature.geometry.coordinates as LngLat[]], osmIds: [osmId] })
+      groups.set(key, { name, geometry: [feature.geometry.coordinates as LngLat[]], osmIds: [osmId] })
     }
   }
   return [...groups.values()]
@@ -520,11 +543,23 @@ export function annotatePathStructure(collection: GeoJSON.FeatureCollection): Pa
   // inverse is exact rather than approximate.
   const [lon0, lat0] = first
   const kx = M_PER_DEG_LON_AT_EQ * Math.cos((lat0 * Math.PI) / 180)
-  const junctionFeatures: GeoJSON.Feature[] = junctions.map((junction) => ({
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [lon0 + junction.at[0] / kx, lat0 + junction.at[1] / M_PER_DEG_LAT] },
-    properties: { kind: 'junctions', degree: junction.paths.length, name: junction.paths.join(' · ') },
-  }))
+  const junctionFeatures: GeoJSON.Feature[] = junctions.map((junction) => {
+    // Derived from what the junction *is* rather than its position in an
+    // array, so the handle survives a re-parse and can be cited. Junctions are
+    // synthesised — they are not OSM elements, so they have no `osmId` — and the
+    // citation path needs something traceable or it discards them entirely.
+    const paths = [...junction.paths].sort()
+    return {
+      type: 'Feature' as const,
+      properties: {
+        kind: 'junctions',
+        junctionId: paths.join(' + '),
+        degree: junction.paths.length,
+        name: paths.join(' · '),
+      },
+      geometry: { type: 'Point' as const, coordinates: [lon0 + junction.at[0] / kx, lat0 + junction.at[1] / M_PER_DEG_LAT] },
+    }
+  })
 
   // Stamp the verdict back onto the ways, the way `annotateEdgeStructure` does
   // for edges, so the map can filter on `structure` without a second lookup

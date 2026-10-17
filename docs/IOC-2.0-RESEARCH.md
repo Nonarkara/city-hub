@@ -3,9 +3,10 @@
 **Source:** Kevin Lynch, *The Image of the City*, MIT Press / Joint Center for Urban Studies, 1960.
 Read in full for this document. Page references are to that edition.
 
-**Status:** research and framing, with slices 1, 2 and 4 now built and live. The
-remaining sections are still proposals. Section 6 records what the built slices
-actually returned on live data, including the corrections.
+**Status:** research and framing, with slices 1–4 now built and live. Slice 5
+(level coherence / bottomless landmarks) is still a proposal. Sections 2 and 6
+record what the built slices actually returned on live data, including the
+corrections.
 
 ---
 
@@ -241,6 +242,46 @@ reports success at a node nobody can name, that is a finding, not a win.
 
 Lynch also warns: "The image cannot carry too many nodal centres." Density of nodes
 is not automatically good.
+
+**Built — `src/lib/ioc/node-image.ts`.** Two axes that deliberately do not move
+together. *Function* is how many named paths meet there (degree), because Lynch
+excludes the ordinary crossing from the image explicitly. *Image* is how many
+distinctly nameable things stand within 200m, because Copley's image came from
+buildings rather than from shape. Four verdicts: `anchored` (both), **`shapeless`
+(function without image — the Scollay pattern, and the one that should stop a
+planner)**, `memorable` (image without function — the Copley pattern), `quiet`
+(neither — an ordinary crossing, which is not a node despite drawing as one).
+
+**Measured, on live data:**
+
+| City | anchored | shapeless | memorable | quiet |
+|---|---:|---:|---:|---:|
+| Bangkok | 27 | 21 | 64 | 84 |
+| Chiang Mai | 3 | 16 | 2 | 70 |
+| Phuket | 3 | 11 | 18 | 20 |
+
+The variation is the finding. Bangkok's junctions are largely legible because its
+imagery is densely mapped and its ceremonial core is full of gates and monuments;
+Chiang Mai's are largely shapeless despite a comparable density of streets; Phuket
+inverts again. `quiet` dominating everywhere is exactly Lynch's "ordinary street
+intersections… are not of sufficient prominence to be imaged".
+
+Three hygiene decisions that the data forced:
+
+1. **Numeric names are not names.** Central Bangkok carries memorials tagged
+   `61`, `54`, `2480`, `537` — record identifiers. Counting them as image
+   content would have manufactured verdicts out of database keys.
+2. **The city's own name distinguishes nothing.** A landmark called `Bangkok`
+   says where you already are.
+3. **Buildings count from their frontage.** 181 of 272 nameable features are
+   mapped as ways; a centroid would both invent a location and miss the wall a
+   person actually sees.
+
+**The limit worth stating plainly:** coverage is not absence. "Nothing nameable
+within 200m" is what this measures, and OpenStreetMap's landmark coverage is
+uneven, so a `shapeless` verdict in a poorly mapped district is partly a statement
+about OSM. It says *nothing mapped that a person could name*, and the UI says
+exactly that.
 
 ### 2.5 Landmarks — and the "bottomless" problem
 
@@ -482,7 +523,8 @@ If this is worth building, it is worth building in an order that can fail loudly
 2. **Path detachment** — same idea for transit, and the systems model already has
    the capacity numbers to hang it on. **Done** — `src/lib/ioc/path-structure.ts`.
 3. **Node image-strength vs functional importance** — the Scollay Square finding, and
-   the first thing that will visibly disagree with a transit dashboard. **Next.**
+   the first thing that will visibly disagree with a transit dashboard. **Done** —
+   `src/lib/ioc/node-image.ts`.
 4. **System→element projection** — only worth building once 1–3 give the systems
    somewhere real to point. **Done** — `src/lib/ioc/system-elements.ts`.
 5. **Level coherence / bottomless landmarks** — the most interesting, the most

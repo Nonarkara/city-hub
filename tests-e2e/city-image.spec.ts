@@ -111,3 +111,34 @@ test('the paths lens separates a linked street from a detached one', async ({ pa
   await expect(caption).toContainText('Junctions of four branches or more are marked in red')
   await expect(caption).toContainText('Lynch 1960, p.56–61')
 })
+
+test('the nodes lens separates a junction that works from one you could find', async ({ page }) => {
+  // Scollay Square against Copley Square, built from geometry so the verdict is
+  // determined by junctions and surrounding names, not by copy.
+  const hub = { lat: 13.756, lon: 100.501 }
+  const star = [
+    { type: 'way', id: 3_000, tags: { highway: 'secondary', name: 'Alpha Road' }, geometry: [{ lat: hub.lat, lon: hub.lon - 0.01 }, hub] },
+    { type: 'way', id: 3_001, tags: { highway: 'secondary', name: 'Beta Road' }, geometry: [hub, { lat: hub.lat, lon: hub.lon + 0.01 }] },
+    { type: 'way', id: 3_002, tags: { highway: 'tertiary', name: 'Gamma Road' }, geometry: [hub, { lat: hub.lat + 0.01, lon: hub.lon }] },
+  ]
+  // A plain two-way crossing with nothing nameable near it. Placed clear of the
+  // star's Gamma arm, which otherwise crosses it and makes a third junction.
+  const plainCross = [
+    { type: 'way', id: 3_100, tags: { highway: 'secondary', name: 'Delta Road' }, geometry: [{ lat: 13.769, lon: 100.488 }, { lat: 13.769, lon: 100.494 }] },
+    { type: 'way', id: 3_101, tags: { highway: 'secondary', name: 'Epsilon Road' }, geometry: [{ lat: 13.763, lon: 100.491 }, { lat: 13.775, lon: 100.491 }] },
+  ]
+  await page.route(OVERPASS_PROXY, async (route) => {
+    await route.fulfill({ json: {
+      osm3s: { timestamp_osm_base: '2026-10-15T00:00:00Z' },
+      elements: [...star, ...plainCross],
+    } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'City image', exact: true }).click()
+  await page.getByRole('button', { name: 'Nodes', exact: true }).click()
+  const caption = page.locator('.city-image-caption').first()
+  await expect(caption).toContainText('2 junctions · 1 do work with nothing to recognise')
+  // The citation is Lynch's, and the inversion is stated rather than implied.
+  await expect(caption).toContainText('Scollay Square')
+  await expect(caption).toContainText('Functional importance and image strength are different quantities')
+})

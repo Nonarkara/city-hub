@@ -2,6 +2,7 @@ import type { CityConfig } from '../config/cities'
 import { queryOverpass } from '../lib/osm/overpass'
 import { annotateEdgeStructure, type EdgeStructure } from '../lib/ioc/edge-structure'
 import { annotatePathStructure, type PathStructure } from '../lib/ioc/path-structure'
+import { annotateNodeImage, type NodeVerdict } from '../lib/ioc/node-image'
 
 export interface CityImage {
   collection: GeoJSON.FeatureCollection
@@ -43,6 +44,14 @@ export interface CityImage {
    * which is itself the finding, and alignment is withheld.
    */
   pathGrain: { bearingDeg: number; concentration: number; grained: boolean }
+  /**
+   * Junctions scored on functional importance against image strength.
+   *
+   * `shapeless` is the one to look at: a junction doing real work that nobody
+   * could pick out of its surroundings.
+   */
+  nodeSummary: Record<NodeVerdict, number>
+  nodeImaged: number
 }
 
 export const CITY_ELEMENTS = [
@@ -140,7 +149,12 @@ export function cityImageQuery(city: CityConfig): string {
   .cross out body ${CITY_IMAGE_MAX_CROSSINGS};`
 }
 
-export function parseCityImage(payload: unknown, fetchedAt = Date.now()): CityImage {
+/**
+ * `cityName` is used only to reject the city's own name as un-nameable content
+ * at a junction — "Bangkok" near a junction tells you where you already are.
+ * Optional so that parsing stays usable without a city in hand.
+ */
+export function parseCityImage(payload: unknown, fetchedAt = Date.now(), cityName = ''): CityImage {
   if (!payload || typeof payload !== 'object') throw new Error('Invalid city image response')
   const data = payload as { elements?: unknown; remark?: unknown; osm3s?: { timestamp_osm_base?: unknown } }
   if (!Array.isArray(data.elements) || data.remark) throw new Error('Incomplete city image response')
@@ -201,10 +215,15 @@ export function parseCityImage(payload: unknown, fetchedAt = Date.now()): CityIm
   // its evidence in step. They carry `kind: 'crossings'`, which is never one of
   // the five Lynch elements, so element counts are unaffected.
   collection.features.push(...structure.crossingFeatures, ...paths.junctionFeatures)
+  // Runs last: it scores the junctions the path pass just drew, against every
+  // nameable element in the window.
+  const nodes = annotateNodeImage(collection, cityName)
   return { collection, fetchedAt,
     crossings, edgeSummary: structure.summary,
     pathSummary: paths.summary,
     pathGrain: { ...paths.grain, grained: paths.grained },
+    nodeSummary: nodes.summary,
+    nodeImaged: nodes.imagedCount,
     sourceTime: typeof data.osm3s?.timestamp_osm_base === 'string' ? data.osm3s.timestamp_osm_base : null,
     truncated: displayDrawn >= CITY_IMAGE_MAX_ELEMENTS,
     edgeTruncated: edgeDrawn >= CITY_IMAGE_MAX_EDGES,
@@ -216,7 +235,7 @@ export function fetchCityImage(city: CityConfig): Promise<CityImage> {
   const key = city.center.join(',')
   const existing = cache.get(key)
   if (existing) return existing
-  const pending = queryOverpass(cityImageQuery(city)).then((data) => parseCityImage(data)).catch((error) => {
+  const pending = queryOverpass(cityImageQuery(city)).then((data) => parseCityImage(data, Date.now(), city.name)).catch((error) => {
     cache.delete(key)
     throw error
   })
