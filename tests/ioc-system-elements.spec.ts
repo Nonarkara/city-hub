@@ -128,6 +128,10 @@ test('a failed image read says so instead of guessing at an element', () => {
   expect(drainage.citations).toEqual([])
   expect(drainage.line).toMatch(/unavailable/i)
   expect(citationLine(drainage)).toBeNull()
+  // Caught live: the panel showed "limited sample" while also saying the image
+  // was unavailable. A limited sample is a subset of something we read; here
+  // there is nothing, and the two claims contradict each other.
+  expect(drainage.limited).toBe(false)
 })
 
 test('a truncated window is labelled, so counts never read as complete', () => {

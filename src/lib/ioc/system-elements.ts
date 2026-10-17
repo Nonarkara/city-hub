@@ -134,7 +134,10 @@ export function projectSystems(image: CityImage | null, systems: readonly System
         elements: binding.elements,
         citations: [],
         line: `Acts through ${list(binding.elements)}; the city image is unavailable, so no element can be named.`,
-        limited: true,
+        // Not "limited" — a limited sample is a subset of something we read.
+        // Here there is nothing at all, and saying otherwise would imply we
+        // know how much we are missing.
+        limited: false,
       }
     }
 
