@@ -365,13 +365,27 @@ function CompareMapPane({
       // is dashed and severed, because nothing meets it.
       const NEVER: import('maplibre-gl').FilterSpecification = ['==', ['get', 'kind'], '__never__']
       const edgesLens = cityElement === 'edges'
+      const pathsLens = cityElement === 'paths'
       // Seams keep the highlight layer; barriers move to their own. Everything
       // that is not the Edges lens keeps the original single-layer behaviour.
       const seamFilter: import('maplibre-gl').FilterSpecification = edgesLens
         ? ['all', filter, ['!=', ['get', 'structure'], 'barrier']]
-        : filter
+        : pathsLens
+          ? ['all', filter, ['==', ['get', 'structure'], 'linked']]
+          : filter
       const barrierFilter: import('maplibre-gl').FilterSpecification = edgesLens
         ? ['all', filter, ['==', ['get', 'structure'], 'barrier']]
+        : pathsLens
+          ? ['all', filter, ['!=', ['get', 'structure'], 'linked']]
+          : NEVER
+
+      // ── Path detachment (Lynch p.56–61) ───────────────────────────────────
+      // A path can be the longest line in the window and still not be in the
+      // city: prominent, and cut off. Those are drawn severest of all, because
+      // "high capacity, low image value" is the finding — a long detached
+      // street is the thing a planner is looking for, not a defect.
+      const detachedFilter: import('maplibre-gl').FilterSpecification = pathsLens
+        ? ['all', filter, ['==', ['get', 'structure'], 'detached']]
         : NEVER
 
       // Casing under the highlighted element. Without it a 3px brown line
@@ -385,6 +399,12 @@ function CompareMapPane({
       if (!map.getLayer('city-image-barrier')) map.addLayer({ id: 'city-image-barrier', source: 'city-image', type: 'line', filter: barrierFilter, paint: { 'line-color': '#243138', 'line-width': 2.4, 'line-dasharray': [1.2, 2.6], 'line-opacity': 0.95 } })
       else map.setFilter('city-image-barrier', barrierFilter)
 
+      // Detached paths sit on top of the severed band, heavier and more open,
+      // so "long and unjoined" reads differently from "short and unjoined"
+      // without needing a legend to tell them apart.
+      if (!map.getLayer('city-image-detached')) map.addLayer({ id: 'city-image-detached', source: 'city-image', type: 'line', filter: detachedFilter, paint: { 'line-color': '#141b20', 'line-width': 3.6, 'line-dasharray': [3.2, 3.2], 'line-opacity': 0.95 } })
+      else map.setFilter('city-image-detached', detachedFilter)
+
       // The roads that meet each edge, so a seam reads as stitching. Without
       // them the distinction is a label; with them it is the evidence.
       const crossingFilter: import('maplibre-gl').FilterSpecification = edgesLens
@@ -392,6 +412,21 @@ function CompareMapPane({
         : NEVER
       if (!map.getLayer('city-image-crossings')) map.addLayer({ id: 'city-image-crossings', source: 'city-image', type: 'circle', filter: crossingFilter, paint: { 'circle-color': '#c9761f', 'circle-radius': 2.2, 'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
       else map.setFilter('city-image-crossings', crossingFilter)
+
+      // Junction places. A detachment verdict with no visible crossing is a
+      // claim; a long street with nothing meeting it on screen is a picture of
+      // one. Junctions of four or more branches are drawn larger, because
+      // Lynch's own rule is that those are the ones that give people trouble.
+      const junctionFilter: import('maplibre-gl').FilterSpecification = pathsLens
+        ? ['==', ['get', 'kind'], 'junctions']
+        : NEVER
+      if (!map.getLayer('city-image-junctions')) map.addLayer({ id: 'city-image-junctions', source: 'city-image', type: 'circle', filter: junctionFilter, paint: { 'circle-color': '#c9761f', 'circle-radius': 2.2, 'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 0.8, 'circle-opacity': 0.85 } })
+      else map.setFilter('city-image-junctions', junctionFilter)
+      const busyJunctionFilter: import('maplibre-gl').FilterSpecification = pathsLens
+        ? ['all', junctionFilter, ['>=', ['get', 'degree'], 4]]
+        : NEVER
+      if (!map.getLayer('city-image-junctions-busy')) map.addLayer({ id: 'city-image-junctions-busy', source: 'city-image', type: 'circle', filter: busyJunctionFilter, paint: { 'circle-color': '#b3341f', 'circle-radius': 4.6, 'circle-stroke-color': '#f7f5f0', 'circle-stroke-width': 1.2, 'circle-opacity': 0.95 } })
+      else map.setFilter('city-image-junctions-busy', busyJunctionFilter)
       if (!map.getLayer('city-image-points')) map.addLayer({ id: 'city-image-points', source: 'city-image', type: 'circle', filter: ['all', filter, ['==', ['geometry-type'], 'Point']], paint: { 'circle-color': '#8a4b08', 'circle-radius': cityElement === 'districts' ? 9 : 5, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
       else map.setFilter('city-image-points', ['all', filter, ['==', ['geometry-type'], 'Point']])
     }
@@ -467,10 +502,31 @@ function CompareMapPane({
           : !image
             ? `Reading OpenStreetMap… ${imageWaitMs > 3000 ? `${Math.round(imageWaitMs / 1000)}s` : ''}`.trim()
             : cityElement === 'edges'
-              ? `${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier} edge${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier === 1 ? '' : 's'} · ${image.edgeSummary.seam} seam${image.edgeSummary.seam === 1 ? '' : 's'}, ${image.edgeSummary.barrier} barrier${image.edgeSummary.barrier === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`
+              ? `${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier} edge${image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier === 1 ? '' : 's'} · ${image.edgeSummary.seam} seam${image.edgeSummary.seam === 1 ? '' : 's'}, ${image.edgeSummary.barrier} barrier${image.edgeSummary.barrier === 1 ? '' : 's'}${image.crossingsTruncated ? ' · incomplete road contacts, reads toward barrier' : image.truncated || image.edgeTruncated ? ' · limited sample' : ''}`
+              : cityElement === 'paths'
+              ? `${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached} named path${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached === 1 ? '' : 's'} · ${image.pathSummary.linked} linked, ${image.pathSummary.sparse} sparse, ${image.pathSummary.detached} detached${image.truncated ? ' · limited sample' : ''}`
               : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
         {image && cityElement === 'edges' && (
-          <small>Solid where the city meets the edge and keeps going — a seam. Dashed where nothing meets it and the city works around it — a barrier. Lynch 1960, p.63–64.</small>
+          <small>
+            Solid where the city meets the edge and keeps going — a seam. Dashed where nothing meets it and the city works around it — a barrier. Lynch 1960, p.63–64.
+            {/* Say so when the distinction is not discriminating. An all-seam
+                window is a real result, and reporting it as though the split had
+                been decided would overstate what was measured. */}
+            {image.edgeSummary.barrier === 0
+              ? ' No edge in this window is unjoined enough to read as a barrier, so every measured edge comes back a seam.'
+              : image.edgeSummary.partial === 0
+                ? ' Nothing sits between the two bands in this window.'
+                : ''}
+          </small>
+        )}
+        {image && cityElement === 'paths' && (
+          <small>
+            Solid where other streets join this one; dashed where they do not. A long street nothing meets is detached — prominent, and outside the image.
+            {image.pathGrain.grained
+              ? ` Alignment runs ${Math.round(image.pathGrain.concentration * 100)}% along one direction.`
+              : ' The named network has no dominant direction here, so there is nothing for a path to align to.'}
+            {' '}Junctions of four branches or more are marked in red — Lynch found those give people trouble. Lynch 1960, p.56–61.
+          </small>
         )}
         {imageError && <button type="button" onClick={() => setRetryImage((value) => value + 1)}>Retry</button>}
         {!imageError && !image && <small>First read of a city takes up to a minute. It is then kept for a day. The basemap stays live underneath while you wait.</small>}

@@ -36,6 +36,7 @@
 import type { SystemId } from '../city-model'
 import type { CityElement, CityImage } from '../../data/city-image'
 import type { EdgeStructure } from './edge-structure'
+import type { PathStructure } from './path-structure'
 
 /**
  * How each system touches the city image.
@@ -46,7 +47,13 @@ import type { EdgeStructure } from './edge-structure'
  */
 export const SYSTEM_BINDINGS: Record<SystemId, {
   elements: CityElement[]
-  risk: { kind: CityElement; structure?: EdgeStructure; because: string }
+  /**
+   * `structure` narrows to whichever band this system's risk sits in. Edges and
+   * paths were measured by different evidence — road-node contacts versus named
+   * junctions — so they carry different verdicts, and a system may be exposed by
+   * either.
+   */
+  risk: { kind: CityElement; structure?: EdgeStructure | PathStructure; because: string }
   /** What one of these is called in a sentence — not the raw element id. */
   noun: { one: string; many: string }
 }> = {
@@ -63,8 +70,13 @@ export const SYSTEM_BINDINGS: Record<SystemId, {
   },
   transit: {
     elements: ['paths', 'nodes'],
-    risk: { kind: 'paths', because: 'it is a line nobody can align to (Lynch p.56–61)' },
-    noun: { one: 'named path', many: 'named paths' },
+    // Lynch's first finding and the one a transit system is most exposed to: a
+    // line can be long, straight and heavily used and still not be in the city's
+    // image, because nothing joins it along its length. High capacity, low
+    // image value — and getting off it is the disorientation he describes at the
+    // LA freeway exits.
+    risk: { kind: 'paths', structure: 'detached', because: 'it is a line the city does not join (Lynch p.56–61)' },
+    noun: { one: 'detached path', many: 'detached paths' },
   },
   air: {
     elements: ['districts', 'edges'],
@@ -97,7 +109,7 @@ export interface ElementCitation {
   osmId: string
   name: string
   kind: CityElement
-  structure?: EdgeStructure
+  structure?: EdgeStructure | PathStructure
   densityPerKm?: number
 }
 
@@ -162,7 +174,7 @@ export function projectSystems(image: CityImage | null, systems: readonly System
           osmId: String(feature.properties?.osmId ?? ''),
           name,
           kind: feature.properties?.kind as CityElement,
-          structure: feature.properties?.structure as EdgeStructure | undefined,
+          structure: feature.properties?.structure as EdgeStructure | PathStructure | undefined,
         })
       }
     }
@@ -174,7 +186,12 @@ export function projectSystems(image: CityImage | null, systems: readonly System
 
     const count = byName.size
     const noun = count === 1 ? binding.noun.one : binding.noun.many
-    const limited = image.truncated
+    // Any cap that bit understates a count in this projection, so all three
+    // count. The crossing cap matters most for the systems whose risk class is
+    // an edge: dropping road-node witnesses does not shrink the seam/barrier
+    // count, it skews it toward "barrier", because what is missing is evidence
+    // that the city meets the edge.
+    const limited = image.truncated || image.crossingsTruncated
 
     return {
       system,

@@ -1,16 +1,48 @@
 import type { CityConfig } from '../config/cities'
 import { queryOverpass } from '../lib/osm/overpass'
 import { annotateEdgeStructure, type EdgeStructure } from '../lib/ioc/edge-structure'
+import { annotatePathStructure, type PathStructure } from '../lib/ioc/path-structure'
 
 export interface CityImage {
   collection: GeoJSON.FeatureCollection
   fetchedAt: number
   sourceTime: string | null
+  /**
+   * The *display* set hit its cap, so paths/districts/nodes/landmarks counts
+   * understate what exists.
+   *
+   * Scoped to the display set on purpose. `.edges` is a separate output with
+   * its own budget — it was pulled out of `.display` precisely so it could not
+   * compete — so counting edge elements against this cap reported "limited
+   * sample" on every system while the display set was comfortably under it.
+   * Measured on central Bangkok: 1063 display elements against a cap of 1200,
+   * flagged truncated anyway because 1284 combined elements crossed 1200.
+   */
   truncated: boolean
+  /** The edge set hit its own cap. */
+  edgeTruncated: boolean
+  /**
+   * The crossing-witness set hit its cap.
+   *
+   * This one matters more than it looks. Seam vs barrier is decided entirely by
+   * how many road nodes touch an edge, so dropping witnesses does not merely
+   * shrink a count — it biases every verdict toward "barrier". Overpass returns
+   * witnesses in a stable, not spatially random order, so the bias is
+   * systematic rather than noise.
+   */
+  crossingsTruncated: boolean
   /** Road nodes, unnamed included. Evidence for the seam/barrier reading. */
   crossings: [number, number][]
   /** Edge counts by measured structure. */
   edgeSummary: Record<EdgeStructure, number>
+  /** Named path counts by measured connectivity. */
+  pathSummary: Record<PathStructure, number>
+  /**
+   * The named network's dominant direction and how strongly it points that way.
+   * When `grained` is false there is no larger system for a path to align to,
+   * which is itself the finding, and alignment is withheld.
+   */
+  pathGrain: { bearingDeg: number; concentration: number; grained: boolean }
 }
 
 export const CITY_ELEMENTS = [
@@ -54,8 +86,19 @@ export const CITY_IMAGE_MAX_ELEMENTS = 1200
  */
 export const CITY_IMAGE_MAX_EDGES = 600
 
-/** Separate cap for crossing witnesses, so they cannot truncate the drawing. */
-export const CITY_IMAGE_MAX_CROSSINGS = 3000
+/**
+ * Cap for crossing witnesses.
+ *
+ * This was 3000 and it was quietly wrong. Measured 2026-10-17 on central
+ * Bangkok: the window contains **5077** road nodes touching an edge, and
+ * `out body 3000` returned 2999 of them — 41% of the evidence, discarded with
+ * no signal, from a set that decides every seam/barrier verdict.
+ *
+ * 8000 covers the measured window at 0.42MB and 25s, which is cheap next to the
+ * 41s the full query already takes. The cap still exists for denser cities,
+ * which is why `crossingsTruncated` is reported rather than assumed.
+ */
+export const CITY_IMAGE_MAX_CROSSINGS = 8000
 
 export function cityImageQuery(city: CityConfig): string {
   const [w, s, e, n] = studyBounds(city)
@@ -103,7 +146,12 @@ export function parseCityImage(payload: unknown, fetchedAt = Date.now()): CityIm
   if (!Array.isArray(data.elements) || data.remark) throw new Error('Incomplete city image response')
   const features: GeoJSON.Feature[] = []
   const crossings: [number, number][] = []
-  let drawnElements = 0
+  // Counted per budget, because each output has its own cap. One combined
+  // counter cannot tell you which cap was hit, and comparing the wrong total to
+  // the wrong cap is how every system ended up labelled a limited sample while
+  // the display set sat at 1063 of 1200.
+  let displayDrawn = 0
+  let edgeDrawn = 0
   for (const raw of data.elements) {
     if (!raw || typeof raw !== 'object') continue
     const el = raw as { type?: string; id?: number; lat?: number; lon?: number; geometry?: {lat: number; lon: number}[]; tags?: Record<string, string> }
@@ -132,7 +180,10 @@ export function parseCityImage(payload: unknown, fetchedAt = Date.now()): CityIm
     else if (Number.isFinite(el.lon) && Number.isFinite(el.lat)) geometry = { type: 'Point', coordinates: [el.lon!, el.lat!] }
     // Relations without usable geometry are excluded rather than placed at an invented centroid.
     if (!geometry) continue
-    drawnElements += 1
+    // An element can only be in one of the two budgets: `.display` and `.edges`
+    // are disjoint query sets, so the `edges` predicate identifies its output.
+    if (kinds.includes('edges')) edgeDrawn += 1
+    else displayDrawn += 1
     for (const kind of kinds) features.push({
       type: 'Feature', geometry,
       properties: { kind, name: t['name:en'] ?? t.name ?? t.waterway ?? t.railway ?? 'Mapped feature', osmType: el.type, osmId: el.id },
@@ -142,14 +193,22 @@ export function parseCityImage(payload: unknown, fetchedAt = Date.now()): CityIm
   // Annotate after the whole set is built: an edge's structure is measured
   // against every crossing in the window, not against those seen so far.
   const structure = annotateEdgeStructure(collection, crossings)
+  // Paths are measured against each other rather than against road-node
+  // witnesses, so this runs on the drawn collection and reports junction
+  // places — the evidence for the detachment reading, drawn not asserted.
+  const paths = annotatePathStructure(collection)
   // Crossing points live in the same source so one setData keeps the drawing and
   // its evidence in step. They carry `kind: 'crossings'`, which is never one of
   // the five Lynch elements, so element counts are unaffected.
-  collection.features.push(...structure.crossingFeatures)
+  collection.features.push(...structure.crossingFeatures, ...paths.junctionFeatures)
   return { collection, fetchedAt,
     crossings, edgeSummary: structure.summary,
+    pathSummary: paths.summary,
+    pathGrain: { ...paths.grain, grained: paths.grained },
     sourceTime: typeof data.osm3s?.timestamp_osm_base === 'string' ? data.osm3s.timestamp_osm_base : null,
-    truncated: drawnElements >= CITY_IMAGE_MAX_ELEMENTS }
+    truncated: displayDrawn >= CITY_IMAGE_MAX_ELEMENTS,
+    edgeTruncated: edgeDrawn >= CITY_IMAGE_MAX_EDGES,
+    crossingsTruncated: crossings.length >= CITY_IMAGE_MAX_CROSSINGS }
 }
 
 const cache = new Map<string, Promise<CityImage>>()

@@ -195,7 +195,7 @@ test('the query finds crossings by recursion, not by tagging road nodes', () => 
   // crossings-per-km on a fragment is not a number, it is an artefact.
   expect(query).toContain('.display out geom 1200')
   expect(query).toContain('.edges out geom 600')
-  expect(query).toContain('.cross out body 3000')
+  expect(query).toContain('.cross out body 8000')
   // Edges must not also sit in the display set, or they compete for its cap.
   expect(query.split('->.display')[0]).not.toContain('waterway')
   expect(query.split('->.display')[0]).not.toContain('railway=rail')

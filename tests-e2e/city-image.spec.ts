@@ -22,8 +22,10 @@ test('Lynch elements change both maps and preserve return to satellite', async (
   })
   await page.goto('/')
   await page.getByRole('button', { name: 'City image', exact: true }).click()
-  await expect(page.locator('.city-image-caption').first()).toContainText('1 mapped feature')
-  await expect(page.locator('.city-image-caption').nth(1)).toContainText('1 mapped feature')
+  // Paths is the opening lens, and it reports measured structure rather than a
+  // raw feature count: one named route, nothing joining it, so detached.
+  await expect(page.locator('.city-image-caption').first()).toContainText('1 named path · 0 linked, 0 sparse, 1 detached')
+  await expect(page.locator('.city-image-caption').nth(1)).toContainText('1 named path')
   await page.getByRole('button', { name: 'Districts', exact: true }).click()
   await expect(page.locator('.city-image-caption').first()).toContainText('1 mapped place location')
   await expect(page.locator('.city-image-reading')).toContainText('not perceived boundaries')
@@ -73,4 +75,39 @@ test('city image keeps the basemap instead of blanking the pane', async ({ page 
   // And the copy must be true: it cannot promise an unaffected basemap over a
   // pane that no longer has one.
   await expect(page.locator('.city-image-caption').first()).toContainText('basemap unchanged')
+})
+
+test('the paths lens separates a linked street from a detached one', async ({ page }) => {
+  // The finding the lens exists for: a long line that the city does not join.
+  // Geometry is built so the verdict is determined by the junctions and cannot
+  // be passed by a change of copy — one isolated spine, one well-crossed street.
+  const spine = Array.from({ length: 120 }, (_, i) => ({
+    type: 'way', id: 2_000 + i, tags: { highway: 'secondary', name: 'Isolated Spine' },
+    geometry: [{ lat: 13.740 + i * 1e-4, lon: 100.480 }, { lat: 13.740 + (i + 1) * 1e-4, lon: 100.480 }],
+  }))
+  const crossed: Record<string, unknown>[] = [{
+    type: 'way', id: 5_000, tags: { highway: 'secondary', name: 'Main Street' },
+    geometry: [{ lat: 13.760, lon: 100.490 }, { lat: 13.760, lon: 100.500 }],
+  }]
+  // 102m apart, so eight distinct junction places rather than one merged blob.
+  for (let i = 0; i < 8; i += 1) {
+    crossed.push({
+      type: 'way', id: 5_100 + i, tags: { highway: 'tertiary', name: `Cross ${i}` },
+      geometry: [{ lat: 13.759, lon: 100.4905 + i * 1e-3 }, { lat: 13.761, lon: 100.4905 + i * 1e-3 }],
+    })
+  }
+  await page.route(OVERPASS_PROXY, async (route) => {
+    await route.fulfill({ json: {
+      osm3s: { timestamp_osm_base: '2026-10-15T00:00:00Z' },
+      elements: [...spine, ...crossed],
+    } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'City image', exact: true }).click()
+  await page.getByRole('button', { name: 'Paths', exact: true }).click()
+  const caption = page.locator('.city-image-caption').first()
+  await expect(caption).toContainText('10 named paths · 1 linked, 8 sparse, 1 detached')
+  // The evidence travels with the verdict, and the citation is Lynch's own.
+  await expect(caption).toContainText('Junctions of four branches or more are marked in red')
+  await expect(caption).toContainText('Lynch 1960, p.56–61')
 })

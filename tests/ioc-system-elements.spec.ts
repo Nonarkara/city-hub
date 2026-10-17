@@ -158,3 +158,35 @@ test('every system projects, not just the ones with edges', () => {
     expect(p.line.length).toBeGreaterThan(20)
   }
 })
+test('transit is exposed by detached paths — capacity the city does not join', () => {
+  // Lynch p.56–61: a line can be long, straight and heavily used and still not
+  // be in the city's image. The exposure is detachment, not length, so the
+  // binding must name the detached band rather than every named path.
+  // ~1.3km end to end, comfortably past DETACHED_MIN_KM: detachment is a claim
+  // about a prominent path, and a 400m lane would only ever be "sparse".
+  const long = Array.from({ length: 120 }, (_, i) => ({
+    type: 'way', id: 2_000 + i, tags: { highway: 'secondary', name: 'Elevated Spine' },
+    geometry: [{ lat: 42.30 + i * 1e-4, lon: -71.10 }, { lat: 42.30 + (i + 1) * 1e-4, lon: -71.10 }],
+  }))
+  // A well-connected street for contrast: crossed by four others, so `linked`.
+  const linked: Record<string, unknown>[] = [
+    { type: 'way', id: 5_000, tags: { highway: 'secondary', name: 'Main Street' },
+      geometry: [{ lat: 42.40, lon: -71.10 }, { lat: 42.40, lon: -71.09 }] },
+  ]
+  // 82m apart, so eight distinct junction places rather than one merged blob,
+  // and 8 over 0.82km is 9.7/km — past LINKED_THRESHOLD_PER_KM.
+  for (let i = 0; i < 8; i += 1) {
+    linked.push({
+      type: 'way', id: 5_100 + i, tags: { highway: 'tertiary', name: `Cross ${i}` },
+      geometry: [{ lat: 42.399, lon: -71.0995 + i * 1e-3 }, { lat: 42.401, lon: -71.0995 + i * 1e-3 }],
+    })
+  }
+  const image = parseCityImage({ elements: [...long, ...linked] })
+  expect(image.pathSummary.detached).toBe(1)
+  expect(image.pathSummary.linked).toBeGreaterThan(0)
+
+  const [transit] = projectSystems(image, ['transit'])
+  expect(transit.line).toContain('detached path')
+  // The connected street is in the image but is not the exposure.
+  expect(transit.citations.map((c) => c.name)).toEqual(['Elevated Spine'])
+})

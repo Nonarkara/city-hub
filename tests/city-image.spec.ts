@@ -44,10 +44,45 @@ test('service errors cannot masquerade as empty or complete city maps', () => {
   expect(parseCityImage({ elements: withCrossings }).truncated).toBe(false)
 })
 
+test('a full edge budget is not a truncated display set', () => {
+  // The bug this locks: one combined counter was compared against the display
+  // cap, so a window whose `.edges` output was merely *large* was reported as a
+  // truncated display set — and every system in the panel inherited "limited
+  // sample". Measured on central Bangkok: 1063 display elements against a cap of
+  // 1200, flagged truncated anyway because 1284 combined elements crossed 1200.
+  const paths = Array.from({ length: 1063 }, (_, i) => ({
+    type: 'way', id: i + 1, tags: { highway: 'primary', name: `Road ${i}` },
+    geometry: [{ lat: 13.70 + i * 1e-6, lon: 100.50 }, { lat: 13.70 + (i + 1) * 1e-6, lon: 100.50 }],
+  }))
+  const edges = Array.from({ length: 221 }, (_, i) => ({
+    type: 'way', id: 900_000 + i, tags: { waterway: 'canal', name: `Khlong ${i}` },
+    geometry: [{ lat: 13.72, lon: 100.50 + i * 1e-5 }, { lat: 13.73, lon: 100.50 + i * 1e-5 }],
+  }))
+  const image = parseCityImage({ elements: [...paths, ...edges] })
+  expect(image.truncated).toBe(false)
+  expect(image.edgeTruncated).toBe(false)
+  // 1284 combined — comfortably over the display cap, which is the point.
+  expect(paths.length + edges.length).toBeGreaterThan(1200)
+})
+
+test('dropped road-node witnesses are reported, because they skew the seam verdict', () => {
+  // Seam vs barrier is decided entirely by how many road contacts an edge has.
+  // Silently dropping witnesses does not shrink that count, it skews it toward
+  // "barrier", so the cap has to be visible rather than assumed.
+  const crossings = Array.from({ length: 8000 }, (_, i) => ({
+    type: 'node', id: 500_000 + i, lat: 13.75 + i * 1e-6, lon: 100.5,
+  }))
+  expect(parseCityImage({ elements: crossings }).crossingsTruncated).toBe(true)
+  expect(parseCityImage({ elements: crossings.slice(0, 5077) }).crossingsTruncated).toBe(false)
+})
+
 test('the query keeps crossing witnesses out of the drawn element budget', () => {
   const query = cityImageQuery(CITIES.find((c) => c.id === 'bangkok')!)
   // Two outputs, two limits — otherwise a road-dense window would push the
   // Lynch elements past the cap and silently truncate the city image.
   expect(query).toContain('.display out geom 1200')
-  expect(query).toContain('.cross out body 3000')
+  // 8000, not the 3000 this used to be: the central Bangkok window holds 5077
+  // road contacts, so a 3000 cap was discarding 41% of the evidence that decides
+  // every seam/barrier verdict, with no signal that it had.
+  expect(query).toContain('.cross out body 8000')
 })

@@ -3,8 +3,9 @@
 **Source:** Kevin Lynch, *The Image of the City*, MIT Press / Joint Center for Urban Studies, 1960.
 Read in full for this document. Page references are to that edition.
 
-**Status:** research and framing. Not an implementation plan, and not a claim that
-the current build does any of this.
+**Status:** research and framing, with slices 1, 2 and 4 now built and live. The
+remaining sections are still proposals. Section 6 records what the built slices
+actually returned on live data, including the corrections.
 
 ---
 
@@ -470,24 +471,69 @@ Lynch is careful, and we should be more careful.
 
 ---
 
-## 6. The smallest honest slice
+## 6. The slices, and what they actually returned
 
 If this is worth building, it is worth building in an order that can fail loudly.
 
 1. **Edge classification** — seam vs barrier, from crossing connectivity. One number
    per edge, one visual distinction, immediate civic meaning. Boston's Central
    Artery is the test case; if the method cannot separate the Artery from the
-   Charles River it is not measuring what Lynch meant.
+   Charles River it is not measuring what Lynch meant. **Done** — `src/lib/ioc/edge-structure.ts`.
 2. **Path detachment** — same idea for transit, and the systems model already has
-   the capacity numbers to hang it on.
+   the capacity numbers to hang it on. **Done** — `src/lib/ioc/path-structure.ts`.
 3. **Node image-strength vs functional importance** — the Scollay Square finding, and
-   the first thing that will visibly disagree with a transit dashboard.
+   the first thing that will visibly disagree with a transit dashboard. **Next.**
 4. **System→element projection** — only worth building once 1–3 give the systems
-   somewhere real to point.
+   somewhere real to point. **Done** — `src/lib/ioc/system-elements.ts`.
 5. **Level coherence / bottomless landmarks** — the most interesting, the most
    fragile, and the one most likely to need real images rather than OSM.
 
 Steps 1–3 are all measurable from the data the app already fetches.
+
+### What the first two slices measured, on central Bangkok
+
+Both are live on `hub.nonarkara.org`. The numbers below are from the real window,
+not from fixtures, and two of them corrected a claim this document would
+otherwise have let stand.
+
+**Edges.** 39 named edge groups, and on the complete road-contact set **every one
+of them is a seam** — the thinnest is 9.3 contacts per km against a seam threshold
+of 8. Nothing in this window is a barrier. That is reported plainly in the UI
+rather than dressed up as a decided split. It is also not a stable conclusion:
+discarding just 10% of the contact set flips six edges to barriers, because
+Overpass returns contacts in a stable order rather than a spatially random one,
+so a truncated set removes them unevenly. The contact cap was 3000 when this was
+first built and the window holds 5077 — **41% of the evidence was being dropped
+without signal**, from the set that decides every verdict. Fixed to 8000.
+
+**Paths.** 116 named paths from 701 ways — *Arun Ammarin Road alone arrives as 42
+separate ways*, so the grouping is not an optimisation, it is the measurement.
+196 junction places, and **8 paths detached**: long, and barely joined.
+
+The most satisfying result is that the measurement independently reproduces a
+finding Lynch made by hand in a different city: **Borommaratchachonnani Elevated
+Highway** — 5.9km, 5 junctions, 0.85/km — comes back detached. It is an elevated
+expressway, which is the Central Artery and the LA freeways in physical form. The
+method was not told about elevated highways.
+
+**Alignment was withheld, deliberately.** Central Bangkok's named network measures
+a grain concentration of **0.064**: it points every way at once, which is what a
+radial city on a delta looks like. Quoting a street as being "87.9° off the
+network grain" against a resultant vector that is mostly noise is false
+precision, so alignment is suppressed and the finding is stated instead — this is
+Los Angeles' problem arrived at from the other side. A street you cannot align to
+anything, because there is no larger system to align it to.
+
+### Two traps worth naming, because both looked like data scarcity
+
+- **OSM streets cross by sharing a node**, so a real intersection sits at the
+  *endpoint* of a segment. Rejecting endpoints rejected almost every genuine
+  crossing: 29 junctions across 116 paths, and 85 paths appearing to touch
+  nothing. The fix was not a threshold — it was moving the same-path guard to
+  where it belongs, by name, and letting the geometry report the truth.
+- **Ways arrive in id order, not geographic order.** Taking "first way's start"
+  and "last way's end" as a street's direction gave 300m of displacement on a
+  7.6km street made of 42 fragments, and failed for 50 of 116 paths.
 
 ---
 
