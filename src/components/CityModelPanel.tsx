@@ -12,13 +12,15 @@
  * The basis chips are not decoration. A planner must be able to tell, at a
  * glance, which rows are load-bearing and which are placeholders.
  */
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CityConfig } from '../config/cities'
 import {
   assessCity, BASIS_LABEL, fmtCoefficient,
   type Basis, type SystemModel,
 } from '../lib/city-model'
 import { buildPlan, kindLabel, type InterventionKind } from '../lib/plan'
+import { fetchCityImage, type CityImage } from '../data/city-image'
+import { citationLine, projectSystems, type SystemProjection } from '../lib/ioc/system-elements'
 
 const PRESSURE_COLOR: Record<SystemModel['pressure'], string> = {
   ok:     'var(--ok)',
@@ -59,7 +61,8 @@ function BalanceBar({ system }: { system: SystemModel }) {
   )
 }
 
-function SystemRow({ system }: { system: SystemModel }) {
+function SystemRow({ system, projection }: { system: SystemModel; projection?: SystemProjection }) {
+  const where = projection ? citationLine(projection) : null
   return (
     <div className={`cm-sys cm-sys--${system.pressure}`}>
       <div className="cm-sys-head">
@@ -81,6 +84,13 @@ function SystemRow({ system }: { system: SystemModel }) {
         </span>
       </div>
       <div className="cm-sys-verdict">{system.verdict}</div>
+      {projection && (
+        <div className="cm-sys-where">
+          <span className="cm-where-k">IN THE CITY</span> {projection.line}
+          {where && <span className="cm-where-cite">{where}</span>}
+          {projection.limited && <span className="cm-where-limit">· limited sample</span>}
+        </div>
+      )}
       <div className="cm-sys-caveat" title={system.caveat}>
         <span className="cm-caveat-k">CAVEAT</span> {system.caveat}
       </div>
@@ -91,6 +101,25 @@ function SystemRow({ system }: { system: SystemModel }) {
 export function CityModelPanel({ city }: { city: CityConfig }) {
   const assessment = useMemo(() => assessCity(city), [city])
   const plan = useMemo(() => buildPlan(assessment), [assessment])
+
+  // IoC 2.0: resolve each system onto the city image. `fetchCityImage` caches
+  // per city centre, so opening the plan after Compare shares the same read
+  // rather than issuing a second Overpass query. A failure leaves the image
+  // null, and the projection then says the image is unavailable — which is the
+  // truth, and better than inventing an element to point at.
+  const [image, setImage] = useState<CityImage | null>(null)
+  useEffect(() => {
+    let alive = true
+    fetchCityImage(city)
+      .then((result) => { if (alive) setImage(result) })
+      .catch(() => { if (alive) setImage(null) })
+    return () => { alive = false }
+  }, [city])
+
+  const projectionById = useMemo(() => {
+    const list = projectSystems(image, assessment.systems.map((s) => s.id))
+    return new Map(list.map((p) => [p.system, p] as const))
+  }, [image, assessment.systems])
 
   return (
     <div className="cm-panel" role="region" aria-label={`${city.name} planning model`}>
@@ -112,7 +141,7 @@ export function CityModelPanel({ city }: { city: CityConfig }) {
       </header>
 
       <section className="cm-sys-list" aria-label="System capacity and demand">
-        {assessment.systems.map((s) => <SystemRow key={s.id} system={s} />)}
+        {assessment.systems.map((s) => <SystemRow key={s.id} system={s} projection={projectionById.get(s.id)} />)}
       </section>
 
       <section className="cm-plan" aria-label="Plan">

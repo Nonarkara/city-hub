@@ -10567,6 +10567,36 @@
   margin-bottom: 6px;
   max-width: 66ch;
 }
+/* IoC 2.0 — where a system's pressure lands in the city image. Sits between
+   the verdict and the caveat: it says what the number is *about*, and the named
+   elements are the part a planner can actually go and look at. */
+.cm-sys-where {
+  font-family: var(--font-body);
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(245, 245, 240, 0.62);
+  max-width: 72ch;
+}
+.cm-where-k {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(245, 158, 11, 0.85);
+  margin-right: 5px;
+}
+.cm-where-cite {
+  display: block;
+  margin-top: 3px;
+  color: #c9761f;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+.cm-where-limit {
+  color: rgba(245, 158, 11, 0.7);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  margin-left: 4px;
+}
 .cm-sys-caveat {
   font-family: var(--font-body);
   font-size: 10px;
