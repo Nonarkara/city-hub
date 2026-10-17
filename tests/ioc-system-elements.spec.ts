@@ -36,7 +36,56 @@ test('every modelled system declares the elements it acts through', () => {
     // otherwise the citation and the sentence would disagree.
     expect(binding.elements, `${id} risk is outside its own elements`).toContain(binding.risk.kind)
     expect(binding.risk.because.length).toBeGreaterThan(10)
+    // The sentence reads "...where <because>.", so `because` must be a clause.
+    expect(binding.risk.because, `${id} because must fit after "where "`).toMatch(/^(it |the |a |runoff |supply |dense |mass |collection |reach |who )/)
+    expect(binding.noun.one, `${id} needs a singular noun`).toBeTruthy()
+    expect(binding.noun.many).toBeTruthy()
   }
+})
+
+test('the sentence is grammatical — no "where it who lives where"', () => {
+  const image = imageWithEdges()
+  for (const p of projectSystems(image, [...SYSTEM_IDS])) {
+    expect(p.line, `${p.system} reads badly`).not.toMatch(/where it who|where it supply|where it dense|where it reach|where it collection|where it a line|where it runoff/)
+    expect(p.line, `${p.system} reads badly`).not.toMatch(/\b(districts|paths|nodes|edges) elements\b/)
+    // "...where <clause>." — nothing may follow the clause but a full stop.
+    expect(p.line.endsWith('.')).toBe(true)
+  }
+})
+
+// OSM draws one place as many ways. Measured on central Bangkok: 28 ways, 7
+// edge groups. Counting features reported "89 edges" where the Edges lens
+// correctly said 37, and printed the same canal three times.
+test('counts and citations are distinct places, not OSM way fragments', () => {
+  const image = parseCityImage({ elements: [
+    // One canal, drawn as five separate ways — as OSM actually delivers it.
+    ...Array.from({ length: 5 }, (_, i) => ({
+      type: 'way', id: 10 + i, tags: { waterway: 'canal', name: 'Long Canal' },
+      geometry: [{ lat: 42.35 + i * 0.001, lon: -71.06 }, { lat: 42.351 + i * 0.001, lon: -71.06 }],
+    })),
+    { type: 'node', id: 30, tags: { place: 'neighbourhood', name: 'Quarter' }, lat: 42.34, lon: -71.05 },
+  ] })
+  const [housing] = projectSystems(image, ['housing'])
+  expect(housing.line).toMatch(/Risk sits on 1 district\b/)
+  const [drainage] = projectSystems(image, ['drainage'])
+  expect(drainage.line).toMatch(/Risk sits on 1 barrier edge\b/)
+  // The same name must not be cited three times.
+  expect(drainage.citations.filter((c) => c.name === 'Long Canal')).toHaveLength(1)
+  expect(new Set(drainage.citations.map((c) => c.name)).size).toBe(drainage.citations.length)
+})
+
+test('plural and singular nouns both read correctly', () => {
+  const one = parseCityImage({ elements: [
+    { type: 'node', id: 1, tags: { place: 'neighbourhood', name: 'Only' }, lat: 42.34, lon: -71.05 }] })
+  const [housing] = projectSystems(one, ['housing'])
+  expect(housing.line).toMatch(/Risk sits on 1 district /)
+  expect(housing.line).not.toMatch(/1 districts/)
+
+  const many = parseCityImage({ elements: [
+    { type: 'node', id: 1, tags: { place: 'neighbourhood', name: 'A' }, lat: 42.34, lon: -71.05 },
+    { type: 'node', id: 2, tags: { place: 'neighbourhood', name: 'B' }, lat: 42.33, lon: -71.05 }] })
+  const [housingMany] = projectSystems(many, ['housing'])
+  expect(housingMany.line).toMatch(/Risk sits on 2 districts /)
 })
 
 test('drainage is bound to barrier edges and water to seams — the same line, opposite jobs', () => {
@@ -94,7 +143,7 @@ test('an empty window yields an empty citation, not a fabricated element', () =>
   const empty = parseCityImage({ elements: [] })
   const [drainage] = projectSystems(empty, ['drainage'])
   expect(drainage.citations).toEqual([])
-  expect(drainage.line).toMatch(/no edges of that kind/i)
+  expect(drainage.line).toMatch(/no barrier edges were found in this window/i)
 })
 
 test('every system projects, not just the ones with edges', () => {

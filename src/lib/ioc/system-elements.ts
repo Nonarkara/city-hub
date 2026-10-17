@@ -47,39 +47,49 @@ import type { EdgeStructure } from './edge-structure'
 export const SYSTEM_BINDINGS: Record<SystemId, {
   elements: CityElement[]
   risk: { kind: CityElement; structure?: EdgeStructure; because: string }
+  /** What one of these is called in a sentence — not the raw element id. */
+  noun: { one: string; many: string }
 }> = {
   drainage: {
     elements: ['edges', 'paths'],
     // Water has to cross an edge to leave. A barrier is where it cannot.
-    risk: { kind: 'edges', structure: 'barrier', because: 'runoff crosses it or pools against it' },
+    risk: { kind: 'edges', structure: 'barrier', because: 'runoff has to cross it or pool against it' },
+    noun: { one: 'barrier edge', many: 'barrier edges' },
   },
   water: {
     elements: ['edges'],
     risk: { kind: 'edges', structure: 'seam', because: 'supply follows the corridors the city joins' },
+    noun: { one: 'seam', many: 'seams' },
   },
   transit: {
     elements: ['paths', 'nodes'],
-    risk: { kind: 'paths', because: 'a line nobody can align to is not in the city (Lynch p.56–61)' },
+    risk: { kind: 'paths', because: 'it is a line nobody can align to (Lynch p.56–61)' },
+    noun: { one: 'named path', many: 'named paths' },
   },
   air: {
     elements: ['districts', 'edges'],
     risk: { kind: 'edges', because: 'dense low ground traps what the wind would carry' },
+    noun: { one: 'edge', many: 'edges' },
   },
   heat: {
     elements: ['districts', 'paths'],
-    risk: { kind: 'districts', because: 'mass and open corridor are a property of the area, not the line' },
+    risk: { kind: 'districts', because: 'mass and open corridor belong to the area, not the line' },
+    noun: { one: 'district', many: 'districts' },
   },
   waste: {
     elements: ['paths', 'nodes'],
     risk: { kind: 'nodes', because: 'collection converges on a few points and fails at them' },
+    noun: { one: 'junction', many: 'junctions' },
   },
   health: {
     elements: ['nodes'],
     risk: { kind: 'nodes', because: 'reach is a question of which junctions exist' },
+    noun: { one: 'junction', many: 'junctions' },
   },
   housing: {
     elements: ['districts'],
-    risk: { kind: 'districts', because: 'who lives where, and whether the area has a name at all' },
+    risk: { kind: 'districts', because: 'the question is who lives there, and whether the area has a name at all' },
+    noun: { one: 'district', many: 'districts' },
   },
 }
 
@@ -130,27 +140,37 @@ export function projectSystems(image: CityImage | null, systems: readonly System
 
     const wanted = new Set(binding.elements)
     const risk = binding.risk
-    const candidates = image.collection.features.filter((feature) => {
+    const raw = image.collection.features.filter((feature) => {
       if (feature.properties?.kind !== risk.kind) return false
       if (risk.structure && feature.properties?.structure !== risk.structure) return false
       return wanted.has(feature.properties?.kind as CityElement)
     })
 
-    // Worst first: lowest crossing density is the most exposed edge, and for a
-    // seam the least connected. Either way it is the one worth naming.
-    const citations: ElementCitation[] = candidates
-      .map((feature) => ({
-        osmId: String(feature.properties?.osmId ?? ''),
-        name: String(feature.properties?.name ?? 'Unnamed'),
-        kind: feature.properties?.kind as CityElement,
-        structure: feature.properties?.structure as EdgeStructure | undefined,
-      }))
+    // OSM splits one named place into many ways — measured on central Bangkok,
+    // 28 ways collapsing to 7 edge groups. Counting features here reported
+    // "89 edges" for a window whose Edges lens correctly said 37, and the
+    // citation strip repeated one canal three times. Both are wrong in the same
+    // way: a person means places, not the ways a place was drawn.
+    const byName = new Map<string, ElementCitation>()
+    for (const feature of raw) {
+      const name = String(feature.properties?.name ?? 'Unnamed')
+      if (!byName.has(name)) {
+        byName.set(name, {
+          osmId: String(feature.properties?.osmId ?? ''),
+          name,
+          kind: feature.properties?.kind as CityElement,
+          structure: feature.properties?.structure as EdgeStructure | undefined,
+        })
+      }
+    }
+
+    const citations = [...byName.values()]
       .filter((c) => c.osmId)
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .slice(0, 3)
 
-    const count = candidates.length
-    const noun = count === 1 ? 'element' : 'elements'
+    const count = byName.size
+    const noun = count === 1 ? binding.noun.one : binding.noun.many
     const limited = image.truncated
 
     return {
@@ -158,8 +178,8 @@ export function projectSystems(image: CityImage | null, systems: readonly System
       elements: binding.elements,
       citations,
       line: count === 0
-        ? `Acts through ${list(binding.elements)}; no ${risk.kind} of that kind were found in this window.`
-        : `Acts through ${list(binding.elements)}. Risk sits on ${count} ${risk.kind} ${noun} where it ${risk.because}.`,
+        ? `Acts through ${list(binding.elements)}; no ${noun} were found in this window.`
+        : `Acts through ${list(binding.elements)}. Risk sits on ${count} ${noun} where ${risk.because}.`,
       limited,
     }
   })
