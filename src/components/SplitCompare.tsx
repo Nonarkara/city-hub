@@ -666,7 +666,17 @@ export function SplitCompare() {
   const setSplitOpen = useUIStore((s) => s.setSplitOpen)
   const activeDate   = useUIStore((s) => s.activeDate)
 
-  const cities         = useMemo(() => [...CITIES, ...customCities], [customCities])
+  // Includes the active city, not only the atlas and the saved custom ones. A
+  // city found through search lives ephemerally in `activeCity` and is in
+  // neither list, so a pane holding its id resolved to `cities[0]` — the pane
+  // silently became Bangkok and the button that opened it kept saying "View
+  // city" over a map of somewhere else entirely.
+  const cities         = useMemo(
+    () => (customCities.some((c) => c.id === activeCity.id) || CITIES.some((c) => c.id === activeCity.id)
+      ? [...CITIES, ...customCities]
+      : [...CITIES, ...customCities, activeCity]),
+    [customCities, activeCity],
+  )
   const tokenAvailable = hasMapboxToken()
   const today          = activeDate || todayStr()
 

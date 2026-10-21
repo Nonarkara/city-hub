@@ -7,6 +7,7 @@ import {
   type CityCandidate,
 } from '../lib/city-facts'
 import { useCityStore } from '../store/cityStore'
+import { useUIStore } from '../store/uiStore'
 import { trackEvent } from '../lib/firebase'
 
 interface Props {
@@ -25,6 +26,9 @@ export function CityOnboardingModal({ open, onClose }: Props) {
   const [selected, setSelected] = useState<CityCandidate | null>(null)
   const [error, setError] = useState<string | null>(null)
   const setActiveCity = useCityStore((s) => s.setActiveCity)
+  const clearCompareSet = useCityStore((s) => s.clearCompareSet)
+  const toggleCompareCity = useCityStore((s) => s.toggleCompareCity)
+  const setSplitOpen = useUIStore((s) => s.setSplitOpen)
   const debounceRef = useRef<number>(0)
 
   const handleSearch = useCallback(async (q: string) => {
@@ -58,6 +62,17 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     if (!selected) return
     const config = candidateToCityConfig(selected)
     setActiveCity(config)   // ephemeral — sets active city, not persisted
+    // Leave the comparison behind. The button says "View city" and was leaving
+    // the reader staring at two *other* cities: the active city changed in the
+    // topbar and nowhere else, so searching a city looked like it had done
+    // nothing at all. Opening a city should show that city.
+    clearCompareSet()
+    toggleCompareCity(config.id)
+    // Open it on the comparison surface, which is where the city-image layers
+    // live. Leaving the reader on the single-city map would mean the city they
+    // just searched for has no way to show them its image at all — the one
+    // thing that needs no curation and therefore works anywhere on Earth.
+    setSplitOpen(true)
     trackEvent('city_view', {
       city_id: config.id, name: config.name, country: config.country, source: 'search',
     })

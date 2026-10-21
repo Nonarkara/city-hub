@@ -103,4 +103,17 @@ test('city search returns real basics before a city is opened', async ({ page },
   // And the preview attributes the figure rather than implying a metro area.
   await expect(page.locator('.onboarding-preview')).toContainText('settlement, Open-Meteo')
   await expect(page.locator('.onboarding-honest-note')).toContainText('hand-built')
+
+  // Opening a city has to show that city. It used to set the active city and
+  // leave the reader in a comparison of Bangkok and Kranj, so the button said
+  // "View city" and the screen did not change.
+  await page.getByRole('button', { name: 'View city' }).click()
+  await expect(page.locator('.topbar-city-select-name')).toHaveText('Ulaanbaatar')
+  // Opened on its own, not left behind a comparison of Bangkok and Kranj.
+  await expect(page.locator('.split-compare')).toHaveCount(1)
+  // Case-insensitively: the label is uppercased by CSS, not by the text node.
+  await expect(page.locator('.split-pane').first()).toContainText(/ulaanbaatar/i)
+  // …and the city image, which is the part that needs no curation and so
+  // works for any city on earth, is one click away.
+  await expect(page.getByRole('button', { name: 'City image', exact: true })).toBeVisible()
 })
