@@ -519,7 +519,6 @@ function CompareMapPane({
       <div className="split-pane-badge">{index + 1}</div>
 
       {!cityElement && <PaneMetricDock city={city} live={live} loading={liveLoading} />}
-      {cityElement && <CityFormPanel city={city} image={image} error={imageError} />}
       {cityElement && <div className={`city-image-caption ${captionOpen ? '' : 'city-image-caption--collapsed'}`} aria-live="polite">
         <strong>{city.name}</strong>
         <button type="button" className="city-image-caption-toggle" onClick={() => setCaptionOpen((v) => !v)} aria-expanded={captionOpen} aria-label={captionOpen ? `Collapse ${city.name} notes` : `Expand ${city.name} notes`}>{captionOpen ? '−' : '+'}</button>
@@ -834,6 +833,26 @@ export function SplitCompare() {
   const gridClass = `split-grid split-grid--${bucket}`
   const explorerCity = selectedCities.find((city) => city.id === explorerCityId)
 
+  // One city image for the form readout, at the surface rather than per pane.
+  // `fetchCityImage` caches per city centre, so this resolves from the primary
+  // pane's in-flight read rather than issuing a second query.
+  const primaryCity = panes[0]
+    ? (cities.find((c) => c.id === panes[0].cityId) ?? CITIES[0])
+    : CITIES[0]
+  const [formImage, setFormImage] = useState<import('../data/city-image').CityImage | null>(null)
+  const [formError, setFormError] = useState(false)
+
+  useEffect(() => {
+    if (!cityElement) return
+    let cancelled = false
+    setFormImage(null)
+    setFormError(false)
+    fetchCityImage(primaryCity)
+      .then((result) => { if (!cancelled) setFormImage(result) })
+      .catch(() => { if (!cancelled) setFormError(true) })
+    return () => { cancelled = true }
+  }, [primaryCity.id, !!cityElement])
+
   return (
     <div className="split-compare">
       <div className="city-image-nav">
@@ -843,6 +862,7 @@ export function SplitCompare() {
           <span className="city-image-scale">Approx. 4 × 4 km study windows</span>
         </> : <span className="city-image-intro">Compare the places people move through, recognise and remember.</span>}
       </div>
+      {cityElement && <CityFormPanel city={primaryCity} image={formImage} error={formError} />}
       <div className="twin-map-workspace">
       <div className={gridClass}>
         {panes.map((pane, i) => (

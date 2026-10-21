@@ -120,22 +120,23 @@ export function CityFormPanel({ city, image, error }: Props) {
   return (
     <div className="form-panel">
       <div className="form-panel-head">FORM · {city.name}</div>
-      <table className="form-table">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <th scope="row">{row.label}</th>
-              <td className="form-count">{row.count?.toLocaleString() ?? '—'}</td>
-              <td className="form-verdict">
-                {row.verdict
-                  ? <span title={row.gloss}>{row.verdict}</span>
-                  : <span className="form-verdict--none" title={row.gloss}>{row.gloss}</span>}
-              </td>
-              <td className="form-cite">{row.cite}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Five elements laid out across, not down. A column of five rows is what
+          produced the wrapping: the panel is wider than it is tall, so the eye
+          should read element → count → finding → source in one line each. */}
+      <div className="form-strip">
+        {rows.map((row) => (
+          <div className="form-cell" key={row.id}>
+            <span className="form-cell-label">{row.label}</span>
+            <span className="form-count">{row.count?.toLocaleString() ?? '—'}</span>
+            <span className="form-verdict">
+              {row.verdict
+                ? <span title={row.gloss}>{row.verdict}</span>
+                : <span className="form-verdict--none" title={row.gloss}>{row.gloss}</span>}
+            </span>
+            <span className="form-cite">{row.cite}</span>
+          </div>
+        ))}
+      </div>
       {image.pathGrain.grained
         ? <p className="form-foot">Named network runs {Math.round(image.pathGrain.concentration * 100)}% along one direction — there is a grain here to align a street to.</p>
         : <p className="form-foot">No dominant direction in the named network — a street here has nothing to align to. The same problem Los Angeles has.</p>}
