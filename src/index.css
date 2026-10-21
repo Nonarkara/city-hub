@@ -814,10 +814,11 @@
   left: 0;
   right: 0;
   height: 44px;
-  /* +1 so topbar dropdowns (Satellite Stack menu) sit above the side panels,
-     which share --z-overlay and would otherwise clip the menu on DOM order.
-     Full-screen modals (cmdk/insight/onboarding) live at 9000+, unaffected. */
-  z-index: calc(var(--z-overlay) + 1);
+  /* Chrome, above every content layer. The topbar creates a stacking context,
+     so this value is what bounds its dropdowns too — setting the menu's own
+     z-index higher would not lift it out from under .split-compare. Full-screen
+     modals (cmdk/insight/onboarding) live at 9000+ and are unaffected. */
+  z-index: var(--z-chrome);
   display: flex;
   align-items: center;
   padding: 0 var(--space-md);
@@ -1011,6 +1012,14 @@
 
 .topbar-city-menu-footer {
   border-top: 1px solid var(--line);
+  /* Pinned to the foot of the menu. With twenty cities the list scrolls to
+     1075px behind a 560px window, and the only route to any city on Earth was
+     below the fold — reachable only by scrolling a list nobody reads to its
+     end. The entry that opens the world should not be the hardest one to
+     reach. */
+  position: sticky;
+  bottom: 0;
+  background: rgba(4, 6, 11, 0.97);
 }
 
 .topbar-city-menu-add {
@@ -7454,7 +7463,11 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
-  z-index: 200;
+  /* Above every content layer. At 200 this sat *under* .split-compare (250), so
+     in the default view the city search dialog was fully interactive and
+     completely invisible — it could be typed into but never seen. A modal that
+     only exists to a test runner is not a feature. */
+  z-index: 9000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7600,6 +7613,42 @@
   color: var(--dim);
 }
 
+/* The basics ride with the result, so a place can be chosen on what it *is*
+   rather than only on where it is. Population leads because it is the figure
+   someone is actually searching for; the rest are context for the same row. */
+.onboarding-result-basics {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-result-basics b {
+  color: var(--accent, #f59e0b);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* A source that does not have a figure says so rather than leaving the row
+   looking empty and therefore unmeasured. */
+.onboarding-preview-row small {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-honest-note {
+  margin: 6px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
 .onboarding-preview {
   margin-top: 16px;
   padding: 14px;
@@ -7632,32 +7681,13 @@
   padding: 2px 6px;
 }
 
-.onboarding-nutrition {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
-.onboarding-nutrition-bar {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 0;
-  overflow: hidden;
-}
 
-.onboarding-nutrition-fill {
-  height: 100%;
-  background: var(--amber);
-  transition: width 0.4s ease;
-}
 
-.onboarding-nutrition-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--amber);
-  letter-spacing: 0.05em;
-}
+
+
+
+
 
 .onboarding-footer {
   display: flex;
@@ -9118,7 +9148,7 @@
   padding: 6px 8px;
   font-size: 10px;
   pointer-events: none;
-  z-index: 100;
+  z-index: var(--z-chrome);
 }
 
 .multicity-tooltip-row {
@@ -10748,4 +10778,106 @@
   .cm-title { font-size: 24px; }
   .cm-opening { font-size: 14px; }
   .cm-sys-figures { gap: 12px; }
+}
+
+/* ── City form readout ───────────────────────────────────────────────────────
+   The five elements at once, each with the structural finding that makes it
+   worth looking at. Sits with the lens caption, above the map, and is the same
+   component in both panes so two cities can be read against each other. */
+
+.form-panel {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 3;
+  width: 340px;
+  max-width: calc(100% - 24px);
+  padding: 12px 14px 10px;
+  background: rgba(10, 14, 17, 0.92);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.form-panel-head {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--accent, #f59e0b);
+  margin-bottom: 8px;
+}
+
+.form-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-table th,
+.form-table td {
+  padding: 2px 0;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.form-table th {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  color: var(--fg);
+  width: 72px;
+  white-space: nowrap;
+}
+
+.form-count {
+  font-size: 12px;
+  color: var(--fg);
+  width: 48px;
+  text-align: right;
+  padding-right: 10px !important;
+}
+
+.form-verdict {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--fg);
+}
+
+/* A row with no structural finding still teaches — the gloss is Lynch's own
+   description of what the element is for. */
+.form-verdict--none {
+  color: var(--dim);
+  font-style: italic;
+}
+
+.form-cite {
+  font-size: 9px;
+  color: var(--dim);
+  width: 62px;
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 8px !important;
+}
+
+.form-foot {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--dim);
+}
+
+.form-foot--limit {
+  color: #c9761f;
+}
+
+.form-foot--cite {
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  font-size: 9px;
+}
+
+.form-panel-empty {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
 }

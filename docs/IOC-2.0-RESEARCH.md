@@ -3,14 +3,38 @@
 **Source:** Kevin Lynch, *The Image of the City*, MIT Press / Joint Center for Urban Studies, 1960.
 Read in full for this document. Page references are to that edition.
 
-**Status:** research and framing, with slices 1–4 now built and live. Slice 5
+**Status:** research and framing, with slices 1–4 built and live, and the
+anywhere-in-the-world search tier built on top of them. Slice 5
 (level coherence / bottomless landmarks) is still a proposal. Sections 2 and 6
 record what the built slices actually returned on live data, including the
 corrections.
 
 ---
 
-## 0. What this document is for
+## 0. Where this leaves the product
+
+The city image was always the part of this tool that needed no curation: any
+place on Earth can be read through Lynch's five elements from OpenStreetMap in
+about a minute. Everything else — the systems model, the civic twin, the
+districts — is hand-built and exists for the cities in the atlas.
+
+So the honest shape of the product is two tiers, and it should be said plainly
+rather than papered over:
+
+- **Any city in the world.** Located, given its real basics, and read for its
+  image. No local data required.
+- **The atlas cities.** The above plus a modelled twin.
+
+A search that answers "how big is this place" with a constant is worse than one
+that says it does not know, so the generated tier carries **0** for an unknown
+population — never a stand-in — and every consumer guards on `> 0` and renders
+"—". See `src/lib/city-facts.ts`.
+
+What the second tier buys, and what it cannot: a settlement figure is not a metro
+figure, so a generated city's population is labelled `open-meteo` and a curated
+city's is labelled `curated`, and the two are not to be compared.
+
+## 0b. What this document is for
 
 City Hub already has two halves that have never met:
 

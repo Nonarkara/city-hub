@@ -1,12 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
-  searchNominatim,
-  nominatimToCityConfig,
-  computeNutrition,
-  nutritionLabel,
-  nutritionScore,
-  type NominatimResult,
-} from '../lib/city-generator'
+  searchCityBasics,
+  candidateToCityConfig,
+  formatPopulation,
+  zoomForPopulation,
+  type CityCandidate,
+} from '../lib/city-facts'
 import { useCityStore } from '../store/cityStore'
 import { trackEvent } from '../lib/firebase'
 
@@ -21,9 +20,9 @@ interface Props {
 // city_view) so the demand geography is captured without a growing tab bar.
 export function CityOnboardingModal({ open, onClose }: Props) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<NominatimResult[]>([])
+  const [results, setResults] = useState<CityCandidate[]>([])
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<NominatimResult | null>(null)
+  const [selected, setSelected] = useState<CityCandidate | null>(null)
   const [error, setError] = useState<string | null>(null)
   const setActiveCity = useCityStore((s) => s.setActiveCity)
   const debounceRef = useRef<number>(0)
@@ -37,7 +36,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     setLoading(true)
     setError(null)
     try {
-      const r = await searchNominatim(q)
+      const r = await searchCityBasics(q)
       setResults(r)
       if (r.length > 0) setSelected(r[0])
       trackEvent('city_search', { query: q.trim(), result_count: r.length })
@@ -57,7 +56,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
 
   const handleView = () => {
     if (!selected) return
-    const config = nominatimToCityConfig(selected)
+    const config = candidateToCityConfig(selected)
     setActiveCity(config)   // ephemeral — sets active city, not persisted
     trackEvent('city_view', {
       city_id: config.id, name: config.name, country: config.country, source: 'search',
@@ -76,7 +75,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       if (results.length === 0) return
-      const current = Math.max(0, results.findIndex((r) => r.place_id === selected?.place_id))
+      const current = Math.max(0, results.findIndex((r) => r.id === selected?.id))
       const next = e.key === 'ArrowDown'
         ? Math.min(results.length - 1, current + 1)
         : Math.max(0, current - 1)
@@ -86,8 +85,7 @@ export function CityOnboardingModal({ open, onClose }: Props) {
 
   if (!open) return null
 
-  const preview = selected ? nominatimToCityConfig(selected) : null
-  const nutrition = preview ? computeNutrition(preview) : null
+  const preview = selected ? candidateToCityConfig(selected) : null
 
   return (
     <div className="onboarding-backdrop" onClick={onClose}>
@@ -120,48 +118,62 @@ export function CityOnboardingModal({ open, onClose }: Props) {
             <ul className="onboarding-results">
               {results.map((r) => (
                 <li
-                  key={r.place_id}
-                  className={`onboarding-result ${selected?.place_id === r.place_id ? 'onboarding-result--active' : ''}`}
+                  key={r.id}
+                  className={`onboarding-result ${selected?.id === r.id ? 'onboarding-result--active' : ''}`}
                   onClick={() => setSelected(r)}
                 >
-                  <span className="onboarding-result-name">{nominatimToCityConfig(r).name}</span>
+                  <span className="onboarding-result-name">{r.name}</span>
+                  {/* The basics are shown here, before the click. A search that
+                      only reveals what a place is after you commit to it is a
+                      lookup, not a search. */}
                   <span className="onboarding-result-meta">
-                    {r.type} · {r.address?.state ?? r.display_name.split(',').slice(1, -1).pop()?.trim() ?? 'global'} · {r.address?.country ?? r.display_name.split(',').pop()?.trim()}
+                    {[r.admin, r.country].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="onboarding-result-basics">
+                    <b>{formatPopulation(r.population)}</b>
+                    {r.elevationM !== null && <span>{Math.round(r.elevationM)} m</span>}
+                    {r.timezone && <span>{r.timezone.split('/').pop()?.replace(/_/g, ' ')}</span>}
                   </span>
                 </li>
               ))}
             </ul>
           )}
 
-          {preview && (
+          {/* `selected` is named as well as `preview` so TypeScript narrows it;
+              a derived non-null preview does not narrow the thing it was derived from. */}
+          {selected && preview && (
             <div className="onboarding-preview">
               <div className="onboarding-preview-row">
-                <span>Center</span>
-                <code>{preview.center[1].toFixed(4)}, {preview.center[0].toFixed(4)}</code>
+                <span>People</span>
+                {/* Attribution, not decoration: this figure is a settlement from
+                    Open-Meteo, while the curated cities carry a metro figure.
+                    The two are not the same quantity and must not be compared. */}
+                <span>
+                  {formatPopulation(selected.population)}
+                  <small> · settlement, Open-Meteo</small>
+                </span>
+              </div>
+              <div className="onboarding-preview-row">
+                <span>Elevation</span>
+                <span>{selected.elevationM !== null ? `${Math.round(selected.elevationM)} m` : 'Not published'}</span>
               </div>
               <div className="onboarding-preview-row">
                 <span>Timezone</span>
-                <code>{preview.timezone}</code>
+                <code>{selected.timezone ?? 'Unknown'}</code>
               </div>
               <div className="onboarding-preview-row">
-                <span>Layers</span>
-                <span>{preview.availableLayers.length} global sources</span>
+                <span>Study window</span>
+                <span>{(zoomForPopulation(selected.population)).toFixed(1)} zoom · {preview.availableLayers.length} global sources</span>
               </div>
               <div className="onboarding-preview-row">
-                <span>View</span>
-                <span>Live · not saved</span>
+                <span>City image</span>
+                <span>Read from OpenStreetMap · no curation needed</span>
               </div>
-              {nutrition && (
-                <div className="onboarding-nutrition">
-                  <div className="onboarding-nutrition-bar">
-                    <div
-                      className="onboarding-nutrition-fill"
-                      style={{ width: `${nutritionScore(nutrition)}%` }}
-                    />
-                  </div>
-                  <span className="onboarding-nutrition-label">{nutritionLabel(nutrition)}</span>
-                </div>
-              )}
+              <p className="onboarding-honest-note">
+                Global feeds and the city image are live for anywhere on Earth. The
+                full civic twin — modelled systems, districts, the economics — is
+                hand-built and exists only for the cities in the atlas.
+              </p>
             </div>
           )}
         </div>

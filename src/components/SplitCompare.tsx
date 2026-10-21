@@ -23,9 +23,11 @@ import { fetchAQI, type CityAQI } from '../data/openmeteo-aq'
 import { fetchWeather, type CityWeather } from '../data/openmeteo'
 import { cacheTimestamp } from '../lib/cached-fetch'
 import { CityTwinWorkbench } from './CityTwinWorkbench'
+import { CityFormPanel } from './CityFormPanel'
 import { CITY_ELEMENTS, fetchCityImage, studyBounds, type CityElement, type CityImage } from '../data/city-image'
 import { freshnessLabel } from '../lib/freshness'
 import { pearson } from '../lib/stats'
+import { populationDensityPerKm2 } from '../lib/city-facts'
 import {
   getBasemapDef, BASEMAP_GROUPS, isTemporalBasemap, hasMapboxToken,
 } from './MapView'
@@ -140,7 +142,7 @@ const COMPARE_METRICS: CompareMetric[] = [
   {
     id: 'population-density', label: 'Population density', shortLabel: 'DENSITY', unit: 'people/km²',
     source: 'Population divided by administrative area',
-    value: (c) => c.demographics && c.area_km2 > 0 ? (c.populationMillions * 1_000_000) / c.area_km2 : null,
+    value: (c) => c.demographics ? populationDensityPerKm2(c) : null,
     format: (v) => `${Math.round(v).toLocaleString()}`,
   },
   {
@@ -517,6 +519,7 @@ function CompareMapPane({
       <div className="split-pane-badge">{index + 1}</div>
 
       {!cityElement && <PaneMetricDock city={city} live={live} loading={liveLoading} />}
+      {cityElement && <CityFormPanel city={city} image={image} error={imageError} />}
       {cityElement && <div className={`city-image-caption ${captionOpen ? '' : 'city-image-caption--collapsed'}`} aria-live="polite">
         <strong>{city.name}</strong>
         <button type="button" className="city-image-caption-toggle" onClick={() => setCaptionOpen((v) => !v)} aria-expanded={captionOpen} aria-label={captionOpen ? `Collapse ${city.name} notes` : `Expand ${city.name} notes`}>{captionOpen ? '−' : '+'}</button>

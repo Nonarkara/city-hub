@@ -65,3 +65,42 @@ test('a shared city URL becomes the first comparison pane', async ({ page }) => 
   await expect(page.locator('.split-pane').nth(0).locator('select').first()).toHaveValue('kranj')
   await expect(page.locator('.split-pane').nth(1).locator('select').first()).toHaveValue('bangkok')
 })
+
+test('city search returns real basics before a city is opened', async ({ page }, testInfo) => {
+  // Desktop only, and that is a gap rather than a preference. On the mobile
+  // viewport the compare view renders full-screen with no city selector and no
+  // bottom navigation reachable from it, so there is no path to this dialog to
+  // test. The surface itself is viewport-independent; what is missing is the
+  // route to it on a phone, and that is tracked rather than papered over.
+  test.skip(testInfo.project.name.includes('mobile'), 'no reachable city selector on the mobile compare view');
+
+  // The old generated config carried `populationMillions: 1.0, // placeholder`.
+  // A search that answers "how big is this place" with a constant is worse than
+  // one that admits it does not know — and the admission has to reach the user.
+  await page.route('**/geocoding-api.open-meteo.com/**', async (route) => {
+    await route.fulfill({ json: { results: [
+      { id: 1, name: 'Ulaanbaatar', latitude: 47.8864, longitude: 106.9057, elevation: 1350,
+        country: 'Mongolia', country_code: 'mn', admin1: 'Ulaanbaatar', timezone: 'Asia/Ulaanbaatar', population: 1_400_000, feature_code: 'PPLC' },
+      { id: 2, name: 'Khatgal', latitude: 50.44, longitude: 100.16, elevation: 1670,
+        country: 'Mongolia', country_code: 'mn', admin1: 'Bulgan', timezone: 'Asia/Ulaanbaatar', population: 4_000, feature_code: 'PPL' },
+      { id: 3, name: 'Nameless Hollow', latitude: 48.1, longitude: 105.0,
+        country: 'Mongolia', country_code: 'mn', admin1: 'Selenge', timezone: 'Asia/Ulaanbaatar', feature_code: 'PPL' },
+    ] } })
+  })
+  await page.goto('/')
+  // "SEARCH ANY CITY" lives in the city dropdown footer, which is closed.
+  await page.locator('.topbar-city-select-btn').first().click()
+  await page.getByRole('button', { name: 'SEARCH ANY CITY' }).first().click()
+  await page.getByRole('textbox').fill('Ulaanbaatar')
+
+  const rows = page.locator('.onboarding-result')
+  await expect(rows.first()).toContainText('Ulaanbaatar')
+  // Basics ride with the result — visible before the click, not after it.
+  await expect(rows.first()).toContainText('1.40M')
+  await expect(rows.first()).toContainText('1350 m')
+  // A source with no figure says so rather than showing a blank or a zero.
+  await expect(rows.nth(2)).toContainText('Not published')
+  // And the preview attributes the figure rather than implying a metro area.
+  await expect(page.locator('.onboarding-preview')).toContainText('settlement, Open-Meteo')
+  await expect(page.locator('.onboarding-honest-note')).toContainText('hand-built')
+})

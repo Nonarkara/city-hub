@@ -31,6 +31,7 @@ import { fetchCityNews } from '../data/gdelt'
 import { fetchTraffyStats, type TraffyStats } from '../data/traffy'
 import { fetchSingaporePSI, type PSIBundle } from '../data/datagov-sg'
 import { CITY_NIGHT_LIGHTS, adjustedBrightness } from '../lib/night-lights-index'
+import { populationDensityPerKm2, formatCityPopulation } from '../lib/city-facts'
 
 const POLL_MS   = 5 * 60_000
 const HIST_TTL  = 60 * 60_000
@@ -348,9 +349,7 @@ export function ComparisonPanel() {
             const wDir    = snap?.weather?.windCardinal ?? null
             const risk    = pm25 !== null ? pm25ToRisk(pm25) : aqi !== null ? aqiToRisk(aqi) : null
             const riskCol = risk ? RISK_COLOR[risk] : 'var(--dim)'
-            const densityPct = city.area_km2 > 0
-              ? Math.round(city.populationMillions * 1_000_000 / city.area_km2)
-              : null
+            const densityPct = populationDensityPerKm2(city)
             return (
               <div key={city.id} className="cmp-city-card">
                 <div className="cmp-city-card-code">{city.hudClockLabel}</div>
@@ -375,9 +374,7 @@ export function ComparisonPanel() {
                 <div className="cmp-city-card-row">
                   <span className="cmp-city-card-label">POP</span>
                   <span className="cmp-city-card-val">
-                    {city.populationMillions >= 1
-                      ? `${city.populationMillions.toFixed(1)}M`
-                      : `${Math.round(city.populationMillions * 1000)}K`}
+                    {formatCityPopulation(city)}
                   </span>
                 </div>
                 {densityPct !== null && (

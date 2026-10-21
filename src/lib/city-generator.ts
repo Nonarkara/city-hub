@@ -25,31 +25,6 @@ export interface NominatimResult {
   }
 }
 
-export interface GeneratedCity {
-  config: CityConfig
-  nutrition: NutritionLevel
-}
-
-export type NutritionLevel = 'instant-noodle' | 'street-food' | 'real-food' | 'gourmet'
-
-export function nutritionLabel(level: NutritionLevel): string {
-  switch (level) {
-    case 'instant-noodle': return '🍜 Instant Noodle'
-    case 'street-food': return '🍛 Street Food'
-    case 'real-food': return '🍽️ Real Food'
-    case 'gourmet': return '🌟 Gourmet'
-  }
-}
-
-export function nutritionScore(level: NutritionLevel): number {
-  switch (level) {
-    case 'instant-noodle': return 15
-    case 'street-food': return 45
-    case 'real-food': return 75
-    case 'gourmet': return 95
-  }
-}
-
 const NOMINATIM_CLIENT_TTL_MS = 10 * 60 * 1000
 
 function readProxyUrl(): string {
@@ -161,25 +136,20 @@ export function nominatimToCityConfig(result: NominatimResult): CityConfig {
     tier: 'lite',
     availableLayers: LITE_LAYERS,
     area_km2,
-    populationMillions: 1.0,       // placeholder — update after adding city
+    // 0, not 1.0. See `populationMillions` in config/cities.ts. Nominatim
+    // carries no population, so this path genuinely does not know — and a
+    // search result that says "not published" is worth more than one that
+    // invents a round number the user cannot distinguish from a real reading.
+    populationMillions: 0,
     founded: undefined,
-    climate: 'Unknown — add locally',
-    distinctiveness: `${name}, ${country}. Auto-generated global city config from OpenStreetMap. Local civic feeds can be attached later.`,
+    climate: 'Not from a source',
+    distinctiveness: `${name}, ${country}. Located from OpenStreetMap; only global feeds are attached. The city's image — its paths, edges, districts, nodes and landmarks — is read from OpenStreetMap and needs no local curation.`,
     kpis: [
-      { label: 'POPULATION', value: '—' },
-      { label: 'SMART SCORE', value: '—' },
+      { label: 'POPULATION', value: 'NOT PUBLISHED' },
+      { label: 'SMART SCORE', value: 'NO TWIN' },
       { label: 'IOC STATUS', value: 'LIVE' },
     ],
   }
-}
-
-/** Nutrition level for a city config. */
-export function computeNutrition(city: CityConfig): NutritionLevel {
-  const layerCount = city.availableLayers.length
-  if (layerCount >= 30) return 'gourmet'
-  if (layerCount >= 20) return 'real-food'
-  if (layerCount >= 10) return 'street-food'
-  return 'instant-noodle'
 }
 
 function countryCode(countryName: string, iso2?: string): string {

@@ -50,7 +50,23 @@ export interface CityConfig {
   // City onboarding — these fields power the CityFactsCard that introduces
   // a newcomer to the city in ~30 seconds. Static, curated facts.
   area_km2: number
-  populationMillions: number                            // metro / city-region population
+  /**
+   * Metro / city-region population, in millions.
+   *
+   * **0 means not known** — never a placeholder. A generated city that no source
+   * had a figure for carries 0, and every consumer that renders this guards on
+   * `> 0` and shows "—" rather than a number. This field previously carried a
+   * literal `1.0, // placeholder — update after adding city`, which put an
+   * invented figure in the same typeface as Bangkok's measured 5.455 and fed it
+   * straight into density, the systems model and the comparison panel.
+   */
+  populationMillions: number
+  /** Where the figure came from, so a settlement is never read as a metro area. */
+  populationSource?: 'curated' | 'open-meteo'
+  /** Metres above sea level, where a source reported it. Bears on city form. */
+  elevationM?: number
+  /** Region / state / province, from the geocoder. */
+  adminRegion?: string
   founded?: string                                      // year, era, or "ancient"
   climate: string                                       // e.g. "Tropical monsoon", "Tropical rainforest"
   distinctiveness: string                               // 1-line "what's special about this city"

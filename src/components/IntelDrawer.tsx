@@ -24,6 +24,7 @@ import { fetchWeather } from '../data/openmeteo'
 import { fetchCityNews } from '../data/gdelt'
 import { fetchCityDossier, fetchWikiNearby, type CityDossier, type WikiPlace } from '../data/osint'
 import { cachedFetch } from '../lib/cached-fetch'
+import { populationDensityPerKm2 } from '../lib/city-facts'
 
 type Tab = 'frame' | 'dossier' | 'study'
 
@@ -40,7 +41,8 @@ interface StudyRow {
   aqi: number | null
   temp: number | null
   tone: number | null
-  density: number
+  /** Null when either the population or the area is unknown — not zero. */
+  density: number | null
 }
 
 type SortKey = 'name' | 'aqi' | 'temp' | 'tone' | 'density'
@@ -241,7 +243,7 @@ export function IntelDrawer({ map, activeCity, allCities, open, onToggle }: Prop
     const cities = peers.cities
     Promise.all(cities.map(async (city): Promise<StudyRow> => {
       const [lng, lat] = city.center
-      const density = city.area_km2 > 0 ? Math.round((city.populationMillions * 1_000_000) / city.area_km2) : 0
+      const density = populationDensityPerKm2(city)
       const [air, wx, news] = await Promise.allSettled([
         cachedFetch(`study/aqi/${city.id}`, () => fetchAQI(lng, lat, city.timezone), 10 * 60_000),
         cachedFetch(`study/wx/${city.id}`, () => fetchWeather(lng, lat, city.timezone), 10 * 60_000),
@@ -325,7 +327,7 @@ export function IntelDrawer({ map, activeCity, allCities, open, onToggle }: Prop
               </div>
               <p className="intel-note">
                 Residents are {activeCity.name}’s average density
-                {' '}({activeCity.area_km2 > 0 ? Math.round((activeCity.populationMillions * 1e6) / activeCity.area_km2).toLocaleString('en-US') : '—'} / km²)
+                {' '}({populationDensityPerKm2(activeCity)?.toLocaleString('en-US') ?? '—'} / km²)
                 applied only where the frame overlaps the city box. Parks and towers are not separated.
               </p>
               <div className="intel-subhead">Wikipedia within {(radiusM / 1000).toFixed(radiusM >= 1000 ? 0 : 1)} km of the crosshair</div>

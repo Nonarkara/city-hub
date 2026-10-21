@@ -142,3 +142,38 @@ test('the nodes lens separates a junction that works from one you could find', a
   await expect(caption).toContainText('Scollay Square')
   await expect(caption).toContainText('Functional importance and image strength are different quantities')
 })
+
+test('the form readout shows all five elements at once, in Lynch’s vocabulary', async ({ page }) => {
+  // The five lenses each answer one question about one element. Learning a city
+  // needs the whole profile visible at the same time.
+  const hub = { lat: 13.756, lon: 100.501 }
+  await page.route(OVERPASS_PROXY, async (route) => {
+    await route.fulfill({ json: {
+      osm3s: { timestamp_osm_base: '2026-10-15T00:00:00Z' },
+      elements: [
+        { type: 'way', id: 1, tags: { highway: 'secondary', name: 'Alpha Road' }, geometry: [{ lat: hub.lat, lon: hub.lon - 0.01 }, hub] },
+        { type: 'way', id: 2, tags: { highway: 'secondary', name: 'Beta Road' }, geometry: [hub, { lat: hub.lat, lon: hub.lon + 0.01 }] },
+        { type: 'way', id: 3, tags: { highway: 'tertiary', name: 'Gamma Road' }, geometry: [hub, { lat: hub.lat + 0.01, lon: hub.lon }] },
+        // ~5.5km away, so the junction has three paths meeting it and nothing
+        // nameable around it: Scollay, not Copley.
+        { type: 'node', id: 4, tags: { historic: 'memorial', name: 'Old Column' }, lat: hub.lat + 0.05, lon: hub.lon },
+        { type: 'node', id: 5, tags: { tourism: 'attraction', name: 'Riverside Hall' }, lat: hub.lat + 0.052, lon: hub.lon },
+        { type: 'node', id: 6, tags: { place: 'neighbourhood', name: 'Old Quarter' }, lat: hub.lat + 0.002, lon: hub.lon },
+      ],
+    } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'City image', exact: true }).click()
+  const form = page.locator('.form-panel').first()
+  await expect(form).toContainText('PATHS')
+  await expect(form).toContainText('EDGES')
+  await expect(form).toContainText('DISTRICTS')
+  await expect(form).toContainText('NODES')
+  await expect(form).toContainText('LANDMARKS')
+  // Every row cites where its vocabulary comes from.
+  await expect(form).toContainText('Lynch p.63–64')
+  // Three paths meet here and there is nothing nameable nearby: shapeless.
+  await expect(form).toContainText('1 do real work with nothing to name')
+  // And it refuses to score the city.
+  await expect(form).toContainText('No score is given')
+})

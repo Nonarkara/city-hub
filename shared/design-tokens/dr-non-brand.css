@@ -110,7 +110,13 @@
   --z-overlay: 10;
   --z-modal:   100;
   --z-drawer:  150;
-  --z-frame:   250;   /* fullscreen art/pomodoro overlays */
+  --z-frame:   250;   /* top content layer: compare, panels, city chat */
+  /* Chrome — the topbar and its dropdowns — sits above every content layer.
+     Without this the city dropdown rendered at z 12 underneath the compare
+     surface at 250, so in the default view the menu opened and the map canvas
+     swallowed every click on it: the only route to any other city in the
+     world was a menu nobody could use. */
+  --z-chrome:  400;
   --z-boot:    9999;  /* boot screen */
 }
 
