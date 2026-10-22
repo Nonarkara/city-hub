@@ -74,6 +74,7 @@ Fix the first unnecessary expansion. Do not decorate the consequences.
 | Empty hero or spacer | A section exists to manufacture importance | Remove the section or give real content its place |
 | Overlapping chrome | Fixed or sticky regions obscure the work | Account for their occupied area and reduce their footprint |
 | **Duplicated fact** | The same city-level number is rendered N times because a city-level panel was placed per pane | Lift it to the surface that owns it; render it once |
+| **Unreachable content** | A child of a column flex box has `overflow: auto` but no `flex: 1; min-height: 0`, so it sizes to its content and never scrolls — while an ancestor's `overflow: hidden` cuts the overflow away | Give the scroll region a flex contract; assert the control is reachable, not merely present |
 
 These are symptoms to investigate in the rendered interface. A CSS property
 alone does not prove SH.
@@ -234,18 +235,37 @@ count, and viewport. Cite those numbers in the report, not adjectives.
 
 ```
 /tmp/unl-probes/msh-surfaces.mjs   # satellite compare + notes rail, same 3 viewports
+/tmp/unl-probes/msh-rest.mjs       # single-city, research panel, workbench
+/tmp/unl-probes/scroll-audit.mjs   # unreachable content: hidden by an ancestor it cannot scroll out of
 ```
 
 `msh-sweep.mjs` answers "is the City image surface clean at all three widths".
 `msh-surfaces.mjs` answers the same for the satellite comparison and the notes
-rail. Both check: horizontal overflow, elements past the right edge, visible
+rail. `msh-rest.mjs` covers the single-city view, the research panel, and the
+city explorer. `scroll-audit.mjs` walks every element looking for content cut
+off by an `overflow: hidden` ancestor it has no scroll escape from.
+
+All of them check: horizontal overflow, elements past the right edge, visible
 regions with no content, combined chrome cost, major-region overlap, text
-clipped by its own box, and sub-24px tap targets on a phone.
+clipped by its own box, sub-24px tap targets on a phone, and regions whose area
+is far larger than their content.
 
 **A numeric sweep is necessary and not sufficient.** The envelope clipping was
 invisible to every geometry check — the boxes were correctly sized and nothing
 overlapped. It was found by reading a screenshot. Capture and *look* at all
 three viewports; measure what the eye catches.
+
+**Wait for the map.** Screenshotting a MapLibre pane during tile load captures
+black rectangles that look exactly like a layout failure. Wait on
+`networkidle` plus a settle before judging; a black pane is not a void until it
+is still black after the tiles return.
+
+**Kill your own dev servers before the e2e suite.** A spec that passes in
+isolation and times out in the full run is measuring the machine. A stray
+`vite --port 4199` left over from an audit was enough to push one 60s spec over
+budget; with it stopped the same suite went 23/23 in 1.4 minutes. Probe scripts
+that need a server should start it, use it, and stop it — never leave one running
+across a test run.
 
 ### Repository-specific findings
 
@@ -291,6 +311,15 @@ on sight rather than re-derived:
   second rule further down `city-atlas.css`, overriding the fix in `index.css`.
   When a repair does not take, grep for the class in **every** stylesheet before
   concluding the fix failed.
+- **A scroll region that never scrolls.** `.twin-content` had `overflow-y: auto`
+  but no flex contract, so inside the column-flex `.twin-workbench` it sized to
+  its content: `scrollHeight === clientHeight`, no scrollbar, and the panel's
+  `overflow: hidden` cut the last action **49.7px** below the fold on a
+  390 × 844 phone. Present in the DOM, focusable, and unreachable by any
+  gesture. `overflow: auto` is a *request* to scroll; without `flex: 1;
+  min-height: 0` on the child it is a promise nobody keeps. Test **reachability**
+  (`focus()` then check it scrolled into view) — never presence, which was true
+  the whole time the button was stranded.
 
 ---
 

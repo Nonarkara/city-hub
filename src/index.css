@@ -1508,7 +1508,15 @@
 .twin-tabs { display: flex; border-bottom: 1px solid var(--line); }
 .twin-tabs button { flex: 1; min-height: 44px; background: none; color: #b4bfb8; border: 0; border-bottom: 2px solid transparent; cursor: pointer; font: inherit; }
 .twin-tabs button[aria-selected="true"] { color: #9ad8bb; border-bottom-color: #9ad8bb; }
-.twin-content { overflow-y: auto; padding: 18px; font-size: 13px; line-height: 1.6; }
+/* The scrollable region of the workbench.
+   `flex: 1; min-height: 0` is load-bearing, not decoration. In a column flex
+   container a child defaults to `flex: 0 1 auto`, so this box sized itself to
+   its content instead of to the leftover height. It therefore never scrolled —
+   `scrollHeight` equalled `clientHeight` while the content overflowed — and the
+   panel's own `overflow: hidden` cut the last action button 49.7px below the
+   fold on a 390x844 phone, with no way to reach it. Not a scrollbar problem:
+   there was no scrollable box at all. */
+.twin-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px; font-size: 13px; line-height: 1.6; }
 .twin-content h3 { font-size: 16px; margin: 0 0 10px; letter-spacing: 0; }
 .twin-content a { color: #9ad8bb; }
 .twin-readings { margin: 18px 0; }

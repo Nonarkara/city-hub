@@ -142,3 +142,48 @@ test('every metric says where its number came from, at every width', async ({ pa
     }
   }
 })
+
+test('the city explorer scrolls, so every action is reachable on a phone', async ({ page }) => {
+  // The workbench panel is a column flex box whose content region had no flex
+  // contract, so it sized to its content and never scrolled. The panel's own
+  // `overflow: hidden` then cut the last action 49.7px below the fold on a
+  // 390x844 phone — present in the DOM, focusable, and unreachable by any
+  // gesture. Asserted by reachability, because "the element exists" is exactly
+  // what was true while it was unreachable.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/?city=bangkok&lens=esri-imagery')
+  await page.waitForTimeout(3000)
+  const explore = page.getByRole('button', { name: /^Explore / }).first()
+  await explore.click()
+
+  const target = page.getByRole('button', { name: /City systems/ }).first()
+  await expect(target).toBeVisible()
+
+  // The content region is a real scroll container when its content overflows.
+  const scroll = await page.evaluate(() => {
+    const el = document.querySelector('.twin-content')!
+    return { scrolls: el.scrollHeight > el.clientHeight, overflow: el.scrollHeight - el.clientHeight }
+  })
+  expect(scroll.overflow).toBeGreaterThan(0)
+  expect(scroll.scrolls).toBe(true)
+
+  // Focusing it must bring it into view — the gesture a keyboard user relies on.
+  await target.focus()
+  await page.waitForTimeout(300)
+  const reachable = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement
+    const r = el.getBoundingClientRect()
+    const box = document.querySelector('.twin-content')!.getBoundingClientRect()
+    return {
+      isTarget: /City systems/.test(el.textContent || ''),
+      inViewport: r.bottom <= window.innerHeight + 1 && r.top >= 0,
+      withinPanel: r.top >= box.top - 1 && r.bottom <= box.bottom + 1,
+      height: Math.round(r.height),
+    }
+  })
+  expect(reachable.isTarget).toBe(true)
+  expect(reachable.inViewport).toBe(true)
+  expect(reachable.withinPanel).toBe(true)
+  // A 44px target, so a thumb can hit it.
+  expect(reachable.height).toBeGreaterThanOrEqual(44)
+})
