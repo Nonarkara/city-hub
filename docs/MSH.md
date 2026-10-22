@@ -287,6 +287,16 @@ returns a number, and the number is about the probe, not the product.
 3. **`networkidle` never settles on a page with live feeds.** The app polls
    Open-Meteo, so `waitUntil: 'networkidle'` times out on a 90 s budget while the
    page is perfectly healthy. Use `domcontentloaded` plus an explicit settle.
+4. **Playwright cannot close over module scope.** A helper defined outside
+   `page.evaluate` throws `ReferenceError: X is not defined` inside the page.
+   Define it inside the function passed to `evaluate`.
+5. **Test the right magnification.** Setting `documentElement.style.fontSize`
+   tests nothing on a stylesheet written in `px` — nothing enlarges and the
+   surface looks clean. CDP's `setPageScaleFactor` is worse: it scales
+   rendering without reflowing, which is pinch-zoom, not browser zoom. Browser
+   zoom reflows, so simulate it with a **halved CSS viewport** (200% on
+   1440 × 900 → 720 × 450). And filter `.visually-hidden` out of any
+   clipped-text check: the screen-reader class is *supposed* to be 1 × 1.
 
 A probe that reports a failure must be able to answer "or is this me?" before the
 finding goes in the report.
@@ -350,6 +360,12 @@ on sight rather than re-derived:
   sensor groups. Scrollability was never the defect — *admitting* it was. A
   styled scrollbar plus a `background-attachment: local` fade (which appears only
   when there is more in that direction, so it cannot lie) is the repair.
+  **Found again, same shape, on `.plan-card`** — 3,400–3,900px of eight systems
+  and their interventions in a 660–774px box, **78% below the fold**, ending on
+  a hard cut mid-sentence. *The fix is not a one-off; it is the default for any
+  scroll container in this product.* When one surface gets it, sweep for the
+  others: `grep -n "overflow-y: auto" src/*.css` and check each for an
+  affordance.
 - **Responsive hiding that removes navigation, not chrome.** The phone topbar hid
   every child but the wordmark and Compare, justified by "each pane already owns
   its city and lens". True for those two, false for the More menu: Plan, This
@@ -357,6 +373,40 @@ on sight rather than re-derived:
   nowhere else, so the rule deleted them from the product on a phone. When
   collapsing a bar, ask of each item *what else on this screen offers it* — if
   the answer is nothing, it is navigation and it stays.
+
+---
+
+## 9. Coverage ledger
+
+What has actually been measured, so a later agent does not re-audit it or
+mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
+1440 × 900**, read as a screenshot *and* measured.
+
+| Surface | State | Found and fixed |
+|---|---|---|
+| City image — form strip, lenses, reading line | swept | per-pane duplication; reading line as a 489 × 667 column; clipped metric envelope |
+| Satellite compare + notes rail | swept | clean |
+| Single-city view | swept | clean |
+| Research panel | swept | clean |
+| City explorer (workbench) | swept | last action 49.7px below an unreachable fold |
+| Look menu | swept | 311px hidden with no affordance |
+| More menu | swept | deleted from phones entirely; 7 features unreachable |
+| Plan / model card | swept | **2,655–3,148px (≈78%) below an unmarked cut** |
+| Search / onboarding modal | swept | clean, including a long city label |
+| 200% zoom (simulated at 720 × 450) | swept | no overflow; chrome cost rises to 26% **because the viewport is short, not because the bands grew** — investigated and explained, per §6 |
+| Text enlargement via root font-size | **invalid test** | the stylesheet is `px`, so nothing enlarged; re-run as halved viewport |
+| Compare panel at 540 px (≈267%) | swept | no overflow; chrome 39.3%, same explanation |
+
+**Still unverified — do not claim these are clean:**
+
+- The plan surface *in its scrolled state*: the affordance and the end-of-list
+  were measured, but the full 3,400px of content was not read by eye.
+- `.city-image-reading` and `.form-panel` under text enlargement, which needs a
+  browser that reflows at real zoom rather than a simulated viewport.
+- Anything behind authentication or the Cloudflare Worker path.
+
+A law in prose dies on the next edit. Each row above is held by a spec in
+`tests-e2e/`; if a row has no spec, it is a claim, not a guarantee.
 
 ---
 

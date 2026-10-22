@@ -10525,6 +10525,31 @@
   max-height: min(86vh, 900px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* The model card is ~3,400–3,900px of eight systems and their interventions in
+     a 660–774px box — 78% below the fold. It scrolled, but with an unstyled
+     scrollbar and no marker, so the card ended on a hard cut mid-sentence and
+     read as a complete summary. Same defect the Look menu had. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.5) transparent;
+}
+.plan-card::-webkit-scrollbar { width: 10px; }
+.plan-card::-webkit-scrollbar-track { background: transparent; }
+.plan-card::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.45); border: 3px solid #04060b; }
+.plan-card::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.7); }
+
+/* Fade the cut edge so the card admits it continues. `local` attachment anchors
+   these to the scrollport, not the content, so each shadow appears only while
+   there is more in that direction — a card that fits shows neither. */
+.plan-card {
+  background-image:
+    linear-gradient(to bottom, #04060b 40%, rgba(4, 6, 11, 0)),
+    linear-gradient(to top, #04060b 40%, rgba(4, 6, 11, 0)),
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  background-position: 0 0, 0 100%, 0 0, 0 100%;
+  background-size: 100% 28px, 100% 28px, 100% 10px, 100% 10px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .visually-hidden {

@@ -254,3 +254,41 @@ test('a phone can still reach Plan, Ask, About — the More menu is not desktop-
   expect(fit.bottom).toBeLessThanOrEqual(fit.vh)
   expect(fit.top).toBeGreaterThanOrEqual(0)
 })
+
+test('the plan admits it is longer than the screen', async ({ page }) => {
+  // The model card is 3,400–3,900px of eight systems and their interventions in
+  // a 660–774px box — about 78% below the fold. It scrolled, but with an
+  // unstyled scrollbar and no marker, so it ended on a hard cut mid-sentence and
+  // read as a complete summary of the city. Identical shape to the Look menu.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/?city=bangkok&lens=esri-imagery')
+  await page.waitForTimeout(3500)
+  await page.locator('[aria-label="More"]').first().click()
+  await page.getByText('Plan', { exact: true }).first().click()
+
+  const card = page.locator('.plan-card')
+  await expect(card).toBeVisible()
+  const m = await card.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      overflows: el.scrollHeight > el.clientHeight,
+      hiddenPx: el.scrollHeight - el.clientHeight,
+      scrollbarWidth: cs.scrollbarWidth,
+      hasAffordance: cs.backgroundImage !== 'none',
+      attachment: cs.backgroundAttachment,
+    }
+  })
+  expect(m.overflows).toBe(true)
+  expect(m.hiddenPx).toBeGreaterThan(500)
+  expect(m.scrollbarWidth).toBe('thin')
+  expect(m.hasAffordance).toBe(true)
+  // local attachment is what makes the fade track the scrollport rather than
+  // the content — without it the marker lies about what is still below.
+  expect(m.attachment).toContain('local')
+
+  // And the content is genuinely reachable, not merely declared scrollable.
+  await card.evaluate((el) => { el.scrollTop = el.scrollHeight })
+  await page.waitForTimeout(400)
+  const atEnd = await card.evaluate((el) => ({ top: el.scrollTop, max: el.scrollHeight - el.clientHeight }))
+  expect(atEnd.top).toBeGreaterThan(0)
+})
