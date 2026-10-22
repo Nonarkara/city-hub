@@ -77,9 +77,15 @@
 /* ── Notes rail (shophouses .atlas-panel pattern) ────────────────────── */
 .split-notes { flex: 0 0 var(--cmp-rail); width: var(--cmp-rail); min-width: 0; display: flex; flex-direction: column; overflow-y: auto; background: var(--cmp-panel); border-left: 1px solid var(--line); animation: splitNotesIn 180ms ease; }
 @keyframes splitNotesIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
-.city-image-reading { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-.city-image-reading strong { font: 600 16px/1.25 var(--font-display); color: var(--fg); }
-.city-image-reading span { font-size: 12px; line-height: 1.55; color: var(--cmp-quiet); }
+/* The lens question and its source.
+   It was a flex child of the row-direction .twin-map-workspace, so it became a
+   full-height column BESIDE the maps: 489x667px holding 39px of text at
+   1440x900, which stole 489px — a third — of map width to say one sentence.
+   The job is a reading line, and a reading line is a band: full width, sized
+   to its content, above the panes it describes rather than beside them. */
+.city-image-reading { display: flex; flex-direction: row; align-items: baseline; gap: 10px; flex: 0 0 auto; padding: 8px 14px; background: var(--cmp-panel); border-top: 1px solid var(--line); }
+.city-image-reading strong { font: 600 13px/1.25 var(--font-display); color: var(--fg); white-space: nowrap; }
+.city-image-reading span { font-size: 11px; line-height: 1.45; color: var(--cmp-quiet); min-width: 0; }
 .city-image-reading a { color: var(--amber); }
 .split-compare .split-analysis-bar { display: grid; grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr); align-items: end; gap: 8px 6px; min-height: 0; padding: 14px 16px; background: transparent; border-top: 0; font-family: var(--font-body); }
 .split-compare .split-analysis-title { grid-column: 1 / -1; color: var(--amber); font-size: 10px; }
@@ -129,6 +135,11 @@
   .split-notes { animation: none; }
 }
 .split-compare .split-pane-stat { min-width: 0; overflow: hidden; padding-right: 10px; }
-.split-compare .split-pane-stat-envelope { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.split-compare .split-pane-stats { background: linear-gradient(180deg, rgba(4, 6, 11, 0.86), rgba(4, 6, 11, 0.6)); }
+/* Was `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`, which
+   clipped every envelope below desktop width: "REFERENCE · MIXED YEARS" became
+   "REFERENCE · MIXED YEA…" and the caveat this line exists to carry was the
+   part that vanished. It wraps now. The 4px card padding and the strip's own
+   opaque-to-transparent gradient keep it readable when it does. */
+.split-compare .split-pane-stat-envelope { white-space: normal; overflow-wrap: anywhere; }
+.split-compare .split-pane-stats { background: linear-gradient(180deg, rgba(4, 6, 11, 0.94), rgba(4, 6, 11, 0.86)); }
 .city-image-caption > button:not(.city-image-caption-toggle) { grid-column: 1 / -1; justify-self: start; }

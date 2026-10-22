@@ -247,6 +247,7 @@ Documented public host — also the GitHub repository homepage:
 | Doc | What it is |
 | --- | --- |
 | **[SYSTEM.md](SYSTEM.md)** | **How the system fits together — read this before changing a fetcher or a contract** |
+| **[docs/MSH.md](docs/MSH.md)** | **The layout law — when you find SH, massacre. Read before designing, building, or reviewing any interface** |
 | [STORY.md](STORY.md) | Why the UNL tiles were dropped; vendor independence |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to run a fork and what pull requests we want |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |

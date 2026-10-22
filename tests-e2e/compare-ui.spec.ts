@@ -117,3 +117,28 @@ test('city search returns real basics before a city is opened', async ({ page },
   // works for any city on earth, is one click away.
   await expect(page.getByRole('button', { name: 'City image', exact: true })).toBeVisible()
 })
+
+test('every metric says where its number came from, at every width', async ({ page }) => {
+  // The envelope under each value — "REFERENCE · MIXED YRS", "FEED · NOW" — is
+  // the only thing telling a reader whether a figure is live or a mixed-year
+  // reference. It was clipped to "REFERENCE · MIXED YEA…" at 1024 and 390, so
+  // the caveat is exactly what got cut. Asserted on rendered geometry, because
+  // "the text is in the DOM" proves nothing about whether anyone can read it.
+  for (const width of [1440, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/?city=bangkok&lens=esri-imagery')
+    await page.waitForTimeout(2500)
+
+    const envelopes = await page.evaluate(() =>
+      [...document.querySelectorAll('.split-pane-stat-envelope')].map((el) => ({
+        text: el.textContent ?? '',
+        clipped: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 2,
+      })),
+    )
+    expect(envelopes.length).toBeGreaterThan(0)
+    for (const env of envelopes) {
+      expect(env.text.trim().length).toBeGreaterThan(0)
+      expect(env.clipped, `clipped at ${width}px: ${env.text}`).toBe(false)
+    }
+  }
+})

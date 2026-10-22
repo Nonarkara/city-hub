@@ -233,10 +233,18 @@ function CorrelationPlot({ points }: { points: Array<{ city: CityConfig; x: numb
 }
 
 function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: CompareSnapshot | null; loading: boolean }) {
-  const feedEnvelope = (fetchedAt: number | null | undefined, ttlMs: number): string => {
+  // The envelope says how far to trust the number above it, so it must be legible
+// at every width. Measured at 1024 and 390: "REFERENCE · MIXED YEARS" and
+// "OPEN-METEO · FEED · NOW" were both ellipsis-clipped to "REFERENCE · MIXED
+// YEA…", which hides the exact caveat the line exists to carry. The fix is a
+// shorter form, not a wider box — widening would cost the map space the same
+// way the reading column did.
+const feedEnvelope = (fetchedAt: number | null | undefined, ttlMs: number): string => {
     if (!fetchedAt) return 'OPEN-METEO · NO DATA'
     const tier = Date.now() - fetchedAt <= ttlMs ? 'FEED' : 'CACHE'
-    return `OPEN-METEO · ${tier} · ${freshnessLabel(fetchedAt)}`
+    // The source is already named by the metric's own title attribute; the tier
+    // and the age are what cannot be inferred from the number.
+    return `${tier} · ${freshnessLabel(fetchedAt)}`
   }
   const envelopeFor = (id: CompareMetricId): string => {
     if (id === 'aqi' || id === 'pm25') {
@@ -245,7 +253,7 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
     if (id === 'temperature') {
       return feedEnvelope(live?.weatherFetchedAt, 10 * 60_000)
     }
-    return 'REFERENCE · MIXED YEARS'
+    return 'REFERENCE · MIXED YRS'
   }
 
   return (
@@ -271,7 +279,7 @@ function PaneMetricDock({ city, live, loading }: { city: CityConfig; live: Compa
 // Single map pane
 // ─────────────────────────────────────────────────────────────────────────────
 function CompareMapPane({
-  state, onChange, onRemove, onExplore, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading, cityElement,
+  state, onChange, onRemove, onExplore, cities, tokenAvailable, index, canRemove, trafficOn, live, liveLoading, cityElement, isPrimary,
 }: {
   state:          PaneState
   onChange:       (next: PaneState) => void
@@ -285,6 +293,7 @@ function CompareMapPane({
   live:           CompareSnapshot | null
   liveLoading:    boolean
   cityElement:    CityElement | null
+  isPrimary:      boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<MapLibreMap | null>(null)
@@ -522,7 +531,13 @@ function CompareMapPane({
       {cityElement && <div className={`city-image-caption ${captionOpen ? '' : 'city-image-caption--collapsed'}`} aria-live="polite">
         <strong>{city.name}</strong>
         <button type="button" className="city-image-caption-toggle" onClick={() => setCaptionOpen((v) => !v)} aria-expanded={captionOpen} aria-label={captionOpen ? `Collapse ${city.name} notes` : `Expand ${city.name} notes`}>{captionOpen ? '−' : '+'}</button>
-        <span>{imageError
+        {/* The count line. Suppressed on the primary pane: the form strip above
+            the grid is that same city's readout and already prints the split
+            (linked / sparse / detached), so the caption repeating it puts two
+            copies of one number on one screen. Secondary panes have no strip,
+            so they keep it — otherwise a two-pane comparison would drop the
+            second city's evidence entirely. */}
+        {!(isPrimary && image) && <span>{imageError
           ? 'Public map data unavailable — basemap unchanged'
           : !image
             ? `Reading OpenStreetMap… ${imageWaitMs > 3000 ? `${Math.round(imageWaitMs / 1000)}s` : ''}`.trim()
@@ -532,7 +547,7 @@ function CompareMapPane({
               ? `${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached} named path${image.pathSummary.linked + image.pathSummary.sparse + image.pathSummary.detached === 1 ? '' : 's'} · ${image.pathSummary.linked} linked, ${image.pathSummary.sparse} sparse, ${image.pathSummary.detached} detached${image.truncated ? ' · limited sample' : ''}`
               : cityElement === 'nodes'
                 ? `${image.nodeSummary.anchored + image.nodeSummary.shapeless + image.nodeSummary.memorable + image.nodeSummary.quiet} junctions · ${image.nodeSummary.shapeless} do work with nothing to recognise${image.truncated ? ' · limited sample' : ''}`
-                : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>
+                : `${imageFeatures.length} mapped ${cityElement === 'districts' ? 'place location' : 'feature'}${imageFeatures.length === 1 ? '' : 's'}${image.truncated ? ' · limited sample' : ''}`}</span>}
         {image && cityElement === 'edges' && (
           <small>
             Solid where the city meets the edge and keeps going — a seam. Dashed where nothing meets it and the city works around it — a barrier. Lynch 1960, p.63–64.
@@ -863,6 +878,15 @@ export function SplitCompare() {
         </> : <span className="city-image-intro">Compare the places people move through, recognise and remember.</span>}
       </div>
       {cityElement && <CityFormPanel city={primaryCity} image={formImage} error={formError} />}
+      {/* Provenance, not chrome. This line says what the overlay is and how far
+          to trust it ("OSM proxies; coverage varies"), so it must not depend on
+          a panel being opened — a reader who never finds the notes toggle would
+          never learn the data is partial. It sits outside the notes panel so the
+          map stays first without the caveat going with it.
+          It also sits OUTSIDE .twin-map-workspace: as a flex child of that
+          row-direction container it became a full-height column beside the
+          maps — 489x667px for 39px of text, costing a third of the map width. */}
+      {cityElement && !explorerCity && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
       <div className="twin-map-workspace">
       <div className={gridClass}>
         {panes.map((pane, i) => (
@@ -880,6 +904,7 @@ export function SplitCompare() {
             live={liveByCity[pane.cityId] ?? null}
             liveLoading={liveLoading}
             cityElement={cityElement}
+            isPrimary={i === 0}
           />
         ))}
       </div>
@@ -888,12 +913,6 @@ export function SplitCompare() {
         setSplitOpen(false)
         useUIStore.getState().setPlanOpen(true)
       }} />}
-      {/* Provenance, not chrome. This line says what the overlay is and how far
-          to trust it ("OSM proxies; coverage varies"), so it must not depend on a
-          panel being opened — a reader who never finds the notes toggle would
-          never learn the data is partial. It sits outside the notes panel so the
-          map stays first without the caveat going with it. */}
-      {cityElement && !explorerCity && <div className="city-image-reading"><strong>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.question}</strong><span>{CITY_ELEMENTS.find((element) => element.id === cityElement)?.proxy}. OSM proxies; coverage varies. <a href="https://mitpress.mit.edu/9780262620017/the-image-of-the-city/" target="_blank" rel="noreferrer">Kevin Lynch, 1960</a></span></div>}
       {!explorerCity && notesOpen && (
         <aside className="split-notes" aria-label="Comparison notes">
           <div className="split-analysis-bar" aria-label="City metric relationship model">

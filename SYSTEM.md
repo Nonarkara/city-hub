@@ -281,6 +281,14 @@ the basemap had been stripped, a camera move would request no tiles.
 ## Conventions
 
 - **Sharp edges only.** No rounded corners, no gradients, no shadows, no blur.
+- **Zero spatial hallucination, all viewports.** Every region must answer
+  *why is this here, why this size, why this far from that?* "The grid put it
+  there" is a failed answer. When you find SH, **massacre** it — fix the first
+  unnecessary expansion, don't decorate the consequences, and never solve it by
+  adding another spacer, panel, badge, slogan, or row of identical cards.
+  Measured, never eyeballed: a visual pass requires captures at 390 × 844, 1024,
+  and 1440 × 900, with the geometry numbers recorded. Full law, symptoms table,
+  repair procedure, and evidence requirements: [docs/MSH.md](docs/MSH.md).
 - **Type everything.** No `as unknown as` to bridge a shape mismatch — that cast
   is how a fabricated object stayed in `talent-support-dashboard` for months. If
   the types disagree, one of them is wrong. Find out which.
@@ -309,6 +317,7 @@ the basemap had been stripped, a camera move would request no tiles.
 | `functions/api/` | Same-origin proxies for headers JS cannot set |
 | `worker/` | Cloudflare Worker: keys, CORS, Gemini / TimeFM / Earth Engine |
 | `docs/` | Audits, research notes, dated session records |
+| `docs/MSH.md` | **The layout law. Read before touching any interface.** |
 | `tests/` | Contract + regression specs |
 
 ---
@@ -319,6 +328,8 @@ the basemap had been stripped, a camera move would request no tiles.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — running a fork, what PRs we want
 - [SECURITY.md](SECURITY.md) — reporting a vulnerability
 - [STORY.md](STORY.md) — why the UNL tiles were dropped
+- [docs/MSH.md](docs/MSH.md) — the spatial-hallucination law: what to massacre,
+  the repair procedure, and the evidence a visual pass requires
 - [docs/DESIGN-AUDIT-LYNCH.md](docs/DESIGN-AUDIT-LYNCH.md) — the Lynch lenses and
   the limits of reading a mental map from OSM tags
 - [docs/AUDIT-2026-10-15.md](docs/AUDIT-2026-10-15.md) — most recent audit

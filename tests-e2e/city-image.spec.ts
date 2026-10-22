@@ -23,16 +23,50 @@ test('Lynch elements change both maps and preserve return to satellite', async (
   await page.goto('/')
   await page.getByRole('button', { name: 'City image', exact: true }).click()
   // Paths is the opening lens, and it reports measured structure rather than a
-  // raw feature count: one named route, nothing joining it, so detached.
-  await expect(page.locator('.city-image-caption').first()).toContainText('1 named path · 0 linked, 0 sparse, 1 detached')
+  // raw feature count: one named route, nothing joining it, so detached. The
+  // surface strip owns that city's counts; the primary caption carries the
+  // reading note, and the secondary pane — which no strip describes — keeps its.
+  await expect(page.locator('.form-panel').first()).toContainText('0 linked · 0 sparse · 1 detached')
+  await expect(page.locator('.city-image-caption').first()).not.toContainText('named path')
   await expect(page.locator('.city-image-caption').nth(1)).toContainText('1 named path')
   await page.getByRole('button', { name: 'Districts', exact: true }).click()
-  await expect(page.locator('.city-image-caption').first()).toContainText('1 mapped place location')
+  // District and landmark counts are city-level too, so they live in the strip;
+  // the primary caption keeps the reading note and the place name.
+  await expect(page.locator('.form-panel').first()).toContainText('DISTRICTS')
   await expect(page.locator('.city-image-reading')).toContainText('not perceived boundaries')
   await page.getByRole('button', { name: 'Landmarks', exact: true }).click()
   await expect(page.locator('.city-image-caption').first()).toContainText('Test landmark')
   const width = page.viewportSize()!.width
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+
+  // The reading line must be a BAND, not a column. It was a flex child of the
+  // row-direction .twin-map-workspace, so 39px of text stretched to fill 667px of
+  // height beside the maps and took a third of the map width with it. Asserted
+  // as geometry because a build passing proves nothing about layout: the void
+  // was in the CSS, and the CSS compiled fine for weeks.
+  const band = await page.evaluate(() => {
+    const rd = document.querySelector('.city-image-reading')!.getBoundingClientRect()
+    const grid = document.querySelector('.split-grid')!.getBoundingClientRect()
+    return {
+      readingH: Math.round(rd.height),
+      readingW: Math.round(rd.width),
+      // A column would sit beside the grid, sharing its vertical span.
+      beside: rd.left >= grid.right - 2,
+      gridW: Math.round(grid.width),
+      viewH: window.innerHeight,
+    }
+  })
+  expect(band.beside).toBe(false)
+  // A band, not a column — measured against the viewport, not a fixed pixel
+  // count. The old column was 667px of a 900px screen; the phone band is 98px
+  // of 844px because the question legitimately wraps at 390px wide. Both are
+  // correct. What must never return is one that grows toward the pane height.
+  expect(band.readingH).toBeLessThan(band.viewH * 0.25)
+  // The maps keep the width the void used to hold. Scaled to the viewport, not
+  // a fixed number: on a phone the grid is correctly full-width because panes
+  // stack there, so the desktop symptom has no phone equivalent.
+  expect(band.gridW).toBeGreaterThan(width * 0.6)
+
   await page.screenshot({ path: testInfo.outputPath('city-image.png') })
   await page.getByRole('button', { name: 'City image', exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Satellite lens' })).toHaveCount(2)
@@ -105,8 +139,13 @@ test('the paths lens separates a linked street from a detached one', async ({ pa
   await page.goto('/')
   await page.getByRole('button', { name: 'City image', exact: true }).click()
   await page.getByRole('button', { name: 'Paths', exact: true }).click()
+  // The split lives in the form strip, once for the whole comparison. The
+  // primary pane's caption must not repeat it — two copies of one number on one
+  // screen is spatial hallucination, and this asserts the strip owns it.
+  const form = page.locator('.form-panel').first()
+  await expect(form).toContainText('1 linked · 8 sparse · 1 detached')
   const caption = page.locator('.city-image-caption').first()
-  await expect(caption).toContainText('10 named paths · 1 linked, 8 sparse, 1 detached')
+  await expect(caption).not.toContainText('named path')
   // The evidence travels with the verdict, and the citation is Lynch's own.
   await expect(caption).toContainText('Junctions of four branches or more are marked in red')
   await expect(caption).toContainText('Lynch 1960, p.56–61')
@@ -136,8 +175,13 @@ test('the nodes lens separates a junction that works from one you could find', a
   await page.goto('/')
   await page.getByRole('button', { name: 'City image', exact: true }).click()
   await page.getByRole('button', { name: 'Nodes', exact: true }).click()
+  // The junction count and the shapeless finding belong to the strip, which
+  // renders once per comparison; the primary caption carries the reading note
+  // only, so the number cannot appear twice on one screen.
+  const form = page.locator('.form-panel').first()
+  await expect(form).toContainText('1 do real work with nothing to name')
   const caption = page.locator('.city-image-caption').first()
-  await expect(caption).toContainText('2 junctions · 1 do work with nothing to recognise')
+  await expect(caption).not.toContainText('junctions ·')
   // The citation is Lynch's, and the inversion is stated rather than implied.
   await expect(caption).toContainText('Scollay Square')
   await expect(caption).toContainText('Functional importance and image strength are different quantities')
@@ -176,4 +220,42 @@ test('the form readout shows all five elements at once, in Lynch’s vocabulary'
   await expect(form).toContainText('1 do real work with nothing to name')
   // And it refuses to score the city.
   await expect(form).toContainText('No score is given')
+  // The reading band used to end "OSM proxies; coverage varies", repeating the
+  // form strip's provenance line 40px above it. The caveat now lives in exactly
+  // one place — this assertion is what stops it being deleted from both.
+  await expect(form).toContainText('OpenStreetMap candidates, not residents’ mental maps')
+  await expect(page.locator('.city-image-reading')).toContainText('Kevin Lynch, 1960')
+  await expect(page.locator('.city-image-reading')).not.toContainText('OSM proxies')
+  // One panel for the whole comparison, however many panes are open. Rendered
+  // per pane it was N copies of one city-level fact.
+  await expect(page.locator('.form-panel')).toHaveCount(1)
+})
+
+test('a second pane keeps its counts when the strip already owns the first', async ({ page }) => {
+  // The primary pane drops its count because the surface strip prints that
+  // city's split. A secondary pane has no strip describing it, so suppressing
+  // its count too would orphan the second city's evidence entirely — the repair
+  // must remove duplication without removing data.
+  const hub = { lat: 13.756, lon: 100.501 }
+  await page.route(OVERPASS_PROXY, async (route) => {
+    await route.fulfill({ json: {
+      osm3s: { timestamp_osm_base: '2026-10-15T00:00:00Z' },
+      elements: [
+        { type: 'way', id: 1, tags: { highway: 'secondary', name: 'Alpha Road' }, geometry: [{ lat: hub.lat, lon: hub.lon - 0.01 }, hub] },
+        { type: 'way', id: 2, tags: { highway: 'secondary', name: 'Beta Road' }, geometry: [hub, { lat: hub.lat, lon: hub.lon + 0.01 }] },
+        { type: 'way', id: 3, tags: { highway: 'tertiary', name: 'Gamma Road' }, geometry: [hub, { lat: hub.lat + 0.01, lon: hub.lon }] },
+        { type: 'node', id: 4, tags: { historic: 'memorial', name: 'Old Column' }, lat: hub.lat + 0.05, lon: hub.lon },
+        { type: 'node', id: 5, tags: { tourism: 'attraction', name: 'Riverside Hall' }, lat: hub.lat + 0.052, lon: hub.lon },
+        { type: 'node', id: 6, tags: { place: 'neighbourhood', name: 'Old Quarter' }, lat: hub.lat + 0.002, lon: hub.lon },
+      ],
+    } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'City image', exact: true }).click()
+  await page.getByRole('button', { name: 'Paths', exact: true }).click()
+  // Two panes means two captions. The first omits the count; the second keeps it.
+  const captions = page.locator('.city-image-caption')
+  await expect(captions).toHaveCount(2)
+  await expect(captions.nth(0)).not.toContainText('named path')
+  await expect(captions.nth(1)).toContainText('named path')
 })

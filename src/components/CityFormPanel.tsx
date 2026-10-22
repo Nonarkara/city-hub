@@ -74,25 +74,31 @@ export function CityFormPanel({ city, image, error }: Props) {
   const edges = image.edgeSummary.seam + image.edgeSummary.partial + image.edgeSummary.barrier
   const junctions = image.nodeSummary.anchored + image.nodeSummary.shapeless + image.nodeSummary.memorable + image.nodeSummary.quiet
 
+  /** `1 seam` / `3 seams` — a count with its own noun, no more. The plural is
+      given per band because "sparse" is an adjective: pluralising it would print
+      "8 sparses", which is not a word. */
+  const band = (n: number, noun: string, plural: string) => `${n} ${n === 1 ? noun : plural}`
+
   const rows: Row[] = [
     {
       id: 'paths', label: 'PATHS', gloss: 'How people move through it',
       count: paths,
-      verdict: image.pathSummary.detached > 0
-        ? `${image.pathSummary.detached} detached — long, and nothing joins them`
-        : image.pathSummary.linked > 0
-          ? `${image.pathSummary.linked} well joined`
-          : null,
+      // The full split, not just the worst band. This strip owns the city's
+      // counts — the pane captions used to repeat them, and two copies of one
+      // number on one screen is SH. What the strip drops is the interpretation,
+      // which the lens caption already carries in its reading note ("a long
+      // street nothing meets is detached — prominent, and outside the image").
+      verdict: paths > 0
+        ? `${band(image.pathSummary.linked, 'linked', 'linked')} · ${band(image.pathSummary.sparse, 'sparse', 'sparse')} · ${band(image.pathSummary.detached, 'detached', 'detached')}`
+        : null,
       cite: 'Lynch p.56–61',
     },
     {
       id: 'edges', label: 'EDGES', gloss: 'What divides or connects parts',
       count: edges,
-      verdict: image.edgeSummary.barrier > 0
-        ? `${image.edgeSummary.barrier} barriers — the city works around them`
-        : image.edgeSummary.seam > 0
-          ? `${image.edgeSummary.seam} seams — the city joins along them`
-          : null,
+      verdict: edges > 0
+        ? `${band(image.edgeSummary.seam, 'seam', 'seams')} · ${band(image.edgeSummary.partial, 'partial', 'partial')} · ${band(image.edgeSummary.barrier, 'barrier', 'barriers')}`
+        : null,
       cite: 'Lynch p.63–64',
     },
     {
@@ -142,6 +148,9 @@ export function CityFormPanel({ city, image, error }: Props) {
         : <p className="form-foot">No dominant direction in the named network — a street here has nothing to align to. The same problem Los Angeles has.</p>}
       {image.truncated && (
         <p className="form-foot form-foot--limit">Some counts are cut off: the read stopped before covering the whole window, so they understate the city.</p>
+      )}
+      {image.edgeTruncated && (
+        <p className="form-foot form-foot--limit">The edge set hit its own cap, so some edges arrived whole and some did not — seam and barrier counts are understated unevenly.</p>
       )}
       {image.crossingsTruncated && (
         <p className="form-foot form-foot--limit">Road contacts were incomplete, so edge readings skew toward barrier.</p>

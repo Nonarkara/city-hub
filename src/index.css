@@ -1549,7 +1549,11 @@
   pointer-events: none;
 }
 
-/* Static + live comparison metrics, docked to the pane boundary. */
+/* Static + live comparison metrics, docked to the pane boundary.
+   The envelope is the honesty line — it says whether a number came from a live
+   feed or a mixed-year reference — so it may not be ellipsis-clipped at any
+   width. It wraps to a second line instead, and the card grows by one line
+   rather than hiding the caveat. */
 .split-pane-stats {
   position: absolute;
   top: 8px;
@@ -1568,19 +1572,21 @@
   gap: 1px;
   font-family: var(--font-mono);
   color: var(--fg);
-  background: rgba(4, 6, 11, 0.88);
+  /* Opaque, not translucent: 6-8px type over moving imagery is unreadable
+     without it, and a scrim that does not do its job is worse than none. */
+  background: #0b0e12;
   border: 1px solid var(--line);
-  padding: 3px 5px;
+  padding: 4px 6px 5px;
   overflow: hidden;
 }
 .split-pane-stat-label {
-  font-size: 7px;
+  font-size: 8px;
   letter-spacing: 0.12em;
   color: var(--dim);
   white-space: nowrap;
 }
 .split-pane-stat-value {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0;
   color: var(--fg);
   overflow: hidden;
@@ -1588,12 +1594,14 @@
   white-space: nowrap;
 }
 .split-pane-stat-envelope {
-  color: rgba(245, 245, 240, 0.52);
-  font-size: 6px;
-  letter-spacing: 0.04em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: rgba(245, 245, 240, 0.62);
+  font-size: 7.5px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  /* Wrap rather than clip. The card is sized by its content, so this costs a
+     line of height on a narrow pane and never a hidden caveat. */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Close button (top-right corner) */
