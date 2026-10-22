@@ -75,6 +75,8 @@ Fix the first unnecessary expansion. Do not decorate the consequences.
 | Overlapping chrome | Fixed or sticky regions obscure the work | Account for their occupied area and reduce their footprint |
 | **Duplicated fact** | The same city-level number is rendered N times because a city-level panel was placed per pane | Lift it to the surface that owns it; render it once |
 | **Unreachable content** | A child of a column flex box has `overflow: auto` but no `flex: 1; min-height: 0`, so it sizes to its content and never scrolls — while an ancestor's `overflow: hidden` cuts the overflow away | Give the scroll region a flex contract; assert the control is reachable, not merely present |
+| **Unadmitted overflow** | A list scrolls, but with no scrollbar, fade, or marker — so the cut edge reads as the end of the data | Style the scrollbar and fade the cut edge; never let a clipped list look complete |
+| **Navigation deleted as responsive chrome** | A media query hides a control because its *label* was redundant, but the function exists nowhere else | Ask what else on screen offers it; if nothing, it is navigation and it stays |
 
 These are symptoms to investigate in the rendered interface. A CSS property
 alone does not prove SH.
@@ -236,14 +238,16 @@ count, and viewport. Cite those numbers in the report, not adjectives.
 ```
 /tmp/unl-probes/msh-surfaces.mjs   # satellite compare + notes rail, same 3 viewports
 /tmp/unl-probes/msh-rest.mjs       # single-city, research panel, workbench
+/tmp/unl-probes/msh-overlays.mjs    # Look menu, More menu, plan surface
 /tmp/unl-probes/scroll-audit.mjs   # unreachable content: hidden by an ancestor it cannot scroll out of
 ```
 
 `msh-sweep.mjs` answers "is the City image surface clean at all three widths".
 `msh-surfaces.mjs` answers the same for the satellite comparison and the notes
 rail. `msh-rest.mjs` covers the single-city view, the research panel, and the
-city explorer. `scroll-audit.mjs` walks every element looking for content cut
-off by an `overflow: hidden` ancestor it has no scroll escape from.
+city explorer. `msh-overlays.mjs` covers the topbar menus and the plan surface.
+`scroll-audit.mjs` walks every element looking for content cut off by an
+`overflow: hidden` ancestor it has no scroll escape from.
 
 All of them check: horizontal overflow, elements past the right edge, visible
 regions with no content, combined chrome cost, major-region overlap, text
@@ -266,6 +270,26 @@ isolation and times out in the full run is measuring the machine. A stray
 budget; with it stopped the same suite went 23/23 in 1.4 minutes. Probe scripts
 that need a server should start it, use it, and stop it — never leave one running
 across a test run.
+
+**Three harness traps that each produced a false "the control is broken".**
+These cost three wrong diagnoses in one audit. All three are silent — the probe
+returns a number, and the number is about the probe, not the product.
+
+1. **Visibility must walk the whole ancestor chain.** Testing `display` on the
+   element alone reports responsive duplicates inside a `display: none` wrapper
+   as visible. A first pass found four "0 × 0 focusable" topbar controls at
+   390 px — all correctly hidden, `focus()` correctly a no-op, click correctly
+   timing out. Phantom findings.
+2. **One page per menu.** These menus set `body { overflow: hidden }` and leave
+   a backdrop up. Closing one in place makes the next click hit the backdrop and
+   time out, which reads as "this button is dead". Each opens perfectly well on
+   its own page. Also: **Escape does not close them** — the backdrop click does.
+3. **`networkidle` never settles on a page with live feeds.** The app polls
+   Open-Meteo, so `waitUntil: 'networkidle'` times out on a 90 s budget while the
+   page is perfectly healthy. Use `domcontentloaded` plus an explicit settle.
+
+A probe that reports a failure must be able to answer "or is this me?" before the
+finding goes in the report.
 
 ### Repository-specific findings
 
@@ -320,6 +344,19 @@ on sight rather than re-derived:
   min-height: 0` on the child it is a promise nobody keeps. Test **reachability**
   (`focus()` then check it scrolled into view) — never presence, which was true
   the whole time the button was stranded.
+- **A scroll region that scrolls but will not admit it.** The Look menu is 869px
+  of 38 lenses in a 560px box. `overflow-y: auto` with nothing else: **311px**
+  hidden below an unstyled cut that read as the end of the list, including whole
+  sensor groups. Scrollability was never the defect — *admitting* it was. A
+  styled scrollbar plus a `background-attachment: local` fade (which appears only
+  when there is more in that direction, so it cannot lie) is the repair.
+- **Responsive hiding that removes navigation, not chrome.** The phone topbar hid
+  every child but the wordmark and Compare, justified by "each pane already owns
+  its city and lens". True for those two, false for the More menu: Plan, This
+  view, the next 48 hours, Ask, Patterns, Sources, Search and About exist
+  nowhere else, so the rule deleted them from the product on a phone. When
+  collapsing a bar, ask of each item *what else on this screen offers it* — if
+  the answer is nothing, it is navigation and it stays.
 
 ---
 

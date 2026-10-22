@@ -187,3 +187,70 @@ test('the city explorer scrolls, so every action is reachable on a phone', async
   // A 44px target, so a thumb can hit it.
   expect(reachable.height).toBeGreaterThanOrEqual(44)
 })
+
+test('a long menu admits that it scrolls', async ({ page }) => {
+  // The Look menu is 869px of 38 lenses in a 560px box. It scrolled, but with a
+  // bare `overflow-y: auto`: no scrollbar, no fade, no hint. 311px of options —
+  // including whole sensor groups — sat below a cut that read as the end of the
+  // list. Asserted because "it is scrollable" was already true and not the
+  // defect; the defect is that the layout denied it.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/?city=bangkok&lens=esri-imagery')
+  await page.waitForTimeout(3000)
+  await page.locator('[aria-label="Choose how you\'re looking"]').first().click()
+
+  const menu = page.locator('.basemap-menu').first()
+  await expect(menu).toBeVisible()
+  const m = await menu.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      overflows: el.scrollHeight > el.clientHeight,
+      hiddenPx: el.scrollHeight - el.clientHeight,
+      scrollbarWidth: cs.scrollbarWidth,
+      hasAffordance: cs.backgroundImage !== 'none',
+    }
+  })
+  expect(m.overflows).toBe(true)
+  expect(m.hiddenPx).toBeGreaterThan(0)
+  // A styled scrollbar, so the scroll is visible rather than inferred.
+  expect(m.scrollbarWidth).toBe('thin')
+  // And a fade anchored to the scrollport, which only appears when more exists.
+  expect(m.hasAffordance).toBe(true)
+})
+
+test('a phone can still reach Plan, Ask, About — the More menu is not desktop-only', async ({ page }) => {
+  // The phone topbar hid every child except the wordmark and Compare, on the
+  // reasoning that each pane already owns its city and lens. True for those two
+  // and false for everything else: Plan, This view, the next 48 hours, Ask,
+  // Patterns, Sources, Search and About exist nowhere else on the screen, so
+  // hiding the menu removed them from the product on a phone entirely.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/?city=bangkok&lens=esri-imagery')
+  await page.waitForTimeout(3500)
+
+  const more = page.locator('[aria-label="More"]').first()
+  await expect(more).toBeVisible()
+  // It must cost a phone target's width, not a desktop label's.
+  const box = await more.boundingBox()
+  expect(box!.width).toBeLessThanOrEqual(60)
+  expect(box!.height).toBeGreaterThanOrEqual(44)
+
+  await more.click()
+  const menu = page.locator('.topbar-more-menu')
+  await expect(menu).toBeVisible()
+
+  // Every item in it is a feature with no other route on the screen.
+  for (const label of ['Plan', 'This view', 'Next 48 hours', 'Ask', 'Patterns', 'Search', 'About']) {
+    await expect(menu.getByText(label, { exact: true }).first()).toBeAttached()
+  }
+
+  // And the menu itself stays inside a 390px viewport.
+  const fit = await menu.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, vw: innerWidth, vh: innerHeight }
+  })
+  expect(fit.right).toBeLessThanOrEqual(fit.vw)
+  expect(fit.left).toBeGreaterThanOrEqual(0)
+  expect(fit.bottom).toBeLessThanOrEqual(fit.vh)
+  expect(fit.top).toBeGreaterThanOrEqual(0)
+})

@@ -1335,8 +1335,37 @@
 
 /* ── Satellite Stack menu — grouped basemap switcher ───────────────────── */
 .basemap-menu {
+  /* The list is 869px of real options; the box is 560px. Bare `overflow-y: auto`
+     hid 311–318px below an unstyled cut that read as the end of the list — a
+     reader could not tell that whole sensor groups existed underneath. The
+     scroll is legitimate (38 lenses do not fit one screen); what was missing is
+     that the layout admitted it. Styled scrollbar + a bottom fade that only
+     appears while there is more to reach. */
   max-height: min(72vh, 560px);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.5) transparent;
+}
+.basemap-menu::-webkit-scrollbar { width: 8px; }
+.basemap-menu::-webkit-scrollbar-track { background: transparent; }
+.basemap-menu::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.45); border: 2px solid rgba(4, 6, 11, 0.97); }
+.basemap-menu::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.7); }
+
+/* Tell the reader the list continues. `scroll` attachment means the shadow is
+   anchored to the scrollport, not the content — so it sits on the cut edge and
+   only appears while there is more list in that direction. No JS, and it cannot
+   lie: a menu that fits shows neither shadow. */
+.basemap-menu {
+  background-image:
+    linear-gradient(to bottom, rgba(4, 6, 11, 0.97) 30%, rgba(4, 6, 11, 0)),
+    linear-gradient(to top, rgba(4, 6, 11, 0.97) 30%, rgba(4, 6, 11, 0)),
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  background-position: 0 0, 0 100%, 0 0, 0 100%;
+  background-size: 100% 24px, 100% 24px, 100% 9px, 100% 9px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .basemap-menu-title {
@@ -2212,12 +2241,39 @@
   .topbar-split-btn { display: flex; margin-left: 0; }
   .data-chip-label { display: none; }
 
-  /* Each compare pane already owns its city and lens. Keep the phone header
-     to the two controls that still matter instead of clipping dashboard UI. */
-  :root:has(.split-compare) .topbar > :not(.topbar-wordmark):not(.topbar-spacer):not(.topbar-split-btn) {
+  /* Each compare pane already owns its city and its lens, so the phone header
+     drops those two pickers rather than clipping dashboard UI. It must NOT drop
+     the More menu: a pane owns no view other than itself, so hiding it left a
+     phone user with no way to reach Plan, This view, the next 48 hours, Ask,
+     Patterns, Sources, Search or About — features that exist nowhere else on
+     the screen. It is a single icon-width control, so it costs almost nothing
+     to keep. */
+  :root:has(.split-compare) .topbar > :not(.topbar-wordmark):not(.topbar-spacer):not(.topbar-split-btn):not(.topbar-more-wrap) {
     display: none;
   }
-  :root:has(.split-compare) .topbar-wordmark {
+  /* …and the kept one is an icon-width control, so the wordmark and Compare
+     keep their space. */
+  :root:has(.split-compare) .topbar .topbar-more-wrap { margin-left: auto; }
+  :root:has(.split-compare) .topbar .topbar-more-wrap .topbar-basemap-btn {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  :root:has(.split-compare) .topbar .topbar-more-wrap .topbar-basemap-label {
+    font-size: 0;
+  }
+  :root:has(.split-compare) .topbar .topbar-more-wrap .topbar-basemap-label::after {
+    content: '⋯';
+    font-size: 16px;
+    line-height: 1;
+  }
+  /* The menu is 220px of absolutely-positioned list inside a 390px phone: anchor
+     it to the right edge so it cannot overflow, and let it use the height it
+     needs instead of the desktop 72vh cap. */
+  :root:has(.split-compare) .topbar .basemap-menu {
+    max-height: min(64vh, 460px);
+  }
+  :root:has(.split-compare) .topbar .topbar-wordmark {
     flex: 0 1 auto;
     min-width: 0;
   }

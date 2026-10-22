@@ -607,7 +607,7 @@ export default function App() {
 
         <DataStatusChip onClick={() => setDataStatusOpen((v) => !v)} />
 
-        <div className="basemap-wrap">
+        <div className="basemap-wrap topbar-more-wrap">
           <button
             type="button"
             className="topbar-basemap-btn"
