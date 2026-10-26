@@ -391,7 +391,7 @@ mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
 | City explorer (workbench) | swept | last action 49.7px below an unreachable fold |
 | Look menu | swept | 311px hidden with no affordance |
 | More menu | swept | deleted from phones entirely; 7 features unreachable |
-| Plan / model card | swept | **2,655–3,148px (≈78%) below an unmarked cut** |
+| Plan / model card | swept | **2,655–3,148px (≈78%) below an unmarked cut**; a 760px card around ~460px of content — 46% of the debt section empty, section rules 82–91% wider than their own text, each step's figure 602px from its label |
 | Search / onboarding modal | swept | clean, including a long city label |
 | 200% zoom (simulated at 720 × 450) | swept | no overflow; chrome cost rises to 26% **because the viewport is short, not because the bands grew** — investigated and explained, per §6 |
 | Text enlargement via root font-size | **invalid test** | the stylesheet is `px`, so nothing enlarged; re-run as halved viewport |
@@ -404,6 +404,13 @@ mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
 - `.city-image-reading` and `.form-panel` under text enlargement, which needs a
   browser that reflows at real zoom rather than a simulated viewport.
 - Anything behind authentication or the Cloudflare Worker path.
+
+**Read end-to-end since that ledger was written:** the plan card at
+**1440 × 900**, walked in six bands from the head to the closing note, and at
+**390 × 844** and **1024 × 768** (top and end) — each read as a screenshot and
+measured. The card is now one column of 464px with no section leaving more
+than 15px of dead strip; the surface is still a long scroll, but every part of
+it has now been seen.
 
 A law in prose dies on the next edit. Each row above is held by a spec in
 `tests-e2e/`; if a row has no spec, it is a claim, not a guarantee.

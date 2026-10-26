@@ -10518,10 +10518,29 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    PLAN — the city as a model of systems, and the plan that follows
    Sharp edges only. Every number carries its basis. No rounding, no shadow.
+
+   ONE MEASURE. This panel has exactly one width: the card's inner column.
+   It used to have two — the column, and a ch-cap on nearly every prose block
+   (62ch-74ch, which at these type sizes is 356px-472px). Two width
+   constraints on one column is the mechanism that produced the dead strip:
+   the 704px column plus a 404px cap left 300px of nothing beside the text
+   that ends the document, and the debt section read 46% empty. The caps are
+   gone and the column is the measure. Do not reintroduce a ch-cap here: two
+   widths on one column is the defect, not the cure.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Width is the content's demand, not a round number.
+   Measured at 1440x900 before this change: the card was 760px wide with 704px
+   of inner column, but nothing in it needed more than ~460px. The widest thing
+   that must not wrap is the CAPACITY/DEMAND figure row — natural width 372px
+   for Bangkok and Singapore, 332px for the narrowest city — so the column has
+   to be at least 410px. Everything else is prose under a ch-cap of 64-74ch,
+   which at these type sizes lands between 356px and 472px. 462px of inner
+   column therefore holds every one of them, and the balance bar still gets a
+   410px track. The old 704px column put 323px of emptiness (46% of the debt
+   section) to the right of the prose that ends the card. */
 .plan-card {
-  width: min(760px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - 32px));
   max-height: min(86vh, 900px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -10593,7 +10612,6 @@
   line-height: 1.45;
   color: rgba(245, 245, 240, 0.88);
   margin: 0 0 12px;
-  max-width: 62ch;
 }
 .cm-tallies { display: flex; gap: 14px; align-items: baseline; }
 .cm-tally {
@@ -10672,8 +10690,27 @@
   text-align: right;
 }
 
+/* Capacity and demand are a pair, so they are a two-column table: the label
+   sits over its value. Set inline, the row demanded 510px — the Waste system
+   of Bangkok, Singapore and Brasília — which is wider than any column that
+   would not also leave a dead strip beside the prose, so it wrapped in a
+   434px box. Measured over all nineteen cities, the widest inline row is
+   510px and the widest value-only row is 414px. Stacked, every city fits. */
 .cm-sys-figures { display: flex; gap: 18px; margin-bottom: 6px; flex-wrap: wrap; }
 .cm-fig { display: flex; align-items: baseline; gap: 6px; }
+@media (min-width: 561px) {
+  .cm-sys-figures {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    column-gap: 18px;
+    row-gap: 1px;
+  }
+  .cm-fig { flex-direction: column; align-items: flex-start; gap: 1px; }
+}
+@media (max-width: 560px) {
+  .cm-sys-figures { gap: 12px; }
+}
 .cm-fig-k {
   font-family: var(--font-mono);
   font-size: 8px;
@@ -10692,7 +10729,6 @@
   line-height: 1.4;
   color: rgba(245, 245, 240, 0.82);
   margin-bottom: 6px;
-  max-width: 66ch;
 }
 /* IoC 2.0 — where a system's pressure lands in the city image. Sits between
    the verdict and the caveat: it says what the number is *about*, and the named
@@ -10702,7 +10738,6 @@
   font-size: 10px;
   line-height: 1.5;
   color: rgba(245, 245, 240, 0.62);
-  max-width: 72ch;
 }
 .cm-where-k {
   font-family: var(--font-mono);
@@ -10729,7 +10764,6 @@
   font-size: 10px;
   line-height: 1.45;
   color: rgba(245, 245, 240, 0.4);
-  max-width: 72ch;
 }
 .cm-caveat-k {
   font-family: var(--font-mono);
@@ -10741,6 +10775,10 @@
 
 /* ── The plan ─────────────────────────────────────────────────────────────── */
 .cm-plan { margin-top: 26px; }
+/* The rule underlines the label it belongs to. It used to span the whole
+   column — 702px of hairline under 63px of text — which is a line drawn
+   across space nothing occupies. Section separation comes from the margin
+   above, not from a rule that overruns its own heading. */
 .cm-plan-h, .cm-debt-h {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -10749,17 +10787,22 @@
   border-bottom: 1px solid var(--line);
   padding-bottom: 6px;
   margin: 0 0 12px;
+  width: fit-content;
+  max-width: 100%;
 }
 .cm-plan-empty {
   font-family: var(--font-body);
   font-size: 13px;
   line-height: 1.5;
   color: rgba(245, 245, 240, 0.6);
-  max-width: 64ch;
   margin: 0;
 }
 
 .cm-step { margin-bottom: 18px; }
+/* The head is a marker for the step, so it is as wide as the step: rank,
+   system, utilisation, adjacent. `flex: 1` on the system label used to push
+   the utilisation figure 602px away from the label it belongs to, and left the
+   tinted band 85% empty once the band itself hugged its content. */
 .cm-step-head {
   display: flex;
   align-items: baseline;
@@ -10768,6 +10811,9 @@
   border-left: 3px solid var(--amber);
   padding: 7px 10px;
   margin-bottom: 8px;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 .cm-step-rank {
   font-family: var(--font-data);
@@ -10780,7 +10826,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--fg);
-  flex: 1;
+  flex: 0 0 auto;
 }
 .cm-step-util { font-family: var(--font-data); font-size: 12px; }
 
@@ -10819,7 +10865,6 @@
   font-size: 11px;
   line-height: 1.45;
   color: rgba(245, 245, 240, 0.58);
-  max-width: 68ch;
 }
 .cm-iv-why {
   font-family: var(--font-body);
@@ -10827,7 +10872,6 @@
   line-height: 1.4;
   color: rgba(245, 245, 240, 0.36);
   margin-top: 4px;
-  max-width: 70ch;
 }
 .cm-why-k {
   font-family: var(--font-mono);
@@ -10844,7 +10888,6 @@
   font-size: 12px;
   line-height: 1.5;
   color: rgba(245, 245, 240, 0.55);
-  max-width: 64ch;
   margin: 0 0 10px;
 }
 .cm-debt-list { list-style: none; margin: 0 0 14px; padding: 0; }
@@ -10857,7 +10900,6 @@
   line-height: 1.45;
   color: rgba(245, 245, 240, 0.5);
   padding: 4px 0;
-  max-width: 74ch;
 }
 .cm-debt-dot { width: 4px; height: 4px; flex-shrink: 0; }
 .cm-foot {
@@ -10868,13 +10910,11 @@
   color: rgba(245, 245, 240, 0.32);
   border-top: 1px solid var(--line);
   padding-top: 10px;
-  max-width: 66ch;
 }
 
 @media (max-width: 640px) {
   .cm-title { font-size: 24px; }
   .cm-opening { font-size: 14px; }
-  .cm-sys-figures { gap: 12px; }
 }
 
 /* ── City form readout ───────────────────────────────────────────────────────
