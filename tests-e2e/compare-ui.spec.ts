@@ -1,7 +1,20 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+/**
+ * Open the app and wait for the thing the test needs.
+ *
+ * Not for a fixed number of seconds: these specs measure the interface, not
+ * the satellite basemap, and waiting on every map tile made the navigation
+ * the slowest thing in the suite. A timeout that fires only when the machine
+ * is busy is measuring the machine.
+ */
+const open = async (page: Page, path = '/?city=bangkok&lens=esri-imagery') => {
+  await page.goto(path, { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.topbar')).toBeVisible()
+}
 
 test('comparison is the primary view and never blanks the application', async ({ page }, testInfo) => {
-  await page.goto('/?city=bangkok&lens=esri-imagery')
+  await open(page)
 
   await expect(page.locator('.topbar')).toBeVisible()
   await expect(page.locator('.topbar-brand-mark')).toBeVisible()
@@ -59,8 +72,7 @@ test('comparison is the primary view and never blanks the application', async ({
 })
 
 test('a shared city URL becomes the first comparison pane', async ({ page }) => {
-  await page.goto('/?city=kranj&lens=esri-imagery')
-
+  await open(page, '/?city=kranj&lens=esri-imagery')
   await expect(page.locator('.split-compare')).toBeVisible()
   await expect(page.locator('.split-pane').nth(0).locator('select').first()).toHaveValue('kranj')
   await expect(page.locator('.split-pane').nth(1).locator('select').first()).toHaveValue('bangkok')
@@ -87,7 +99,7 @@ test('city search returns real basics before a city is opened', async ({ page },
         country: 'Mongolia', country_code: 'mn', admin1: 'Selenge', timezone: 'Asia/Ulaanbaatar', feature_code: 'PPL' },
     ] } })
   })
-  await page.goto('/')
+  await open(page, '/')
   // "SEARCH ANY CITY" lives in the city dropdown footer, which is closed.
   await page.locator('.topbar-city-select-btn').first().click()
   await page.getByRole('button', { name: 'SEARCH ANY CITY' }).first().click()
@@ -126,8 +138,8 @@ test('every metric says where its number came from, at every width', async ({ pa
   // "the text is in the DOM" proves nothing about whether anyone can read it.
   for (const width of [1440, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto('/?city=bangkok&lens=esri-imagery')
-    await page.waitForTimeout(2500)
+    await open(page)
+    await expect(page.locator('.split-pane-stat-envelope').first()).toBeVisible()
 
     const envelopes = await page.evaluate(() =>
       [...document.querySelectorAll('.split-pane-stat-envelope')].map((el) => ({
@@ -151,9 +163,12 @@ test('the city explorer scrolls, so every action is reachable on a phone', async
   // gesture. Asserted by reachability, because "the element exists" is exactly
   // what was true while it was unreachable.
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/?city=bangkok&lens=esri-imagery')
-  await page.waitForTimeout(3000)
+  // `domcontentloaded`, not the default `load`: this spec measures the
+  // workbench, not the satellite basemap, and waiting on every map tile made
+  // the navigation — not the product — the thing that timed out.
+  await page.goto('/?city=bangkok&lens=esri-imagery', { waitUntil: 'domcontentloaded' })
   const explore = page.getByRole('button', { name: /^Explore / }).first()
+  await expect(explore).toBeVisible()
   await explore.click()
 
   const target = page.getByRole('button', { name: /City systems/ }).first()
@@ -195,8 +210,7 @@ test('a long menu admits that it scrolls', async ({ page }) => {
   // list. Asserted because "it is scrollable" was already true and not the
   // defect; the defect is that the layout denied it.
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/?city=bangkok&lens=esri-imagery')
-  await page.waitForTimeout(3000)
+  await open(page)
   await page.locator('[aria-label="Choose how you\'re looking"]').first().click()
 
   const menu = page.locator('.basemap-menu').first()
@@ -225,8 +239,7 @@ test('a phone can still reach Plan, Ask, About — the More menu is not desktop-
   // Patterns, Sources, Search and About exist nowhere else on the screen, so
   // hiding the menu removed them from the product on a phone entirely.
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/?city=bangkok&lens=esri-imagery')
-  await page.waitForTimeout(3500)
+  await open(page)
 
   const more = page.locator('[aria-label="More"]').first()
   await expect(more).toBeVisible()
@@ -240,8 +253,10 @@ test('a phone can still reach Plan, Ask, About — the More menu is not desktop-
   await expect(menu).toBeVisible()
 
   // Every item in it is a feature with no other route on the screen.
-  for (const label of ['Plan', 'This view', 'Next 48 hours', 'Ask', 'Patterns', 'Search', 'About']) {
-    await expect(menu.getByText(label, { exact: true }).first()).toBeAttached()
+  // Asserted VISIBLE, not merely attached: "attached" was true while Research
+  // and the source-health panel sat unreachable behind a hidden topbar button.
+  for (const label of ['Plan', 'This view', 'Next 48 hours', 'Ask', 'Patterns', 'Research', 'Sources', 'Search', 'About']) {
+    await expect(menu.getByText(label, { exact: true }).first()).toBeVisible()
   }
 
   // And the menu itself stays inside a 390px viewport.
@@ -253,6 +268,50 @@ test('a phone can still reach Plan, Ask, About — the More menu is not desktop-
   expect(fit.left).toBeGreaterThanOrEqual(0)
   expect(fit.bottom).toBeLessThanOrEqual(fit.vh)
   expect(fit.top).toBeGreaterThanOrEqual(0)
+
+  // Thirteen items do not fit in the 425px the menu is capped at, so it
+  // scrolls — and it has to say so. A cut that reads as the end of the list
+  // is the same defect the Look menu had.
+  const scroll = await menu.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      overflows: el.scrollHeight > el.clientHeight,
+      hiddenPx: el.scrollHeight - el.clientHeight,
+      scrollbarWidth: cs.scrollbarWidth,
+      hasAffordance: cs.backgroundImage !== 'none',
+    }
+  })
+  expect(scroll.overflows).toBe(true)
+  expect(scroll.hiddenPx).toBeGreaterThan(0)
+  expect(scroll.scrollbarWidth).toBe('thin')
+  expect(scroll.hasAffordance).toBe(true)
+})
+
+test('a phone can open the reading room and the source health', async ({ page }) => {
+  // Two features, one route each — the topbar button — and the topbar on a
+  // phone keeps only the wordmark, Compare and More. So both were switched off
+  // on a phone with nothing behind them: the argument the product is making
+  // and the health of the feeds it makes it from could not be opened at all.
+  //
+  // Asserted by USE — the panel actually opens — because presence is what was
+  // true while the feature was stranded.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await open(page)
+
+  // The topbar buttons are gone on a phone…
+  await expect(page.locator('.topbar-research-btn')).toBeHidden()
+  await expect(page.locator('.data-chip')).toBeHidden()
+
+  // …so the More menu is the way in.
+  await page.locator('[aria-label="More"]').first().click()
+  await page.getByRole('menuitem', { name: 'Research', exact: true }).click()
+  await expect(page.locator('.research-card')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.research-card')).toHaveCount(0)
+
+  await page.locator('[aria-label="More"]').first().click()
+  await page.getByRole('menuitem', { name: 'Sources', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Data source status' })).toBeVisible()
 })
 
 test('the plan admits it is longer than the screen', async ({ page }) => {
@@ -261,8 +320,7 @@ test('the plan admits it is longer than the screen', async ({ page }) => {
   // unstyled scrollbar and no marker, so it ended on a hard cut mid-sentence and
   // read as a complete summary of the city. Identical shape to the Look menu.
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/?city=bangkok&lens=esri-imagery')
-  await page.waitForTimeout(3500)
+  await open(page)
   await page.locator('[aria-label="More"]').first().click()
   await page.getByText('Plan', { exact: true }).first().click()
 

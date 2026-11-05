@@ -373,6 +373,48 @@ on sight rather than re-derived:
   nowhere else, so the rule deleted them from the product on a phone. When
   collapsing a bar, ask of each item *what else on this screen offers it* — if
   the answer is nothing, it is navigation and it stays.
+- **A computed token that no rule consumes.** The Wada engine computed a
+  dominant ink and a counter ink for every plate, and the stylesheet painted
+  the raw plate colour instead — so the reading room failed AA in **five of the
+  six curated cities** (Phuket's header read 1.03:1, Chiang Mai's body 2.05:1).
+  A computed value is not a rendered value. The engine was correct and the room
+  was still unreadable. Assert the *rendered* contrast, per role, per city:
+  the header ink on the dominant, the plate ink on the paper, the paper on the
+  plate ink.
+- **A column count taken from the width rather than from the count.**
+  `.form-strip` used `repeat(auto-fit, minmax(190px, 1fr))` for five readings,
+  so the browser chose four columns between 844px and 1051px and the fifth
+  reading sat **alone in a row of three empty cells** — a hole, not a rhythm.
+  `auto-fit` picks columns from the width; the count must pick them. Five
+  readings are five columns or five rows, never a partial row.
+- **A surface that invents its own palette.** The city explorer ran on a forest
+  ground (`#101512`), a mint accent (`#9ad8bb`) and a green-tinted grey
+  (`#b4bfb8`) — **sixteen hardcoded values outside the Wada token system**, and
+  the reason the panel read as a different product from the app around it. The
+  ground belongs to the palette, the accent is amber (it owns selection, focus
+  and action), and everything else is the house's neutral secondary. A panel
+  that carries its own colours is a second product.
+- **A hardcoded value that never reached the screen.** The explorer's forest
+  ground was already dead: `src/city-atlas.css` sets
+  `.split-compare .twin-workbench` with higher specificity, so the panel stood
+  on the compare system's ground all along and the `#101512` never painted
+  anything. The same specificity fight buried the explorer's own focus rule.
+  **When a rule does not render, the stylesheet is not where the answer is** —
+  check whether a later sheet, or a more specific selector, owns the property.
+  A value in the CSS proves the value was written, not that it was seen.
+- **A focus indicator drawn on its own fill.** The compare system's focus ring
+  is 1px *inset* (`outline-offset: -2px`), so on the amber fill of the
+  explorer's primary button it drew **amber on amber** — a focus indicator
+  that existed in the CSS and in the accessibility tree and was invisible to
+  the eye. Ring geometry is part of the affordance: a ring that lands inside
+  the control's own fill cannot be seen.
+- **A feature with one route, and that route hidden.** The reading room and the
+  source-health panel each had exactly one way in — a topbar button — and the
+  phone topbar keeps only the wordmark, Compare and More. Both were therefore
+  **unreachable on a phone**: the argument the product makes, and the health of
+  the feeds it makes it from. The old test asserted the menu items were
+  *attached*, which was true while the features were stranded. Test **reachability
+  by use** — the panel opens — never presence.
 
 ---
 
@@ -384,13 +426,13 @@ mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
 
 | Surface | State | Found and fixed |
 |---|---|---|
-| City image — form strip, lenses, reading line | swept | per-pane duplication; reading line as a 489 × 667 column; clipped metric envelope |
+| City image — form strip, lenses, reading line | swept | per-pane duplication; reading line as a 489 × 667 column; clipped metric envelope; **the strip's five readings took their column count from the width, not from the count, so between 844 and 1051px LANDMARKS sat alone in a row of three empty cells** |
 | Satellite compare + notes rail | swept | clean |
 | Single-city view | swept | clean |
-| Research panel | swept | clean |
-| City explorer (workbench) | swept | last action 49.7px below an unreachable fold |
+| Research panel (the Wada reading room) | swept | **failed AA in five of the six curated cities — Phuket's header read 1.03:1 and Chiang Mai's body 2.05:1.** The engine computed a readable ink and no rule consumed it; the room painted the raw plate colour on the paper and on the dominant. **Also unreachable on a phone** — one route, a topbar button the phone topbar hides |
+| City explorer (workbench) | swept | last action 49.7px below an unreachable fold; **the panel ran on its own forest ground (#101512), mint accent (#9ad8bb) and green-tinted grey (#b4bfb8) — sixteen hardcoded values outside the Wada token system**; **the primary button's focus ring drew amber on amber** |
 | Look menu | swept | 311px hidden with no affordance |
-| More menu | swept | deleted from phones entirely; 7 features unreachable |
+| More menu | swept | deleted from phones entirely; 7 features unreachable; **and the reading room + source health had no route on a phone at all** — both restored as items |
 | Plan / model card | swept | **2,655–3,148px (≈78%) below an unmarked cut**; a 760px card around ~460px of content — 46% of the debt section empty, section rules 82–91% wider than their own text, each step's figure 602px from its label |
 | Search / onboarding modal | swept | clean, including a long city label |
 | 200% zoom (simulated at 720 × 450) | swept | no overflow; chrome cost rises to 26% **because the viewport is short, not because the bands grew** — investigated and explained, per §6 |
@@ -404,6 +446,9 @@ mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
 - `.city-image-reading` and `.form-panel` under text enlargement, which needs a
   browser that reflows at real zoom rather than a simulated viewport.
 - Anything behind authentication or the Cloudflare Worker path.
+- The **phone** reading room and phone explorer were measured and driven by
+  keyboard, but the reading room was **read as a screenshot only at 1440 × 900**
+  — the six plates above were all read there.
 
 **Read end-to-end since that ledger was written:** the plan card at
 **1440 × 900**, walked in six bands from the head to the closing note, and at
@@ -411,6 +456,17 @@ mistake it for clean. Every row was captured at **390 × 844, 1024 × 768 and
 measured. The card is now one column of 464px with no section leaving more
 than 15px of dead strip; the surface is still a long scroll, but every part of
 it has now been seen.
+
+**Read since then:** the Wada reading room in **all six curated cities**
+(Bangkok, Chiang Mai, Phuket, Singapore, Ljubljana, Kranj) — each read as a
+screenshot at 1440 × 900 *and* measured for the three roles. Header 4.87–12.20,
+body 4.61–11.66, footer the same as the body. Every plate now gives the room
+its own character *and* a readable ground: amber/blue for Bangkok, coral/blue
+for Phuket, green/white for Singapore, apricot/violet for Kranj, crimson for
+Chiang Mai, sand/teal for Ljubljana. The city explorer's panel was read at
+1440 × 900 on the same pass: ground `--cmp-panel`, amber eyebrow and selected
+tab, neutral labels, white readings, amber action, **worst text 7.63:1 across
+21 text elements**.
 
 A law in prose dies on the next edit. Each row above is held by a spec in
 `tests-e2e/`; if a row has no spec, it is a claim, not a guarantee.

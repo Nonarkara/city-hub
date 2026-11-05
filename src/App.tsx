@@ -627,6 +627,14 @@ export default function App() {
                 <MoreItem label={forecastOpen ? 'Close the next 48 hours' : 'Next 48 hours'} onClick={() => { setForecastOpen(!forecastOpen); setMoreOpen(false) }} />
                 <MoreItem label={chatOpen ? 'Close ask' : 'Ask'} onClick={() => { setChatOpen(!chatOpen); setMoreOpen(false) }} />
                 <MoreItem label="Patterns" onClick={() => { setInsightOpen(true); setMoreOpen(false) }} />
+                {/* Research and the source-health panel each have exactly one
+                    route in the product — the topbar button. On a phone the
+                    topbar keeps only the wordmark, Compare and More, so both
+                    were hidden with no other way in: the reading room and the
+                    feed health could not be opened at all. The More menu is
+                    where a phone-reachable feature lives. */}
+                <MoreItem label="Research" onClick={() => { setResearchOpen(true); setMoreOpen(false) }} />
+                <MoreItem label="Sources" onClick={() => { setDataStatusOpen(true); setMoreOpen(false) }} />
                 {bangkokMode && (
                   <MoreItem label={smokeVisible ? 'Hide smoke' : 'Smoke from fires'} onClick={() => { setSmokeVisible((v) => !v); setMoreOpen(false) }} />
                 )}

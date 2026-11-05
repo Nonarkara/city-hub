@@ -6,8 +6,27 @@
  * - Color is a relationship, not a style sticker.
  * - Measured contrast and accessible foreground text.
  * - Dynamic plate orchestration for city atmospheres.
+ *
+ * The colour maths lives in `wada-contrast.ts` and the curated city pairings
+ * in `wada-cities.ts`, so both can be tested without a DOM and without the
+ * JSON catalogue.
  */
 import platesData from '../data/wada/wada-plates.json'
+import { CITY_DEFAULT_PLATES, DEFAULT_PLATE_ID } from './wada-cities'
+import {
+  AA,
+  AA_SAFE,
+  contrastRatio,
+  hexToRgb,
+  inkOnGround,
+  readableInk,
+  relativeLuminance,
+  rgbToHex,
+  type Rgb,
+} from './wada-contrast'
+
+export { CITY_DEFAULT_PLATES, contrastRatio, hexToRgb, inkOnGround, readableInk, relativeLuminance, rgbToHex }
+export type { Rgb }
 
 export interface WadaColor {
   name: string
@@ -29,54 +48,42 @@ export interface WadaPlate {
 
 export const WADA_PLATES: WadaPlate[] = (platesData as unknown as { plates: WadaPlate[] }).plates
 
-/**
- * Curated city plate pairings from Sanzo Wada's 348 combinations.
- * Maps city environmental character / tension to historic plates.
- * Defaults to Plate 002 (Yellow Orange / Dark Tyrian Blue).
- */
-export const CITY_DEFAULT_PLATES: Record<string, number> = {
-  bangkok: 2,       // Yellow Orange (#f99d1b) + Dark Tyrian Blue (#12354e) — Shadow population / electric contrast
-  'chiang-mai': 30, // Pompeian Red (#ab2439) + Mineral Gray (#a2b0ad) — Mountain valley / seasonal haze
-  phuket: 1,        // English Red (#d96629) + Cerulian Blue (#0093a5) — Island heat & deep sea pressure
-  singapore: 5,     // Cossack Green (#437742) + Vandar Poel's Blue (#064f6e) — Garden city & maritime strait
-  ljubljana: 12,    // Isabella Color (#c5a56e) + Green Blue (#00867a) — Alpine emerald & historic stone
-  kranj: 23,        // Cinnamon Buff (#fdc57e) + Light Mauve (#9a72aa) — Sava riverbed & transitional economy
-}
-
 export function getPlate(id: number): WadaPlate {
   const found = WADA_PLATES.find((p) => p.id === id)
-  return found ?? WADA_PLATES[1] // Plate 002 fallback
+  return found ?? WADA_PLATES.find((p) => p.id === DEFAULT_PLATE_ID)!
 }
 
 export function getPlateForCity(cityId: string): WadaPlate {
-  const plateId = CITY_DEFAULT_PLATES[cityId] ?? 2
+  const plateId = CITY_DEFAULT_PLATES[cityId] ?? DEFAULT_PLATE_ID
   return getPlate(plateId)
 }
 
-/**
- * Relative luminance formula according to WCAG 2.1
- */
-export function relativeLuminance(rgb: [number, number, number]): number {
-  const channels = rgb.map((val) => {
-    const channel = val / 255
-    return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
-  })
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
-}
+/** The reading room's ground. The stylesheet owns it; the engine reads it. */
+const FALLBACK_PAPER = '#fff4d8'
 
-/**
- * Measures contrast against pure white vs pure black and returns the readable ink.
- */
-export function readableInk(rgb: [number, number, number]): '#101010' | '#f7f5ef' {
-  const lum = relativeLuminance(rgb)
-  const whiteContrast = (1 + 0.05) / (lum + 0.05)
-  const darkContrast = (lum + 0.05) / (0 + 0.05)
-  return whiteContrast >= darkContrast ? '#f7f5ef' : '#101010'
+function readPaper(root: HTMLElement): string {
+  if (typeof window === 'undefined') return FALLBACK_PAPER
+  const value = getComputedStyle(root).getPropertyValue('--paper').trim()
+  return value || FALLBACK_PAPER
 }
 
 /**
  * Applies a Wada plate to the document :root dynamically.
  * Updates CSS custom properties without breaking cockpit operational constraints.
+ *
+ * A plate is a pair of colours, and a pair has three jobs in the reading
+ * room: the header sits ON the dominant, the footer ON the counter, and the
+ * body ON the paper. One colour cannot do all three — Pompeian Red on
+ * Mineral Gray is 3.07:1, and Cerulian Blue on English Red is 1.03:1, so a
+ * single "counter" token paints an unreadable room for five of the six
+ * curated cities. Each role therefore gets its own verified ink:
+ *
+ *   --header-ink  the counter where the pair reads, else the computed ink
+ *   --plate-ink   the counter on paper, darkened until it reads on paper
+ *
+ * Because contrast is symmetric, `--paper` on `--plate-ink` clears the same
+ * ratio the other way round. Plate 002 is unchanged by this, which is the
+ * point: the token follows the plate, it does not restate it.
  */
 export function applyWadaPlate(plate: WadaPlate) {
   if (typeof document === 'undefined') return
@@ -103,11 +110,22 @@ export function applyWadaPlate(plate: WadaPlate) {
     root.style.removeProperty('--wada-signal')
   }
 
+  const paperRgb = hexToRgb(readPaper(root))
+  const dominantRgb: Rgb = hexToRgb(plate.dominant)
+  const counterRgb: Rgb = hexToRgb(plate.counter)
+
+  // The reading room's ink: the plate's own counter where it can be read on
+  // the paper, and the same colour darkened where it cannot.
+  root.style.setProperty('--plate-ink', inkOnGround(counterRgb, paperRgb, AA_SAFE))
+
+  // The header sits on the dominant. The counter is its natural ink; where
+  // the pair cannot be read, the computed ink takes its place.
+  root.style.setProperty(
+    '--header-ink',
+    contrastRatio(counterRgb, dominantRgb) >= AA ? plate.counter : readableInk(dominantRgb),
+  )
+
   // Set contrast-verified ink for dominant & counter fields
-  if (plate.colors[0]?.rgb) {
-    root.style.setProperty('--dominant-ink', readableInk(plate.colors[0].rgb))
-  }
-  if (plate.colors[1]?.rgb) {
-    root.style.setProperty('--counter-ink', readableInk(plate.colors[1].rgb))
-  }
+  root.style.setProperty('--dominant-ink', readableInk(dominantRgb))
+  root.style.setProperty('--counter-ink', readableInk(counterRgb))
 }

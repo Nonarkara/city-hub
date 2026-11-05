@@ -310,7 +310,9 @@ the basemap had been stripped, a camera move would request no tiles.
 | `src/lib/plan.ts` | Model → ordered interventions |
 | `src/lib/city-reading.ts` | The reading line |
 | `src/lib/city-baseline.ts` | Hazard profile per city |
-| `src/lib/wada-engine.ts` | Sanzo Wada plate palette |
+| `src/lib/wada-engine.ts` | Sanzo Wada plate palette — catalogue + DOM orchestration |
+| `src/lib/wada-contrast.ts` | WCAG maths: luminance, ratio, `readableInk`, `inkOnGround` (pure, no imports) |
+| `src/lib/wada-cities.ts` | Which plate each curated city opens on |
 | `src/lib/osm/` | Nominatim + Overpass, server-side |
 | `src/lib/request-timeout.ts` | `timeoutSignal`, shared |
 | `src/data/` | One module per upstream, parse + cache + provenance |

@@ -12,6 +12,11 @@
   --amber:        #f99d1b;          /* Sanzo Wada Yellow Orange (Plate 002) */
   --chord:        #f99d1b;          /* Active plate primary chord */
   --deep:         #12354e;          /* Sanzo Wada Dark Tyrian Blue (Plate 002) */
+  /* The plate's verified inks. The engine rewrites these per city; these are
+     Plate 002's, so the room is readable before the engine runs and if it
+     never runs. --header-ink sits on --chord, --plate-ink on --paper. */
+  --header-ink:   #12354e;
+  --plate-ink:    #12354e;
   --black:        #101010;          /* Interface ground (exhibition black) */
   --white:        #f7f5ef;          /* Warm off-white surface */
   --paper:        #fff4d8;          /* Wada reading room ground */
@@ -1528,15 +1533,32 @@
 .twin-map-workspace { display: flex; flex: 1; min-height: 0; min-width: 0; }
 .twin-map-workspace > .split-grid { min-width: 0; }
 .split-select.twin-explore { background-image: none; border-color: var(--amber); color: var(--amber); padding-right: 10px; }
-.twin-workbench { flex: 0 0 360px; width: 360px; min-width: 0; display: flex; flex-direction: column; background: #101512; border-left: 1px solid var(--line); color: var(--fg); overflow: hidden; }
+/* The city explorer used to carry its own surface: a forest ground
+   (#101512), a mint accent (#9ad8bb) and a green-tinted grey (#b4bfb8) —
+   sixteen hardcoded values outside the token system.
+
+   Two of them were live and one was not. The mint and the grey-green
+   painted the panel on every screen. The forest ground never rendered:
+   `src/city-atlas.css` sets `.split-compare .twin-workbench` with higher
+   specificity, so the panel has stood on the compare system's own ground
+   all along. This block now defers to that rule — the base ground here is
+   the cockpit ground and the compare sheet refines it — rather than
+   pretending otherwise with a value that never reached the screen.
+
+   The neutral secondary is the compare system's own `--cmp-quiet` (warm
+   white at 64%), not `--dim`: --dim is warm white at 35%, which composites
+   to 3.0:1 on this ground and fails AA for the 10–13px labels and the
+   provenance lines. The old grey-green read at 10.2:1; this reads at 7.6:1
+   and is neutral rather than green. */
+.twin-workbench { flex: 0 0 360px; width: 360px; min-width: 0; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--line); color: var(--fg); overflow: hidden; --twin-quiet: var(--cmp-quiet, rgba(245, 245, 240, 0.64)); }
 .twin-heading { display: flex; justify-content: space-between; gap: 12px; padding: 20px 18px 14px; }
-.twin-heading small { color: #9ad8bb; font-size: 10px; letter-spacing: 0; }
+.twin-heading small { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.22em; color: var(--amber); }
 .twin-heading h2 { margin: 5px 0; font-size: 24px; letter-spacing: 0; }
-.twin-heading span { font-size: 12px; color: #b4bfb8; }
+.twin-heading span { font-size: 12px; color: var(--twin-quiet); }
 .twin-heading button { background: none; color: var(--fg); border: 1px solid var(--line); width: 44px; height: 44px; font-size: 24px; cursor: pointer; flex-shrink: 0; }
 .twin-tabs { display: flex; border-bottom: 1px solid var(--line); }
-.twin-tabs button { flex: 1; min-height: 44px; background: none; color: #b4bfb8; border: 0; border-bottom: 2px solid transparent; cursor: pointer; font: inherit; }
-.twin-tabs button[aria-selected="true"] { color: #9ad8bb; border-bottom-color: #9ad8bb; }
+.twin-tabs button { flex: 1; min-height: 44px; background: none; color: var(--twin-quiet); border: 0; border-bottom: 2px solid transparent; cursor: pointer; font: inherit; }
+.twin-tabs button[aria-selected="true"] { color: var(--amber); border-bottom-color: var(--amber); }
 /* The scrollable region of the workbench.
    `flex: 1; min-height: 0` is load-bearing, not decoration. In a column flex
    container a child defaults to `flex: 0 1 auto`, so this box sized itself to
@@ -1547,21 +1569,24 @@
    there was no scrollable box at all. */
 .twin-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px; font-size: 13px; line-height: 1.6; }
 .twin-content h3 { font-size: 16px; margin: 0 0 10px; letter-spacing: 0; }
-.twin-content a { color: #9ad8bb; }
+.twin-content a { color: var(--amber); }
 .twin-readings { margin: 18px 0; }
 .twin-readings > div { padding: 12px 0; border-bottom: 1px solid var(--line); }
-.twin-readings dt { color: #b4bfb8; }
+.twin-readings dt { color: var(--twin-quiet); }
 .twin-readings dd { margin: 3px 0; font-size: 22px; }
-.twin-readings small { display: block; font-size: 10px; color: #b4bfb8; }
-.twin-note { color: #b4bfb8; font-size: 12px; }
-.twin-action { display: block; width: 100%; min-height: 44px; margin: 10px 0; padding: 9px; border: 1px solid #9ad8bb; background: #9ad8bb; color: #101512; font: inherit; cursor: pointer; }
-.twin-action--quiet { background: none; color: #9ad8bb; }
+.twin-readings small { display: block; font-size: 10px; color: var(--twin-quiet); }
+.twin-note { color: var(--twin-quiet); font-size: 12px; }
+.twin-action { display: block; width: 100%; min-height: 44px; margin: 10px 0; padding: 9px; border: 1px solid var(--amber); background: var(--amber); color: var(--ink); font: inherit; cursor: pointer; }
+.twin-action--quiet { background: none; color: var(--amber); }
 .twin-input { display: flex; flex-wrap: wrap; justify-content: space-between; margin: 22px 0; gap: 8px; }
-.twin-input input { width: 100%; min-height: 32px; accent-color: #9ad8bb; }
+.twin-input input { width: 100%; min-height: 32px; accent-color: var(--amber); }
 .twin-scenario-result { padding: 16px 0; border-block: 1px solid var(--line); display: grid; gap: 8px; }
-.twin-scenario-result strong { font-size: 23px; color: #9ad8bb; }
-.twin-scenario-result span { font-size: 11px; color: #b4bfb8; }
-.twin-workbench :focus-visible { outline: 2px solid #9ad8bb; outline-offset: 2px; }
+.twin-scenario-result strong { font-size: 23px; color: var(--fg); }
+.twin-scenario-result span { font-size: 11px; color: var(--twin-quiet); }
+/* The explorer's focus ring lives in `src/city-atlas.css`, with the compare
+   system's own focus rules. A rule here at `.twin-workbench :focus-visible`
+   loses to `.split-compare button:focus-visible` on specificity, so it would
+   have been another value that never reached the screen. */
 @media (max-width: 767px) {
   .twin-map-workspace { position: relative; }
   .twin-workbench { position: absolute; inset: 0; width: 100%; z-index: 6; border: 0; }
@@ -10166,20 +10191,29 @@
 
 .ki-foot { font-family: var(--font-body); font-size: 9px; color: rgba(245,245,240,0.38); margin-top: 12px; line-height: 1.4; }
 
-/* ── Wada Reading Room for Research (Plate 002: Yellow Orange + Dark Tyrian Blue) ── */
+/* ── Wada Reading Room for Research ─────────────────────────────────────────
+   The plate is a pair, and the pair has three jobs: the header sits ON the
+   dominant, the footer ON the counter, the body ON the paper. One colour
+   cannot do all three. Measured before this change, `--deep` on `--chord`
+   read 3.07:1 for Chiang Mai and 1.03:1 for Phuket, and `--deep` on the
+   paper read 2.05:1 — five of the six curated cities had an unreadable
+   room. The engine now verifies each role and publishes an ink for it:
+   `--header-ink` for the plate's own counter, `--plate-ink` for the counter
+   on paper. Plate 002 is unchanged by this, which is the point: the token
+   follows the plate, it does not restate it. */
 .research-card {
   width: min(680px, calc(100vw - 32px));
   background: var(--paper) !important;
   color: var(--ink) !important;
-  border: 1px solid rgba(18, 53, 78, 0.25) !important;
+  border: 1px solid color-mix(in srgb, var(--plate-ink) 25%, transparent) !important;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
 }
 .research-header {
   margin: -28px -28px 24px;
   padding: 32px 32px 24px;
   background: var(--chord);
-  color: var(--deep);
-  border-bottom: 2px solid var(--deep);
+  color: var(--header-ink);
+  border-bottom: 2px solid var(--header-ink);
 }
 .research-eyebrow {
   font-family: var(--font-mono);
@@ -10187,7 +10221,7 @@
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--deep);
+  color: var(--header-ink);
   margin-bottom: 8px;
 }
 .research-title {
@@ -10195,7 +10229,7 @@
   font-size: clamp(2rem, 4vw, 2.75rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--deep);
+  color: var(--header-ink);
   line-height: 1.05;
   margin: 0 0 10px;
 }
@@ -10203,7 +10237,7 @@
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
-  color: var(--deep);
+  color: var(--header-ink);
   margin: 0;
   font-weight: 500;
 }
@@ -10214,8 +10248,8 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--deep);
-  border-bottom: 1px solid rgba(18, 53, 78, 0.2);
+  color: var(--plate-ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--plate-ink) 22%, transparent);
   padding-bottom: 4px;
   margin: 0 0 10px;
 }
@@ -10225,12 +10259,12 @@
   line-height: 1.6;
 }
 .research-card .about-text strong {
-  color: var(--deep);
+  color: var(--plate-ink);
 }
 .research-footer {
   margin: 28px -28px -24px;
   padding: 16px 32px;
-  background: var(--deep);
+  background: var(--plate-ink);
   color: var(--paper);
   display: flex;
   align-items: center;
@@ -10244,9 +10278,9 @@
   opacity: 0.85;
 }
 .research-close-btn {
-  background: var(--deep) !important;
+  background: var(--plate-ink) !important;
   color: var(--paper) !important;
-  border: 1px solid rgba(255, 244, 216, 0.3) !important;
+  border: 1px solid color-mix(in srgb, var(--paper) 35%, transparent) !important;
 }
 
 /* ── Intel dock — live frame, dossier, study ─────────────────────────────── */
@@ -10950,11 +10984,22 @@
 /* Five rows laid out as one horizontal strip: the eye reads across an element's
    count, finding and source rather than down a narrow column that forced
    wrapping. Named columns, because five rows of mixed content in a column is
-   where invented height comes from. */
+   where invented height comes from.
+
+   Five columns, or five rows. The count decides, not the width. `auto-fit`
+   with a 190px minimum chose FOUR columns between 844px and 1051px, which
+   left the fifth reading alone in a row of three empty cells — a hole, not a
+   rhythm. Below the width where five real columns fit, the five readings
+   become five rows, which is the phone's layout and costs no extra height
+   (at 1024px the rows fit one line each, so the strip is the same height as
+   the hole it replaces). */
 .form-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px 18px;
+}
+@media (max-width: 1099px) {
+  .form-strip { grid-template-columns: 1fr; }
 }
 
 .form-cell {

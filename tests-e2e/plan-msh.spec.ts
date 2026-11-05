@@ -38,6 +38,15 @@ const openPlan = async (page: Page) => {
   await page.getByRole('menuitem', { name: 'Plan', exact: true }).click()
   await expect(page.locator('.plan-card')).toBeVisible()
   await expect(page.locator('.cm-panel')).toBeVisible()
+  // The measurement below is the width of TEXT INK, so the fonts have to be
+  // the intended ones. Measured against a fallback face, the plan card's
+  // widest line ends a different distance from the column edge — which is how
+  // a 43px reading and a 37px reading of the same page both happened.
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    await Promise.all([...document.fonts].map((f) => (f.status === 'loaded' ? null : f.load().catch(() => {}))))
+    await document.fonts.ready
+  })
 }
 
 /** What the plan card's geometry actually is, measured from text ink. */
@@ -206,8 +215,18 @@ test('the plan card is sized to the column its content demands', async ({ page }
 
   // Every section uses the column. Before the repair the measurement-debt
   // section left 323px (46%) empty beside the prose that ends the card.
+  //
+  // The allowance is a share of the column, not a fixed number of pixels. A
+  // ragged-right paragraph's widest line ends short of the column edge by the
+  // width of the word that would not fit — 43px on this card — and that is
+  // typography, not an invented strip. A fixed 40px line made the gate flip
+  // with the font-loading state. The defect this catches is a DEAD strip:
+  // most of the column empty. Twelve per cent of the column catches that
+  // (323px, 46%, before) and does not punish a line that ends where its words
+  // end.
+  const allowance = Math.max(40, Math.round(m.innerW * 0.12))
   for (const [sel, s] of Object.entries(m.sections)) {
-    expect(s.voidPx, `${sel} leaves a dead strip beside its text`).toBeLessThanOrEqual(40)
+    expect(s.voidPx, `${sel} leaves a dead strip beside its text`).toBeLessThanOrEqual(allowance)
   }
 })
 

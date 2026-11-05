@@ -259,3 +259,51 @@ test('a second pane keeps its counts when the strip already owns the first', asy
   await expect(captions.nth(0)).not.toContainText('named path')
   await expect(captions.nth(1)).toContainText('named path')
 })
+
+test('the form strip never strands a reading in a half-empty row', async ({ page }) => {
+  // Five readings — Lynch's five elements — and the strip laid them out with
+  // `repeat(auto-fit, minmax(190px, 1fr))`, so the column count came from the
+  // WIDTH rather than from the count. Between 844px and 1051px that chose
+  // four columns, and the fifth reading sat alone in a row of three empty
+  // cells: a hole, not a rhythm.
+  //
+  // The count decides now. Five columns when five columns can hold a real
+  // reading, five rows when they cannot — and never a partial row.
+  const hub = { lat: 13.756, lon: 100.501 }
+  await page.route(OVERPASS_PROXY, async (route) => {
+    await route.fulfill({ json: {
+      osm3s: { timestamp_osm_base: '2026-10-15T00:00:00Z' },
+      elements: [
+        { type: 'way', id: 1, tags: { highway: 'primary', name: 'Alpha Road' }, geometry: [{ lat: hub.lat, lon: hub.lon - 0.01 }, hub] },
+        { type: 'node', id: 2, tags: { place: 'neighbourhood', name: 'Old Quarter' }, lat: hub.lat, lon: hub.lon },
+      ],
+    } })
+  })
+
+  for (const width of [1440, 1024, 960, 900, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'City image', exact: true }).click()
+    await expect(page.locator('.form-strip')).toBeVisible()
+
+    const grid = await page.locator('.form-strip').evaluate((strip) => {
+      const cells = [...strip.children].map((c) => {
+        const r = c.getBoundingClientRect()
+        return { label: (c.textContent || '').trim().slice(0, 12), top: Math.round(r.top), x: Math.round(r.x) }
+      })
+      const rows = new Map<number, number>()
+      for (const c of cells) rows.set(c.top, (rows.get(c.top) ?? 0) + 1)
+      return { cells, rowSizes: [...rows.entries()].map(([top, n]) => ({ top, n })) }
+    })
+
+    expect(grid.cells.length, `width ${width}: the strip lost a reading`).toBe(5)
+    const firstRow = grid.rowSizes[0].n
+    for (const row of grid.rowSizes) {
+      // A row is either the whole strip or a complete row of readings. The
+      // defect was a row holding one reading and three empty cells.
+      expect(row.n, `width ${width}: a row holds ${row.n} of 5 readings`).toBe(firstRow)
+    }
+    // Five readings: one row of five, or five rows of one. Nothing between.
+    expect([1, 5], `width ${width}: the strip is ${grid.rowSizes.length} rows`).toContain(grid.rowSizes.length)
+  }
+})

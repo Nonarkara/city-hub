@@ -111,6 +111,12 @@
 /* Explorer workbench keeps its own panel but on the shared ground */
 .split-compare .twin-workbench { flex-basis: var(--cmp-rail); width: var(--cmp-rail); background: var(--cmp-panel); border-left-color: var(--line); }
 .split-compare .twin-action { font-size: 13px; }
+/* The explorer needs its own focus ring. The compare system's ring is 1px
+   inset (outline-offset: -2px), so on the amber fill of a .twin-action
+   button it lands ON that fill — amber on amber, invisible. Two pixels
+   outside the border box puts the ring on the panel ground, where it reads
+   against any fill the control happens to have. */
+.split-compare .twin-workbench :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 @media (max-width: 1100px) {
   .split-compare { --cmp-rail: 272px; }
