@@ -49,6 +49,11 @@
     "@types/tz-lookup": "^6.1.2",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.8.3",
-    "vite": "^6.4.3"
+    "vite": "^6.4.6"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.13.6"
+    }
   }
 }
